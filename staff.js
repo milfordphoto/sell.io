@@ -86,6 +86,19 @@ async function loadRecords() {
     renderDetail();
     setStatus("Orders loaded.");
   } catch (error) {
+    const demoModeAllowed = window.location.hostname === "milfordphoto.github.io" || new URLSearchParams(window.location.search).get("demo") === "1";
+    if (demoModeAllowed) {
+      records = demoRecords().sort(sortNewestFirst);
+      orders = buildOrders(records);
+      selectedOrderId = orders[0]?.id || null;
+      syncSelectedItem();
+      loginEl.hidden = true;
+      workspaceEl.hidden = false;
+      renderQueue();
+      renderDetail();
+      setStatus("Demo orders loaded. Real staff data requires protected hosting.");
+      return;
+    }
     records = [];
     orders = [];
     selectedOrderId = null;
@@ -97,6 +110,91 @@ async function loadRecords() {
     loadButton.disabled = false;
     refreshButton.disabled = false;
   }
+}
+
+function demoRecords() {
+  const submitted = new Date().toISOString();
+  return [
+    {
+      id: "demo-r5",
+      fields: {
+        "Quote Reference": "MP-DEMO-1042",
+        "Seller Name": "Michael Wilson",
+        "Seller Email": "mikewilson.filmmaker@gmail.com",
+        "Seller Phone": "310-863-2826",
+        "Seller Street": "3603 W Hidden Lane Unit 204",
+        "Seller City": "Rolling Hills Estates",
+        "Seller State": "CA",
+        "Seller ZIP": "90274",
+        "Item Brand": "Canon",
+        "Item Model": "EOS R5",
+        Category: "Camera Body - Mirrorless",
+        Condition: "Excellent",
+        "Seller Notes": "Included items: USB connection cable, Rechargeable battery, Charger, Body cap, Strap\nQuote total cash: $1,379\nQuote total store credit: $1,516",
+        "eBay Median Price": 2299,
+        "Condition Multiplier": 60,
+        "Milford Offer": 1379,
+        "Final Offer": 1379,
+        "Quote Submitted": submitted,
+        "Quote Expires": new Date(Date.now() + 7 * 86400000).toISOString(),
+        Status: "Label Generated",
+        Source: "Online",
+        "Tracking Number": "1Z-DEMO-1042",
+      },
+    },
+    {
+      id: "demo-sigma",
+      fields: {
+        "Quote Reference": "MP-DEMO-1042",
+        "Seller Name": "Michael Wilson",
+        "Seller Email": "mikewilson.filmmaker@gmail.com",
+        "Seller Phone": "310-863-2826",
+        "Seller Street": "3603 W Hidden Lane Unit 204",
+        "Seller City": "Rolling Hills Estates",
+        "Seller State": "CA",
+        "Seller ZIP": "90274",
+        "Item Brand": "Sigma",
+        "Item Model": "Art 24-70mm f/2.8 DG DN - Sony E",
+        Category: "Lens - Mirrorless",
+        Condition: "Excellent",
+        "Seller Notes": "Lens mount: Sony E\nIncluded items: Rear cap, Lens cap, Lens hood\nQuote total cash: $555\nQuote total store credit: $611",
+        "eBay Median Price": 925,
+        "Condition Multiplier": 60,
+        "Milford Offer": 555,
+        "Final Offer": 555,
+        "Quote Submitted": submitted,
+        "Quote Expires": new Date(Date.now() + 7 * 86400000).toISOString(),
+        Status: "Received",
+        Source: "Online",
+      },
+    },
+    {
+      id: "demo-sony",
+      fields: {
+        "Quote Reference": "MP-DEMO-2098",
+        "Seller Name": "John Doe",
+        "Seller Email": "john@example.com",
+        "Seller Phone": "203-555-0100",
+        "Seller Street": "22 River Street",
+        "Seller City": "Milford",
+        "Seller State": "CT",
+        "Seller ZIP": "06460",
+        "Item Brand": "Sony",
+        "Item Model": "A7 IV",
+        Category: "Camera Body - Mirrorless",
+        Condition: "Good",
+        "Seller Notes": "Missing charger. Customer prefers store credit.",
+        "eBay Median Price": 1380,
+        "Condition Multiplier": 50,
+        "Milford Offer": 690,
+        "Final Offer": 640,
+        "Quote Submitted": new Date(Date.now() - 86400000).toISOString(),
+        "Quote Expires": new Date(Date.now() + 6 * 86400000).toISOString(),
+        Status: "Accepted by Seller",
+        Source: "Online",
+      },
+    },
+  ];
 }
 
 function buildOrders(items) {
