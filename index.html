@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Milford Photo Used Gear Quote Prototype</title>
+    <meta
+      name="description"
+      content="Prototype instant quote app for Milford Photo used equipment intake."
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="mp-quote-app" id="app">
+      <section class="app-shell" aria-labelledby="app-title">
+        <header class="app-header">
+          <div>
+            <p class="brand-line">Milford Photo Used Department</p>
+            <h1 id="app-title">Get an instant offer for your used camera gear</h1>
+            <p class="intro-copy">
+              Start online, ship it in or bring it to the store, and Milford Photo's specialists will verify the final offer after inspection.
+            </p>
+          </div>
+          <aside class="trust-panel" aria-label="Quote policy">
+            <strong>Instant offer</strong>
+            <span>Valid for 10 days, pending physical verification.</span>
+          </aside>
+        </header>
+
+        <nav class="stepper" aria-label="Quote steps">
+          <button class="step is-active" data-step-target="gear" type="button">
+            <span>1</span> Gear
+          </button>
+          <button class="step" data-step-target="condition" type="button">
+            <span>2</span> Condition
+          </button>
+          <button class="step" data-step-target="contact" type="button">
+            <span>3</span> Contact
+          </button>
+          <button class="step" data-step-target="shipping" type="button">
+            <span>4</span> Delivery
+          </button>
+          <button class="step" data-step-target="offer" type="button">
+            <span>5</span> Offer
+          </button>
+        </nav>
+
+        <div class="layout">
+          <form class="quote-form" id="quote-form">
+            <section class="form-step is-active" data-step="gear" aria-labelledby="gear-heading">
+              <div class="section-heading">
+                <p>Step 1</p>
+                <h2 id="gear-heading">Tell us what you have</h2>
+              </div>
+
+              <label class="field">
+                <span>Search or select model</span>
+                <input
+                  id="gear-search"
+                  name="gearSearch"
+                  list="gear-options"
+                  placeholder="Example: Sony A7 III, Canon R6, Nikon 24-70"
+                  autocomplete="off"
+                />
+                <datalist id="gear-options"></datalist>
+              </label>
+
+              <div class="two-col">
+                <label class="field">
+                  <span>Category</span>
+                  <select id="category" name="category">
+                    <option value="camera">Camera body</option>
+                    <option value="lens">Lens</option>
+                    <option value="flash">Flash / lighting</option>
+                    <option value="accessory">Accessory</option>
+                    <option value="manual">Vintage, estate, or manual review</option>
+                  </select>
+                </label>
+
+                <label class="field">
+                  <span>Quantity</span>
+                  <input id="quantity" name="quantity" type="number" min="1" max="10" value="1" />
+                </label>
+              </div>
+
+              <label class="field">
+                <span>Serial number</span>
+                <input id="serial" name="serial" placeholder="Optional for prototype; required in production" />
+              </label>
+
+              <label class="field">
+                <span>Notes</span>
+                <textarea
+                  id="gear-notes"
+                  name="gearNotes"
+                  rows="4"
+                  placeholder="Mention mount, color, kit details, known damage, missing items, or extra accessories."
+                ></textarea>
+              </label>
+            </section>
+
+            <section class="form-step" data-step="condition" aria-labelledby="condition-heading">
+              <div class="section-heading">
+                <p>Step 2</p>
+                <h2 id="condition-heading">Choose the closest condition</h2>
+              </div>
+
+              <fieldset class="condition-grid">
+                <legend class="sr-only">Condition</legend>
+                <label class="condition-card">
+                  <input type="radio" name="condition" value="like-new" />
+                  <strong>Like New</strong>
+                  <span>Minimal signs of use, fully working, very clean.</span>
+                </label>
+                <label class="condition-card">
+                  <input type="radio" name="condition" value="excellent" checked />
+                  <strong>Excellent</strong>
+                  <span>Light normal use, clean glass/sensor, no functional issues.</span>
+                </label>
+                <label class="condition-card">
+                  <input type="radio" name="condition" value="good" />
+                  <strong>Good</strong>
+                  <span>Visible wear, fully usable, no major defects.</span>
+                </label>
+                <label class="condition-card">
+                  <input type="radio" name="condition" value="well-used" />
+                  <strong>Well Used</strong>
+                  <span>Heavy wear or missing parts; still usable.</span>
+                </label>
+                <label class="condition-card">
+                  <input type="radio" name="condition" value="manual-review" />
+                  <strong>Manual Review</strong>
+                  <span>Vintage, damaged, rare, estate, or unsure.</span>
+                </label>
+              </fieldset>
+
+              <fieldset class="check-grid">
+                <legend>Included accessories</legend>
+                <label><input type="checkbox" name="accessories" value="battery" checked /> Battery</label>
+                <label><input type="checkbox" name="accessories" value="charger" checked /> Charger</label>
+                <label><input type="checkbox" name="accessories" value="front-cap" checked /> Front/body cap</label>
+                <label><input type="checkbox" name="accessories" value="rear-cap" checked /> Rear cap</label>
+                <label><input type="checkbox" name="accessories" value="hood" /> Hood</label>
+                <label><input type="checkbox" name="accessories" value="box" /> Original box</label>
+              </fieldset>
+
+              <div class="two-col">
+                <label class="field">
+                  <span>Shutter count</span>
+                  <input id="shutter-count" name="shutterCount" type="number" min="0" placeholder="Camera bodies only" />
+                </label>
+
+                <label class="field">
+                  <span>Upload photos</span>
+                  <input id="photos" name="photos" type="file" multiple accept="image/*" />
+                </label>
+              </div>
+            </section>
+
+            <section class="form-step" data-step="contact" aria-labelledby="contact-heading">
+              <div class="section-heading">
+                <p>Step 3</p>
+                <h2 id="contact-heading">Where should we send the quote?</h2>
+              </div>
+
+              <div class="two-col">
+                <label class="field">
+                  <span>First name</span>
+                  <input id="first-name" name="firstName" autocomplete="given-name" />
+                </label>
+                <label class="field">
+                  <span>Last name</span>
+                  <input id="last-name" name="lastName" autocomplete="family-name" />
+                </label>
+              </div>
+
+              <div class="two-col">
+                <label class="field">
+                  <span>Email</span>
+                  <input id="email" name="email" type="email" autocomplete="email" />
+                </label>
+                <label class="field">
+                  <span>Phone</span>
+                  <input id="phone" name="phone" type="tel" autocomplete="tel" />
+                </label>
+              </div>
+
+              <label class="field">
+                <span>ZIP code</span>
+                <input id="zip" name="zip" inputmode="numeric" autocomplete="postal-code" maxlength="10" />
+              </label>
+
+              <fieldset class="radio-row">
+                <legend>Preferred payout</legend>
+                <label><input type="radio" name="payout" value="paypal" checked /> PayPal</label>
+                <label><input type="radio" name="payout" value="check" /> Check</label>
+                <label><input type="radio" name="payout" value="store-credit" /> Store credit bonus</label>
+              </fieldset>
+            </section>
+
+            <section class="form-step" data-step="shipping" aria-labelledby="shipping-heading">
+              <div class="section-heading">
+                <p>Step 4</p>
+                <h2 id="shipping-heading">Choose how Milford Photo receives it</h2>
+              </div>
+
+              <fieldset class="delivery-grid">
+                <legend class="sr-only">Delivery method</legend>
+                <label class="delivery-card">
+                  <input type="radio" name="delivery" value="ship" checked />
+                  <strong>Mail it in</strong>
+                  <span>Generate packing instructions and a label when the offer qualifies.</span>
+                </label>
+                <label class="delivery-card">
+                  <input type="radio" name="delivery" value="dropoff" />
+                  <strong>Bring it to the store</strong>
+                  <span>Use the same quote in-store with a Milford specialist.</span>
+                </label>
+              </fieldset>
+
+              <div id="shipping-fields" class="shipping-fields">
+                <div class="three-col">
+                  <label class="field">
+                    <span>Box length</span>
+                    <input id="box-length" name="boxLength" type="number" min="1" placeholder="in." />
+                  </label>
+                  <label class="field">
+                    <span>Box width</span>
+                    <input id="box-width" name="boxWidth" type="number" min="1" placeholder="in." />
+                  </label>
+                  <label class="field">
+                    <span>Box height</span>
+                    <input id="box-height" name="boxHeight" type="number" min="1" placeholder="in." />
+                  </label>
+                </div>
+                <label class="field">
+                  <span>Box weight</span>
+                  <input id="box-weight" name="boxWeight" type="number" min="1" placeholder="lb." />
+                </label>
+              </div>
+
+              <div class="policy-note" id="shipping-policy-note"></div>
+            </section>
+
+            <section class="form-step" data-step="offer" aria-labelledby="offer-heading">
+              <div class="section-heading">
+                <p>Step 5</p>
+                <h2 id="offer-heading">Review the prototype offer</h2>
+              </div>
+
+              <div class="offer-card">
+                <div>
+                  <p class="offer-label">Estimated cash offer</p>
+                  <strong id="final-cash-offer">$0</strong>
+                </div>
+                <div>
+                  <p class="offer-label">Store credit option</p>
+                  <strong id="final-credit-offer">$0</strong>
+                </div>
+              </div>
+
+              <div class="receipt-preview" id="receipt-preview"></div>
+
+              <label class="consent">
+                <input id="terms" name="terms" type="checkbox" />
+                <span>I understand this prototype shows an instant offer pending Milford Photo inspection and verification.</span>
+              </label>
+
+              <button class="primary-action" type="submit">Create prototype quote</button>
+
+              <div class="success-panel" id="success-panel" role="status" aria-live="polite" hidden></div>
+            </section>
+
+            <div class="form-actions">
+              <button class="secondary-action" id="prev-step" type="button">Back</button>
+              <button class="primary-action" id="next-step" type="button">Continue</button>
+            </div>
+          </form>
+
+          <aside class="summary-panel" aria-label="Live quote summary">
+            <div class="summary-header">
+              <span>Live estimate</span>
+              <strong id="quote-id">MP-QUOTE-DEMO</strong>
+            </div>
+
+            <div class="summary-price">
+              <span id="cash-offer">$0</span>
+              <small>cash offer pending verification</small>
+            </div>
+
+            <dl class="summary-list">
+              <div>
+                <dt>Selected gear</dt>
+                <dd id="summary-gear">Choose a model</dd>
+              </div>
+              <div>
+                <dt>Condition</dt>
+                <dd id="summary-condition">Excellent</dd>
+              </div>
+              <div>
+                <dt>Shipping</dt>
+                <dd id="summary-shipping">Calculated after quote</dd>
+              </div>
+              <div>
+                <dt>Staff routing</dt>
+                <dd id="summary-routing">Standard inspection</dd>
+              </div>
+            </dl>
+
+            <div class="staff-preview">
+              <button class="link-button" id="toggle-staff" type="button">Show Milford staff preview</button>
+              <div id="staff-panel" hidden>
+                <h3>Internal notice preview</h3>
+                <ul id="staff-list"></ul>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
