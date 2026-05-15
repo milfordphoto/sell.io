@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Milford Photo Used Gear Intake Dashboard</title>
+    <meta name="description" content="Milford Photo used equipment staff intake dashboard." />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="mp-used-app staff-app">
+      <section class="shell" aria-labelledby="staff-title">
+        <header class="hero staff-hero">
+          <div>
+            <p class="brand-line">Milford Photo Used Department</p>
+            <h1 id="staff-title">Used gear intake dashboard</h1>
+            <p class="intro">Receive gear, verify accessories and condition, adjust offers, and move each quote to payment or return.</p>
+          </div>
+        </header>
+
+        <section class="staff-login" id="staff-login">
+          <label for="staff-username">Employee login</label>
+          <div class="staff-login-row">
+            <input id="staff-username" autocomplete="username" placeholder="Employee name" />
+            <input id="staff-password" type="password" autocomplete="current-password" placeholder="Password" />
+            <button class="primary-action" type="button" id="load-records">Open dashboard</button>
+          </div>
+          <p>Test login: employee / password. Production should use real staff accounts.</p>
+        </section>
+
+        <section class="staff-workspace" id="staff-workspace" hidden>
+          <aside class="staff-queue" aria-label="Quote queue">
+            <div class="staff-toolbar">
+              <div>
+                <strong id="record-count">No quotes loaded</strong>
+                <span id="staff-status"></span>
+              </div>
+              <button class="secondary-action" type="button" id="refresh-records">Refresh</button>
+            </div>
+            <div class="staff-filter-row" role="tablist" aria-label="Queue filters">
+              <button class="staff-filter is-active" type="button" data-filter="active">Active</button>
+              <button class="staff-filter" type="button" data-filter="received">Received</button>
+              <button class="staff-filter" type="button" data-filter="done">Done</button>
+            </div>
+            <div class="staff-record-list" id="records-list" aria-live="polite"></div>
+          </aside>
+
+          <section class="staff-detail" id="staff-detail" aria-live="polite">
+            <div class="empty-detail">
+              <p class="brand-line">Select a quote</p>
+              <h2>Choose a quote from the queue</h2>
+              <p>Staff will receive the gear, check included items, verify condition, adjust the final offer, and move the quote to payment or return.</p>
+            </div>
+          </section>
+        </section>
+      </section>
+    </main>
+
+    <script src="./staff.js"></script>
+  </body>
+</html>

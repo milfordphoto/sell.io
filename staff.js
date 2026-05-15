@@ -1,0 +1,882 @@
+const CONFIG = window.MP_USED_GEAR_CONFIG || {};
+const API_BASE = resolveApiBase();
+const TEST_EMPLOYEE = "employee";
+const TEST_PASSWORD = "password";
+
+const CONDITION_MULTIPLIERS = {
+  "Like New": 0.7,
+  Excellent: 0.6,
+  Good: 0.5,
+  "Well Used": 0.4,
+  "Heavily Used": 0.25,
+};
+
+const CONDITION_COPY = {
+  "Like New": "Very clean, minimal signs of use, fully working.",
+  Excellent: "Light normal use, clean glass or sensor, fully working.",
+  Good: "Visible wear, fully usable, no major defects.",
+  "Well Used": "Heavy wear or missing parts; still usable.",
+  "Heavily Used": "Damaged, incomplete, or uncertain operation.",
+};
+
+const WORKFLOW_STEPS = [
+  { key: "initial", label: "Initial Quote" },
+  { key: "shipped", label: "Shipped to Milford Photo" },
+  { key: "received", label: "Received" },
+  { key: "evaluated", label: "Evaluated" },
+  { key: "final", label: "Final Quote" },
+  { key: "customer", label: "Customer Decision" },
+  { key: "payout", label: "Payout" },
+  { key: "return", label: "Items Shipped to Customer" },
+];
+
+const usernameInput = document.getElementById("staff-username");
+const passwordInput = document.getElementById("staff-password");
+const loadButton = document.getElementById("load-records");
+const refreshButton = document.getElementById("refresh-records");
+const loginEl = document.getElementById("staff-login");
+const statusEl = document.getElementById("staff-status");
+const countEl = document.getElementById("record-count");
+const workspaceEl = document.getElementById("staff-workspace");
+const listEl = document.getElementById("records-list");
+const detailEl = document.getElementById("staff-detail");
+const filterButtons = Array.from(document.querySelectorAll(".staff-filter"));
+
+let records = [];
+let orders = [];
+let selectedOrderId = null;
+let selectedItemId = null;
+let activeFilter = "active";
+
+function resolveApiBase() {
+  if (CONFIG.apiBase) return CONFIG.apiBase.replace(/\/$/, "");
+  const host = window.location.hostname;
+  if (window.location.protocol === "file:" || host === "localhost" || host === "127.0.0.1") {
+    return "http://localhost:8787";
+  }
+  return "https://milford-used-gear-system-mvp.milfordphoto.workers.dev";
+}
+
+async function loadRecords() {
+  const username = usernameInput.value.trim().toLowerCase();
+  const password = passwordInput.value;
+  if (username !== TEST_EMPLOYEE || password !== TEST_PASSWORD) {
+    setStatus("Use employee / password for this local test.", true);
+    return;
+  }
+
+  setStatus("Loading orders...");
+  loadButton.disabled = true;
+  refreshButton.disabled = true;
+
+  try {
+    const response = await fetch(`${API_BASE}/api/staff/list`, {
+      headers: { "X-Staff-Secret": TEST_PASSWORD },
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || `Request failed with ${response.status}`);
+
+    records = (data.records || []).sort(sortNewestFirst);
+    orders = buildOrders(records);
+    if (!selectedOrderId && orders.length) selectedOrderId = orders[0].id;
+    syncSelectedItem();
+    loginEl.hidden = true;
+    workspaceEl.hidden = false;
+    renderQueue();
+    renderDetail();
+    setStatus("Orders loaded.");
+  } catch (error) {
+    records = [];
+    orders = [];
+    selectedOrderId = null;
+    selectedItemId = null;
+    renderQueue();
+    renderDetail();
+    setStatus(error.message || "Unable to load orders.", true);
+  } finally {
+    loadButton.disabled = false;
+    refreshButton.disabled = false;
+  }
+}
+
+function buildOrders(items) {
+  const grouped = new Map();
+  const quoteCounts = quoteReferenceCounts(items);
+  items.forEach((record) => {
+    const fields = record.fields || {};
+    const quote = fields["Quote Reference"] || record.id;
+    const customer = fields["Seller Name"] || "No customer name";
+    const email = fields["Seller Email"] || "";
+    const orderKey = orderGroupingKey(record, quoteCounts);
+    if (!grouped.has(orderKey)) {
+      grouped.set(orderKey, {
+        id: orderKey,
+        quote,
+        quoteRefs: new Set(),
+        synthetic: orderKey.startsWith("batch:"),
+        customer,
+        email,
+        phone: fields["Seller Phone"] || "",
+        address: orderAddress(fields),
+        submitted: fields["Quote Submitted"],
+        items: [],
+      });
+    }
+    grouped.get(orderKey).quoteRefs.add(quote);
+    grouped.get(orderKey).items.push(record);
+  });
+
+  return Array.from(grouped.values()).map((order) => {
+    order.items.sort(sortNewestFirst);
+    order.quoteRefs = Array.from(order.quoteRefs).filter(Boolean).sort();
+    if (order.synthetic && order.quoteRefs.length > 1) {
+      order.quote = `${order.quoteRefs[0]} + ${order.quoteRefs.length - 1}`;
+    }
+    order.totals = orderTotals(order);
+    order.workflow = workflowState(order);
+    return order;
+  }).sort((a, b) => new Date(b.submitted || 0).getTime() - new Date(a.submitted || 0).getTime());
+}
+
+function renderQueue() {
+  const filtered = filterOrders(orders, activeFilter);
+  countEl.textContent = `${filtered.length} ${activeFilter} order${filtered.length === 1 ? "" : "s"}`;
+
+  if (!filtered.length) {
+    listEl.innerHTML = `<div class="staff-empty-card">No orders in this view.</div>`;
+    return;
+  }
+
+  listEl.innerHTML = filtered.map(renderOrderCard).join("");
+  listEl.querySelectorAll("[data-order-id]").forEach((button) => {
+    button.addEventListener("click", () => {
+      selectedOrderId = button.dataset.orderId;
+      syncSelectedItem();
+      renderQueue();
+      renderDetail();
+    });
+  });
+}
+
+function renderOrderCard(order) {
+  const status = order.workflow.isComplete ? "Complete" : `Next: ${order.workflow.current.label}`;
+  const itemLabel = `${order.items.length} item${order.items.length === 1 ? "" : "s"}`;
+  const total = order.totals.final || order.totals.original;
+  const groupingNote = order.synthetic && order.items.length > 1 ? "Test grouped order" : "Order";
+
+  return `
+    <button class="staff-record-card ${order.id === selectedOrderId ? "is-selected" : ""}" type="button" data-order-id="${escapeAttr(order.id)}">
+      <span class="staff-card-top">
+        <strong>${escapeHtml(order.customer)}</strong>
+        <span class="staff-status-pill">${escapeHtml(status)}</span>
+      </span>
+      <span class="staff-card-title">${escapeHtml(order.quote)}</span>
+      <span class="staff-card-meta">${escapeHtml(groupingNote)} - ${escapeHtml(itemLabel)} - $${formatMoney(total)}</span>
+    </button>
+  `;
+}
+
+function renderDetail() {
+  const order = selectedOrder();
+  const record = selectedRecord(order);
+  if (!order || !record) {
+    detailEl.innerHTML = `
+      <div class="empty-detail">
+        <p class="brand-line">Select an order</p>
+        <h2>Choose a customer order</h2>
+        <p>Open an order, switch between each gear tab, complete intake, then send the final quote for customer decisions.</p>
+      </div>
+    `;
+    return;
+  }
+
+  const fields = record.fields || {};
+  const accessories = accessoryListFor(fields);
+  const parsed = parseStaffNotes(fields["Staff Notes"]);
+  const baseOffer = numberOrNull(fields["Milford Offer"]) ?? 0;
+  const finalOffer = numberOrNull(fields["Final Offer"]) ?? calculateOffer(fields, parsed, accessories, baseOffer);
+
+  detailEl.innerHTML = `
+    <article class="staff-intake">
+      ${renderOrderHeader(order)}
+      ${renderWorkflow(order)}
+      ${renderItemTabs(order)}
+
+      <header class="staff-intake-header">
+        <div>
+          <p class="brand-line">${escapeHtml(fields["Quote Reference"] || record.id)}</p>
+          <h2>${escapeHtml(gearTitle(fields))}</h2>
+          <p>${escapeHtml(fields.Category || "Gear")} - ${escapeHtml(fields.Condition || "Condition not listed")}</p>
+        </div>
+        <div class="staff-offer-box">
+          <span>Item quote</span>
+          <strong>$${formatMoney(finalOffer)}</strong>
+          <small>${escapeHtml(fields.Status || "New")}</small>
+        </div>
+      </header>
+
+      <div class="staff-info-grid">
+        <section>
+          <h3>Seller</h3>
+          <p>${escapeHtml(order.customer || "-")}</p>
+          <p>${escapeHtml(order.email || "-")}</p>
+          <p>${escapeHtml(order.phone || "-")}</p>
+          <p>${order.address || "-"}</p>
+        </section>
+        <section>
+          <h3>Original quote</h3>
+          <p>Item cash offer: <strong>$${formatMoney(baseOffer)}</strong></p>
+          <p>Order total: <strong>$${formatMoney(order.totals.original)}</strong></p>
+          <p>eBay median: ${moneyOrDash(fields["eBay Median Price"])}</p>
+          <p>Expires: ${formatDate(fields["Quote Expires"]) || "-"}</p>
+        </section>
+        <section>
+          <h3>Shipping</h3>
+          <p>Tracking: ${escapeHtml(fields["Tracking Number"] || "-")}</p>
+          <p>${fields["Shippo Label URL"] ? `<a href="${escapeAttr(fields["Shippo Label URL"])}" target="_blank" rel="noreferrer">Open label</a>` : "No label link"}</p>
+          <p>Payment method: ${escapeHtml(fields["Payment Method"] || "-")}</p>
+        </section>
+      </div>
+
+      <form class="staff-review-form" id="staff-review-form">
+        <section class="staff-review-section">
+          <div class="staff-section-title">
+            <span>1</span>
+            <div>
+              <h3>Receive this item</h3>
+              <p>Confirm this specific piece of gear arrived in the box or in-store dropoff.</p>
+            </div>
+          </div>
+          <label class="staff-check-row">
+            <input type="checkbox" id="received-check" ${parsed.received ? "checked" : ""} />
+            This item has been received
+          </label>
+        </section>
+
+        <section class="staff-review-section">
+          <div class="staff-section-title">
+            <span>2</span>
+            <div>
+              <h3>Verify included items</h3>
+              <p>Check what arrived. Missing recommended accessories can lower the final offer.</p>
+            </div>
+          </div>
+          <div class="staff-accessory-grid">
+            ${accessories.map((item) => renderAccessory(item, parsed)).join("")}
+          </div>
+          <label class="staff-check-row">
+            <input type="checkbox" id="all-accessories-check" ${parsed.allAccessories ? "checked" : ""} />
+            All recommended accessories included
+          </label>
+        </section>
+
+        <section class="staff-review-section">
+          <div class="staff-section-title">
+            <span>3</span>
+            <div>
+              <h3>Verify condition</h3>
+              <p>Changing the grade recalculates the suggested final offer.</p>
+            </div>
+          </div>
+          <div class="staff-condition-grid">
+            ${Object.keys(CONDITION_MULTIPLIERS).map((condition) => renderCondition(condition, parsed.verifiedCondition || fields.Condition)).join("")}
+          </div>
+        </section>
+
+        <section class="staff-review-section">
+          <div class="staff-section-title">
+            <span>4</span>
+            <div>
+              <h3>Final item quote</h3>
+              <p>Set the final item offer and choose what happens if the customer declines this item.</p>
+            </div>
+          </div>
+          <div class="staff-adjust-grid">
+            <label class="field">
+              <span>Suggested final offer</span>
+              <input id="suggested-offer" type="number" min="0" step="1" value="${finalOffer}" readonly />
+            </label>
+            <label class="field">
+              <span>Custom final offer</span>
+              <input id="custom-offer" type="number" min="0" step="1" value="${finalOffer}" />
+            </label>
+            <label class="field">
+              <span>Payout method</span>
+              <select id="payment-method">
+                <option value="check" ${String(fields["Payment Method"] || "").toLowerCase().includes("check") ? "selected" : ""}>Check</option>
+                <option value="bank_transfer" ${String(fields["Payment Method"] || "").toLowerCase().includes("bank") ? "selected" : ""}>Bank transfer</option>
+              </select>
+            </label>
+          </div>
+          <div class="staff-decision-grid">
+            <label class="staff-decision-card">
+              <input type="radio" name="item-decision" value="pending" ${parsed.decision === "pending" ? "checked" : ""} />
+              <span>Await customer decision</span>
+            </label>
+            <label class="staff-decision-card">
+              <input type="radio" name="item-decision" value="accept" ${parsed.decision === "accept" ? "checked" : ""} />
+              <span>Customer accepts this item</span>
+            </label>
+            <label class="staff-decision-card">
+              <input type="radio" name="item-decision" value="return" ${parsed.decision === "return" ? "checked" : ""} />
+              <span>Customer wants this item returned</span>
+            </label>
+          </div>
+          <label class="field">
+            <span>Adjustment reason / inspection notes</span>
+            <textarea id="inspection-notes" rows="5" placeholder="Example: Customer selected Excellent, but inspection found heavy body wear and missing charger.">${escapeHtml(parsed.reason || fields["Decline Reason"] || "")}</textarea>
+          </label>
+        </section>
+
+        <section class="staff-actions-panel">
+          <button class="secondary-action" type="button" data-action="received">Mark item received</button>
+          <button class="secondary-action" type="button" data-action="save">Save item intake</button>
+          <button class="primary-action" type="button" data-action="adjusted">Finish item evaluation</button>
+          <button class="secondary-action" type="button" data-action="accepted">Mark item accepted</button>
+          <button class="secondary-action" type="button" data-action="payment">Payment sent</button>
+          <button class="secondary-action danger-action" type="button" data-action="return">Return item</button>
+        </section>
+      </form>
+
+      ${renderOrderDecisionPanel(order)}
+    </article>
+  `;
+
+  bindDetail(record, accessories);
+}
+
+function renderOrderHeader(order) {
+  return `
+    <section class="staff-order-header">
+      <div>
+        <p class="brand-line">Order ${escapeHtml(order.quote)}</p>
+        <h2>${escapeHtml(order.customer)}</h2>
+        <p>${escapeHtml(order.items.length)} item${order.items.length === 1 ? "" : "s"} in this order${order.synthetic && order.items.length > 1 ? " - grouped for testing from same customer/address/time window" : ""}</p>
+      </div>
+      <div class="staff-order-total">
+        <span>Final order total</span>
+        <strong>$${formatMoney(order.totals.final || order.totals.original)}</strong>
+        <small>Original quote: $${formatMoney(order.totals.original)}</small>
+      </div>
+    </section>
+  `;
+}
+
+function renderWorkflow(order) {
+  return `
+    <nav class="staff-workflow" aria-label="Order workflow">
+      ${WORKFLOW_STEPS.map((step, index) => {
+        const state = order.workflow.completed.has(step.key) ? "is-complete" : step.key === order.workflow.current.key ? "is-current" : "";
+        return `
+          <div class="staff-workflow-step ${state}">
+            <span>${index + 1}</span>
+            <strong>${escapeHtml(step.label)}</strong>
+          </div>
+        `;
+      }).join("")}
+    </nav>
+  `;
+}
+
+function renderItemTabs(order) {
+  return `
+    <div class="staff-item-tabs" role="tablist" aria-label="Gear items in order">
+      ${order.items.map((item, index) => {
+        const fields = item.fields || {};
+        const statusClass = itemStatusClass(item);
+        return `
+          <button class="staff-item-tab ${statusClass} ${item.id === selectedItemId ? "is-active" : ""}" type="button" data-item-id="${escapeAttr(item.id)}">
+            <span>${index + 1}</span>
+            ${escapeHtml(shortGearTitle(fields))}
+          </button>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
+function renderOrderDecisionPanel(order) {
+  const evaluated = order.items.filter((item) => itemStatusClass(item) === "is-evaluated").length;
+  const ready = evaluated === order.items.length;
+  return `
+    <section class="staff-order-decision">
+      <div>
+        <h3>Final quote email</h3>
+        <p>${ready ? "All items are evaluated. Staff can send the item-by-item final quote for the customer to accept or return each item." : `${evaluated} of ${order.items.length} items evaluated. Finish every item before sending the final quote email.`}</p>
+      </div>
+      <button class="primary-action" type="button" id="send-final-quote" ${ready ? "" : "disabled"}>Send final quote email</button>
+    </section>
+  `;
+}
+
+function renderAccessory(item, parsed) {
+  const checked = parsed.accessories[item.name] !== false;
+  return `
+    <label class="staff-accessory-item">
+      <input type="checkbox" data-accessory="${escapeAttr(item.name)}" data-deduction="${item.deduction}" ${checked ? "checked" : ""} />
+      <span>${escapeHtml(item.name)}</span>
+      <strong>${formatAccessoryValue(item.deduction)}</strong>
+    </label>
+  `;
+}
+
+function renderCondition(condition, selectedCondition) {
+  const checked = condition === selectedCondition;
+  return `
+    <label class="condition-option staff-condition-option ${checked ? "is-selected" : ""}">
+      <input type="radio" name="verified-condition" value="${escapeAttr(condition)}" ${checked ? "checked" : ""} />
+      <strong>${escapeHtml(condition)}</strong>
+      <span>${escapeHtml(CONDITION_COPY[condition])}</span>
+    </label>
+  `;
+}
+
+function bindDetail(record, accessories) {
+  const form = document.getElementById("staff-review-form");
+  const actionButtons = Array.from(form.querySelectorAll("[data-action]"));
+  const allAccessoriesCheck = document.getElementById("all-accessories-check");
+  const accessoryInputs = Array.from(form.querySelectorAll("[data-accessory]"));
+  const sendFinalQuoteButton = document.getElementById("send-final-quote");
+
+  detailEl.querySelectorAll("[data-item-id]").forEach((button) => {
+    button.addEventListener("click", () => {
+      selectedItemId = button.dataset.itemId;
+      renderDetail();
+    });
+  });
+
+  form.querySelectorAll("input, textarea").forEach((input) => {
+    input.addEventListener("input", () => updateSuggestedOffer(record, accessories));
+    input.addEventListener("change", () => updateSuggestedOffer(record, accessories));
+  });
+
+  allAccessoriesCheck.addEventListener("change", () => {
+    accessoryInputs.forEach((input) => {
+      input.checked = allAccessoriesCheck.checked;
+    });
+    updateSuggestedOffer(record, accessories);
+  });
+
+  accessoryInputs.forEach((input) => {
+    input.addEventListener("change", () => {
+      allAccessoriesCheck.checked = accessoryInputs.every((item) => item.checked);
+    });
+  });
+
+  form.querySelectorAll("input[name='verified-condition']").forEach((input) => {
+    input.addEventListener("change", () => {
+      form.querySelectorAll(".staff-condition-option").forEach((option) => option.classList.remove("is-selected"));
+      input.closest(".staff-condition-option").classList.add("is-selected");
+    });
+  });
+
+  actionButtons.forEach((button) => {
+    button.addEventListener("click", async () => {
+      await handleStaffAction(record, accessories, button.dataset.action, actionButtons);
+    });
+  });
+
+  sendFinalQuoteButton.addEventListener("click", async () => {
+    await handleOrderAction(selectedOrder(), "Final Quote Sent");
+  });
+}
+
+function updateSuggestedOffer(record, accessories) {
+  const fields = record.fields || {};
+  const suggested = calculateOffer(fields, collectReviewState(accessories), accessories, numberOrNull(fields["Milford Offer"]) ?? 0);
+  const suggestedInput = document.getElementById("suggested-offer");
+  const customInput = document.getElementById("custom-offer");
+  suggestedInput.value = suggested;
+  if (document.activeElement !== customInput) customInput.value = suggested;
+}
+
+async function handleStaffAction(record, accessories, action, buttons) {
+  const review = collectReviewState(accessories);
+  const finalOffer = numberOrNull(document.getElementById("custom-offer").value) ?? review.suggestedOffer;
+  const statusByAction = {
+    received: "Received - Needs Inspection",
+    save: "Inspection In Progress",
+    adjusted: "Evaluated",
+    accepted: "Customer Accepted Item",
+    payment: "Payment Sent",
+    return: "Return Item",
+  };
+
+  const body = {
+    recordId: record.id,
+    status: statusByAction[action],
+    finalOffer,
+    staffNotes: buildStaffNotes(review, action, finalOffer),
+  };
+
+  if (action === "payment") {
+    body.action = "payment_sent";
+    body.paymentMethod = document.getElementById("payment-method")?.value || "check";
+  }
+  if (action === "return") {
+    body.declineReason = review.reason || "Customer wants this item returned.";
+  }
+
+  setDetailBusy(buttons, true);
+  setStatus("Saving item update...");
+
+  try {
+    const updated = await updateRecord(body);
+    records = records.map((item) => (item.id === record.id ? updated : item));
+    orders = buildOrders(records);
+    selectedItemId = updated.id;
+    selectedOrderId = selectedOrder()?.id || selectedOrderId;
+    renderQueue();
+    renderDetail();
+    setStatus(`Saved: ${statusByAction[action]}.`);
+  } catch (error) {
+    setStatus(error.message || "Unable to save item update.", true);
+  } finally {
+    setDetailBusy(buttons, false);
+  }
+}
+
+async function handleOrderAction(order, status) {
+  if (!order) return;
+  setStatus("Saving order update...");
+  try {
+    const updatedRecords = await Promise.all(order.items.map((record) => updateRecord({
+      recordId: record.id,
+      status,
+      staffNotes: appendOrderNote(record.fields?.["Staff Notes"], status),
+    })));
+    const updatedMap = new Map(updatedRecords.map((record) => [record.id, record]));
+    records = records.map((record) => updatedMap.get(record.id) || record);
+    orders = buildOrders(records);
+    renderQueue();
+    renderDetail();
+    setStatus(`${status} saved for ${order.quote}.`);
+  } catch (error) {
+    setStatus(error.message || "Unable to save order update.", true);
+  }
+}
+
+async function updateRecord(body) {
+  const response = await fetch(`${API_BASE}/api/staff/update`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Staff-Secret": TEST_PASSWORD,
+    },
+    body: JSON.stringify(body),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || `Request failed with ${response.status}`);
+  return data.record || { id: body.recordId, fields: body };
+}
+
+function collectReviewState(accessories) {
+  const verifiedCondition = document.querySelector("input[name='verified-condition']:checked")?.value || "Excellent";
+  const accessoryState = {};
+  document.querySelectorAll("[data-accessory]").forEach((input) => {
+    accessoryState[input.dataset.accessory] = Boolean(input.checked);
+  });
+  accessories.forEach((item) => {
+    if (!(item.name in accessoryState)) accessoryState[item.name] = true;
+  });
+
+  return {
+    received: Boolean(document.getElementById("received-check")?.checked),
+    allAccessories: Boolean(document.getElementById("all-accessories-check")?.checked),
+    verifiedCondition,
+    accessories: accessoryState,
+    decision: document.querySelector("input[name='item-decision']:checked")?.value || "pending",
+    reason: document.getElementById("inspection-notes")?.value.trim() || "",
+  };
+}
+
+function calculateOffer(fields, review, accessories, fallbackOffer) {
+  const market = numberOrNull(fields["eBay Median Price"]);
+  const condition = review.verifiedCondition || fields.Condition || "Excellent";
+  const conditionOffer = market ? Math.floor(market * (CONDITION_MULTIPLIERS[condition] || 0.6)) : fallbackOffer;
+  const missingTotal = accessories.reduce((total, item) => {
+    return review.accessories?.[item.name] === false ? total + item.deduction : total;
+  }, 0);
+  return Math.max(0, Math.floor(conditionOffer - missingTotal));
+}
+
+function buildStaffNotes(review, action, finalOffer) {
+  const accessoryLines = Object.entries(review.accessories)
+    .map(([name, checked]) => `- ${name}: ${checked ? "received" : "missing"}`)
+    .join("\n");
+
+  return [
+    "INTAKE REVIEW",
+    `Received: ${review.received ? "Yes" : "No"}`,
+    `Verified condition: ${review.verifiedCondition}`,
+    `All recommended accessories included: ${review.allAccessories ? "Yes" : "No"}`,
+    "Accessory check:",
+    accessoryLines,
+    `Customer decision: ${review.decision}`,
+    `Final offer: $${finalOffer}`,
+    `Last staff action: ${action}`,
+    `Reason / notes: ${review.reason || "None"}`,
+    `Updated: ${new Date().toLocaleString()}`,
+  ].join("\n");
+}
+
+function appendOrderNote(notes = "", status) {
+  return [
+    notes,
+    "",
+    "ORDER UPDATE",
+    `Status: ${status}`,
+    `Updated: ${new Date().toLocaleString()}`,
+  ].join("\n").trim();
+}
+
+function parseStaffNotes(notes = "") {
+  const parsed = {
+    received: false,
+    allAccessories: false,
+    verifiedCondition: "",
+    accessories: {},
+    decision: "pending",
+    reason: "",
+  };
+
+  notes.split("\n").forEach((line) => {
+    const clean = line.trim();
+    if (clean.startsWith("Received:")) parsed.received = clean.includes("Yes");
+    if (clean.startsWith("All recommended accessories included:")) parsed.allAccessories = clean.includes("Yes");
+    if (clean.startsWith("Verified condition:")) parsed.verifiedCondition = clean.replace("Verified condition:", "").trim();
+    if (clean.startsWith("Customer decision:")) parsed.decision = clean.replace("Customer decision:", "").trim() || "pending";
+    if (clean.startsWith("- ")) {
+      const [name, state] = clean.slice(2).split(":").map((part) => part.trim());
+      if (name) parsed.accessories[name] = state !== "missing";
+    }
+    if (clean.startsWith("Reason / notes:")) parsed.reason = clean.replace("Reason / notes:", "").trim();
+  });
+
+  return parsed;
+}
+
+function workflowState(order) {
+  const statuses = order.items.map((item) => String(item.fields?.Status || "").toLowerCase());
+  const completed = new Set(["initial"]);
+  if (statuses.some((status) => status.includes("label") || status.includes("accepted") || status.includes("shipped"))) completed.add("shipped");
+  if (statuses.some((status) => status.includes("received") || status.includes("inspection") || status.includes("evaluated"))) completed.add("received");
+  if (statuses.every((status) => status.includes("evaluated") || status.includes("final") || status.includes("accepted") || status.includes("payment") || status.includes("return") || status.includes("declined"))) completed.add("evaluated");
+  if (statuses.some((status) => status.includes("final quote"))) completed.add("final");
+  if (statuses.some((status) => status.includes("accepted item") || status.includes("return item") || status.includes("customer accepted"))) completed.add("customer");
+  if (statuses.some((status) => status.includes("payment"))) completed.add("payout");
+  if (statuses.some((status) => status.includes("return"))) completed.add("return");
+
+  const current = WORKFLOW_STEPS.find((step) => !completed.has(step.key)) || WORKFLOW_STEPS[WORKFLOW_STEPS.length - 1];
+  return { completed, current, isComplete: completed.size >= WORKFLOW_STEPS.length };
+}
+
+function quoteReferenceCounts(items) {
+  return items.reduce((counts, record) => {
+    const quote = record.fields?.["Quote Reference"];
+    if (quote) counts.set(quote, (counts.get(quote) || 0) + 1);
+    return counts;
+  }, new Map());
+}
+
+function orderGroupingKey(record, quoteCounts) {
+  const fields = record.fields || {};
+  const quote = fields["Quote Reference"];
+  if (quote && quoteCounts.get(quote) > 1) return `quote:${quote}`;
+  if (quote && !fields["Seller Email"]) return `quote:${quote}`;
+
+  const sellerKey = [
+    fields["Seller Email"],
+    fields["Seller Name"],
+    fields["Seller Street"],
+    fields["Seller ZIP"],
+  ].map(normalizeGroupValue).join("|");
+  const bucket = submissionDayBucket(fields["Quote Submitted"]);
+  if (sellerKey.replaceAll("|", "")) return `batch:${sellerKey}|${bucket}`;
+  return `quote:${quote || record.id}`;
+}
+
+function submissionDayBucket(value) {
+  const date = new Date(value || 0);
+  if (Number.isNaN(date.getTime())) return "unknown-day";
+  return date.toISOString().slice(0, 10);
+}
+
+function normalizeGroupValue(value) {
+  return String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function itemStatusClass(record) {
+  const status = String(record.fields?.Status || "").toLowerCase();
+  if (status.includes("return") || status.includes("declined")) return "is-return";
+  if (status.includes("evaluated") || status.includes("final") || status.includes("accepted item") || status.includes("payment")) return "is-evaluated";
+  if (status.includes("received") || status.includes("inspection")) return "is-progress";
+  return "is-new";
+}
+
+function orderTotals(order) {
+  return order.items.reduce((totals, item) => {
+    totals.original += numberOrNull(item.fields?.["Milford Offer"]) ?? 0;
+    totals.final += numberOrNull(item.fields?.["Final Offer"]) ?? numberOrNull(item.fields?.["Milford Offer"]) ?? 0;
+    return totals;
+  }, { original: 0, final: 0 });
+}
+
+function accessoryListFor(fields) {
+  const category = String(fields.Category || "").toLowerCase();
+  if (category.includes("lens")) {
+    return [
+      { name: "Rear cap", deduction: 10 },
+      { name: "Lens cap", deduction: 15 },
+      { name: "Lens hood", deduction: 35 },
+    ];
+  }
+  if (category.includes("film")) {
+    return [
+      { name: "Body cap", deduction: 10 },
+      { name: "Strap", deduction: 20 },
+      { name: "Original box", deduction: 0 },
+    ];
+  }
+  if (category.includes("camera") || category.includes("body") || category.includes("video")) {
+    return [
+      { name: "USB connection cable", deduction: 15 },
+      { name: "Rechargeable battery", deduction: 60 },
+      { name: "Charger", deduction: 50 },
+      { name: "Body cap", deduction: 10 },
+      { name: "Strap", deduction: 20 },
+    ];
+  }
+  return [
+    { name: "Required accessories", deduction: 25 },
+    { name: "Original box", deduction: 0 },
+  ];
+}
+
+function filterOrders(items, filter) {
+  return items.filter((order) => {
+    const statuses = order.items.map((record) => String(record.fields?.Status || "").toLowerCase());
+    if (filter === "received") return statuses.some((status) => status.includes("received") || status.includes("inspection") || status.includes("evaluated"));
+    if (filter === "done") return statuses.every((status) => status.includes("payment") || status.includes("declined") || status.includes("return"));
+    return !statuses.every((status) => status.includes("payment") || status.includes("declined") || status.includes("return"));
+  });
+}
+
+function syncSelectedItem() {
+  const order = selectedOrder();
+  if (!order) {
+    selectedItemId = null;
+    return;
+  }
+  if (!order.items.some((item) => item.id === selectedItemId)) selectedItemId = order.items[0]?.id || null;
+}
+
+function selectedOrder() {
+  return orders.find((order) => order.id === selectedOrderId) || null;
+}
+
+function selectedRecord(order = selectedOrder()) {
+  if (!order) return null;
+  return order.items.find((item) => item.id === selectedItemId) || order.items[0] || null;
+}
+
+function sortNewestFirst(a, b) {
+  const dateA = new Date(a.fields?.["Quote Submitted"] || 0).getTime();
+  const dateB = new Date(b.fields?.["Quote Submitted"] || 0).getTime();
+  return dateB - dateA;
+}
+
+function gearTitle(fields) {
+  return [fields["Item Brand"], fields["Item Model"]].filter(Boolean).join(" ") || "Unknown gear";
+}
+
+function shortGearTitle(fields) {
+  const title = gearTitle(fields);
+  return title.length > 32 ? `${title.slice(0, 29)}...` : title;
+}
+
+function orderAddress(fields) {
+  return [
+    fields["Seller Street"],
+    [fields["Seller City"], fields["Seller State"], fields["Seller ZIP"]].filter(Boolean).join(", "),
+  ].filter(Boolean).map(escapeHtml).join("<br>");
+}
+
+function moneyOrDash(value) {
+  const amount = numberOrNull(value);
+  return amount === null ? "-" : `$${formatMoney(amount)}`;
+}
+
+function numberOrNull(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function formatMoney(value) {
+  return Math.round(Number(value) || 0).toLocaleString();
+}
+
+function formatAccessoryValue(value) {
+  const amount = Number(value) || 0;
+  return amount > 0 ? `-$${formatMoney(amount)}` : "Included";
+}
+
+function formatDate(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+
+function setStatus(message, isError = false) {
+  statusEl.textContent = message;
+  statusEl.className = isError ? "staff-error" : "";
+}
+
+function setDetailBusy(buttons, isBusy) {
+  buttons.forEach((button) => {
+    button.disabled = isBusy;
+  });
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function escapeAttr(value) {
+  return escapeHtml(value);
+}
+
+loadButton.addEventListener("click", loadRecords);
+refreshButton.addEventListener("click", loadRecords);
+filterButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    activeFilter = button.dataset.filter;
+    const filtered = filterOrders(orders, activeFilter);
+    if (!filtered.some((order) => order.id === selectedOrderId)) {
+      selectedOrderId = filtered[0]?.id || null;
+      syncSelectedItem();
+    }
+    filterButtons.forEach((item) => item.classList.toggle("is-active", item === button));
+    renderQueue();
+    renderDetail();
+  });
+});
+usernameInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") passwordInput.focus();
+});
+passwordInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") loadRecords();
+});
+
+if (new URLSearchParams(window.location.search).get("staffTest") === "1") {
+  usernameInput.value = TEST_EMPLOYEE;
+  passwordInput.value = TEST_PASSWORD;
+  loadRecords();
+}
