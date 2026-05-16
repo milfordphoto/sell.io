@@ -55,6 +55,16 @@
                 <option value="all" selected>All Orders</option>
               </select>
             </div>
+            <div class="staff-filter-row">
+              <label for="staff-sort">Sort orders by</label>
+              <select id="staff-sort" aria-label="Sort orders">
+                <option value="first_received" selected>First received</option>
+                <option value="next_action">Next action</option>
+                <option value="newest">Newest first</option>
+                <option value="customer">Customer name</option>
+                <option value="value">Highest value</option>
+              </select>
+            </div>
             <div class="staff-record-list" id="records-list" aria-live="polite"></div>
           </aside>
 

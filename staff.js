@@ -50,6 +50,7 @@ const loadButton = document.getElementById("load-records");
 const refreshButton = document.getElementById("refresh-records");
 const searchInput = document.getElementById("staff-search");
 const filterSelect = document.getElementById("staff-filter");
+const sortSelect = document.getElementById("staff-sort");
 const loginEl = document.getElementById("staff-login");
 const statusEl = document.getElementById("staff-status");
 const countEl = document.getElementById("record-count");
@@ -62,6 +63,7 @@ let orders = [];
 let selectedOrderId = null;
 let selectedItemId = null;
 let activeFilter = "all";
+let activeSort = "first_received";
 let searchQuery = "";
 
 function resolveApiBase() {
@@ -1123,10 +1125,32 @@ function accessoryListFor(fields) {
 }
 
 function filterOrders(items, filter) {
-  return items.filter((order) => {
+  return sortOrders(items.filter((order) => {
     const matchesFilter = filter === "all" || order.workflow.current.key === filter;
     return matchesFilter && orderMatchesSearch(order, searchQuery);
-  });
+  }), activeSort);
+}
+
+function sortOrders(items, sortKey) {
+  const sorted = [...items];
+  if (sortKey === "newest") return sorted.sort((a, b) => new Date(b.submitted || 0).getTime() - new Date(a.submitted || 0).getTime());
+  if (sortKey === "first_received") return sorted.sort((a, b) => new Date(a.submitted || 0).getTime() - new Date(b.submitted || 0).getTime());
+  if (sortKey === "customer") return sorted.sort((a, b) => a.customer.localeCompare(b.customer));
+  if (sortKey === "value") return sorted.sort((a, b) => (b.totals.final || b.totals.original) - (a.totals.final || a.totals.original));
+  return sorted.sort(sortByNextAction);
+}
+
+function sortByNextAction(a, b) {
+  const stepDelta = workflowStepIndex(a.workflow.current.key) - workflowStepIndex(b.workflow.current.key);
+  if (stepDelta !== 0) return stepDelta;
+  const submittedDelta = new Date(a.submitted || 0).getTime() - new Date(b.submitted || 0).getTime();
+  if (submittedDelta !== 0) return submittedDelta;
+  return a.customer.localeCompare(b.customer);
+}
+
+function workflowStepIndex(key) {
+  const index = WORKFLOW_STEPS.findIndex((step) => step.key === key);
+  return index === -1 ? WORKFLOW_STEPS.length : index;
 }
 
 function orderMatchesSearch(order, query) {
@@ -1262,6 +1286,10 @@ filterSelect.addEventListener("change", () => {
   }
   renderQueue();
   renderDetail();
+});
+sortSelect.addEventListener("change", () => {
+  activeSort = sortSelect.value;
+  renderQueue();
 });
 searchInput.addEventListener("input", () => {
   searchQuery = searchInput.value.trim();
