@@ -726,6 +726,7 @@ async function handleStaffAction(record, accessories, action, buttons) {
     status: statusByAction[action],
     finalOffer,
     staffNotes: buildStaffNotes(review, action, finalOffer),
+    notifyCustomer: action === "payment" || action === "return",
   };
 
   if (action === "payment") {
@@ -759,10 +760,11 @@ async function handleOrderAction(order, status) {
   if (!order) return;
   setStatus("Saving order update...");
   try {
-    const updatedRecords = await Promise.all(order.items.map((record) => updateRecord({
+    const updatedRecords = await Promise.all(order.items.map((record, index) => updateRecord({
       recordId: record.id,
       status,
       staffNotes: appendOrderNote(record.fields?.["Staff Notes"], status),
+      notifyCustomer: index === 0,
     })));
     const updatedMap = new Map(updatedRecords.map((record) => [record.id, record]));
     records = records.map((record) => updatedMap.get(record.id) || record);
