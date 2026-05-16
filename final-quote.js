@@ -1,5 +1,6 @@
 const DEMO_QUEUE_KEY = "mpUsedGearStaffQueue";
 const STORE_CREDIT_BONUS = 0.1;
+const API_BASE = resolveApiBase();
 
 const els = {
   panel: document.getElementById("final-panel"),
@@ -17,27 +18,43 @@ const state = {
   decisions: {},
   payout: "check",
   submitted: false,
+  mode: "demo",
 };
 
-function init() {
-  state.records = matchingRecords();
+async function init() {
+  state.records = await matchingRecords();
   state.records.forEach((record) => {
     state.decisions[record.id] = existingDecision(record) || "accept";
   });
   render();
 }
 
-function matchingRecords() {
+async function matchingRecords() {
   const records = readDemoQueue();
   if (!state.quoteRef && records.length) {
     state.quoteRef = records[0].fields?.["Quote Reference"] || "";
   }
   const matches = records.filter((record) => record.fields?.["Quote Reference"] === state.quoteRef);
-  if (!matches.length && demoFinalEnabled()) {
+  if (matches.length) {
+    state.mode = "demo";
+    return matches;
+  }
+  if (demoFinalEnabled()) {
     state.quoteRef = state.quoteRef || "MP-DEMO-FINAL";
+    state.mode = "demo";
     return demoFinalRecords(state.quoteRef);
   }
-  return matches;
+  if (state.quoteRef) {
+    try {
+      const data = await apiGet(`/api/final-quote?quote=${encodeURIComponent(state.quoteRef)}`);
+      state.mode = "api";
+      return data.records || [];
+    } catch {
+      state.mode = "demo";
+      return [];
+    }
+  }
+  return [];
 }
 
 function render() {
@@ -198,8 +215,31 @@ function bindForm() {
   document.getElementById("final-decision-form").addEventListener("submit", submitDecision);
 }
 
-function submitDecision(event) {
+async function submitDecision(event) {
   event.preventDefault();
+  const submitButton = event.currentTarget.querySelector("button[type='submit']");
+  submitButton.disabled = true;
+  submitButton.textContent = "Submitting...";
+
+  if (state.mode === "api") {
+    try {
+      await apiPost("/api/final-decision", {
+        quoteRef: state.quoteRef,
+        paymentMethod: state.payout,
+        decisions: state.records.map((record) => ({
+          recordId: record.id,
+          decision: state.decisions[record.id] || "accept",
+        })),
+      });
+      renderSubmitted();
+    } catch (error) {
+      submitButton.disabled = false;
+      submitButton.textContent = "Submit my decision";
+      renderFormError(error.message || "Unable to submit your decision right now.");
+    }
+    return;
+  }
+
   const now = new Date().toLocaleString();
   const updated = readDemoQueue().map((record) => {
     if (record.fields?.["Quote Reference"] !== state.quoteRef) return record;
@@ -217,6 +257,15 @@ function submitDecision(event) {
   localStorage.setItem(DEMO_QUEUE_KEY, JSON.stringify(updated));
   state.submitted = true;
   renderSubmitted();
+}
+
+function renderFormError(message) {
+  const existing = document.querySelector(".final-error");
+  if (existing) existing.remove();
+  const error = document.createElement("div");
+  error.className = "quote-message final-error is-error";
+  error.textContent = message;
+  document.getElementById("final-decision-form")?.prepend(error);
 }
 
 function renderSubmitted() {
@@ -317,6 +366,34 @@ function readDemoQueue() {
   } catch {
     return [];
   }
+}
+
+function resolveApiBase() {
+  const config = window.MP_USED_GEAR_CONFIG || {};
+  if (config.apiBase) return config.apiBase.replace(/\/$/, "");
+  const host = window.location.hostname;
+  if (window.location.protocol === "file:" || host === "localhost" || host === "127.0.0.1") {
+    return "http://localhost:8787";
+  }
+  return "https://milford-used-gear-system-mvp.milfordphoto.workers.dev";
+}
+
+async function apiGet(path) {
+  const response = await fetch(`${API_BASE}${path}`);
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || `Request failed with ${response.status}`);
+  return data;
+}
+
+async function apiPost(path, payload) {
+  const response = await fetch(`${API_BASE}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || `Request failed with ${response.status}`);
+  return data;
 }
 
 function demoFinalEnabled() {
