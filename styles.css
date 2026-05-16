@@ -973,28 +973,31 @@ fieldset {
 
 .staff-filter-row {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
-  padding: 10px;
+  gap: 7px;
+  padding: 12px;
   border-bottom: 1px solid var(--line);
   background: var(--soft);
 }
 
-.staff-filter {
-  min-height: 38px;
-  border: 1px solid transparent;
-  border-radius: var(--radius);
-  background: transparent;
+.staff-filter-row label {
   color: var(--muted);
-  cursor: pointer;
-  font-size: 0.86rem;
-  font-weight: 800;
+  font-size: 0.76rem;
+  font-weight: 850;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
-.staff-filter.is-active {
-  border-color: var(--mp-red);
-  background: var(--mp-red);
-  color: #ffffff;
+.staff-filter-row select {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #ffffff;
+  color: var(--ink);
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 750;
 }
 
 .staff-record-list {

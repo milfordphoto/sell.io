@@ -41,15 +41,19 @@
               <label for="staff-search">Search orders</label>
               <input id="staff-search" type="search" placeholder="Customer, email, phone, order, tracking, or gear" autocomplete="off" />
             </div>
-            <div class="staff-filter-row" role="tablist" aria-label="Queue filters">
-              <button class="staff-filter is-active" type="button" data-filter="incoming">Incoming</button>
-              <button class="staff-filter" type="button" data-filter="received">Received</button>
-              <button class="staff-filter" type="button" data-filter="needs_eval">Needs Eval</button>
-              <button class="staff-filter" type="button" data-filter="final_quote">Final Quote</button>
-              <button class="staff-filter" type="button" data-filter="customer_decision">Decision</button>
-              <button class="staff-filter" type="button" data-filter="payout_return">Pay/Return</button>
-              <button class="staff-filter" type="button" data-filter="complete">Complete</button>
-              <button class="staff-filter" type="button" data-filter="all">All</button>
+            <div class="staff-filter-row">
+              <label for="staff-filter">Show orders at step</label>
+              <select id="staff-filter" aria-label="Show orders at workflow step">
+                <option value="initial">Initial Quote</option>
+                <option value="shipped">Shipped to Milford Photo</option>
+                <option value="received">Received</option>
+                <option value="evaluated">Evaluated</option>
+                <option value="final">Final Quote</option>
+                <option value="customer">Customer Decision</option>
+                <option value="payout">Payout</option>
+                <option value="return">Items Shipped to Customer</option>
+                <option value="all" selected>All Orders</option>
+              </select>
             </div>
             <div class="staff-record-list" id="records-list" aria-live="polite"></div>
           </aside>

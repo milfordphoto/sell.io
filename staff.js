@@ -32,14 +32,15 @@ const WORKFLOW_STEPS = [
 ];
 
 const QUEUE_FILTERS = {
-  incoming: { label: "Incoming", empty: "No incoming orders are waiting to arrive." },
-  received: { label: "Received", empty: "No received orders are waiting for intake." },
-  needs_eval: { label: "Needs Eval", empty: "No orders need evaluation right now." },
-  final_quote: { label: "Final Quote", empty: "No evaluated orders are waiting for final quote email." },
-  customer_decision: { label: "Decision", empty: "No orders are waiting on a customer decision." },
-  payout_return: { label: "Pay/Return", empty: "No orders need payout or return shipping." },
-  complete: { label: "Complete", empty: "No completed orders in this demo set." },
-  all: { label: "All", empty: "No orders found." },
+  initial: { label: "Initial Quote", empty: "No orders are currently at Initial Quote." },
+  shipped: { label: "Shipped to Milford Photo", empty: "No orders are currently waiting to arrive." },
+  received: { label: "Received", empty: "No orders are currently at Received." },
+  evaluated: { label: "Evaluated", empty: "No orders are currently at Evaluated." },
+  final: { label: "Final Quote", empty: "No orders are currently ready for final quote." },
+  customer: { label: "Customer Decision", empty: "No orders are currently waiting on a customer decision." },
+  payout: { label: "Payout", empty: "No orders are currently at Payout." },
+  return: { label: "Items Shipped to Customer", empty: "No orders are currently waiting on return shipment." },
+  all: { label: "All Orders", empty: "No orders found." },
 };
 
 const usernameInput = document.getElementById("staff-username");
@@ -47,19 +48,19 @@ const passwordInput = document.getElementById("staff-password");
 const loadButton = document.getElementById("load-records");
 const refreshButton = document.getElementById("refresh-records");
 const searchInput = document.getElementById("staff-search");
+const filterSelect = document.getElementById("staff-filter");
 const loginEl = document.getElementById("staff-login");
 const statusEl = document.getElementById("staff-status");
 const countEl = document.getElementById("record-count");
 const workspaceEl = document.getElementById("staff-workspace");
 const listEl = document.getElementById("records-list");
 const detailEl = document.getElementById("staff-detail");
-const filterButtons = Array.from(document.querySelectorAll(".staff-filter"));
 
 let records = [];
 let orders = [];
 let selectedOrderId = null;
 let selectedItemId = null;
-let activeFilter = "incoming";
+let activeFilter = "all";
 let searchQuery = "";
 
 function resolveApiBase() {
@@ -350,7 +351,10 @@ function renderQueue() {
   const filtered = filterOrders(orders, activeFilter);
   const filterLabel = QUEUE_FILTERS[activeFilter]?.label || activeFilter;
   const searched = searchQuery ? ` matching "${searchQuery}"` : "";
-  countEl.textContent = `${filtered.length} ${filterLabel.toLowerCase()} order${filtered.length === 1 ? "" : "s"}${searched}`;
+  const countLabel = activeFilter === "all"
+    ? `${filtered.length} order${filtered.length === 1 ? "" : "s"}`
+    : `${filtered.length} ${filterLabel.toLowerCase()} order${filtered.length === 1 ? "" : "s"}`;
+  countEl.textContent = `${countLabel}${searched}`;
 
   if (!filtered.length) {
     listEl.innerHTML = `<div class="staff-empty-card">${escapeHtml(QUEUE_FILTERS[activeFilter]?.empty || "No orders in this view.")}</div>`;
@@ -369,7 +373,7 @@ function renderQueue() {
 }
 
 function renderOrderCard(order) {
-  const status = queueActionLabel(order);
+  const status = order.workflow.isComplete ? "Complete" : `Current: ${order.workflow.current.label}`;
   const itemLabel = `${order.items.length} item${order.items.length === 1 ? "" : "s"}`;
   const total = order.totals.final || order.totals.original;
   const groupingNote = order.synthetic && order.items.length > 1 ? "Test grouped order" : "Order";
@@ -912,56 +916,17 @@ function workflowState(order) {
   if (statuses.some((status) => status.includes("payment"))) completed.add("payout");
   if (statuses.some((status) => status.includes("return"))) completed.add("return");
 
+  completePriorWorkflowSteps(completed);
+
   const current = WORKFLOW_STEPS.find((step) => !completed.has(step.key)) || WORKFLOW_STEPS[WORKFLOW_STEPS.length - 1];
   return { completed, current, isComplete: completed.size >= WORKFLOW_STEPS.length };
 }
 
-function queueActionLabel(order) {
-  const queue = queueStage(order);
-  const labels = {
-    incoming: "Next: Receive",
-    received: "Next: Intake",
-    needs_eval: "Next: Evaluate",
-    final_quote: "Next: Send final quote",
-    customer_decision: "Waiting on customer",
-    payout_return: "Next: Pay/Return",
-    complete: "Complete",
-  };
-  return labels[queue] || `Next: ${order.workflow.current.label}`;
-}
-
-function queueStage(order) {
-  const statuses = order.items.map((record) => String(record.fields?.Status || "").toLowerCase());
-  const notes = order.items.map((record) => parseStaffNotes(record.fields?.["Staff Notes"]));
-  const allTerminal = statuses.every((status) => status.includes("payment sent") || status.includes("returned") || status.includes("declined"));
-  if (allTerminal) return "complete";
-
-  const needsPayoutOrReturn = statuses.some((status) => (
-    status.includes("customer accepted") ||
-    status.includes("accepted item") ||
-    status.includes("return item")
-  ));
-  if (needsPayoutOrReturn) return "payout_return";
-
-  const waitingOnCustomer = statuses.some((status) => status.includes("final quote"));
-  if (waitingOnCustomer) return "customer_decision";
-
-  const allEvaluated = statuses.every((status) => (
-    status.includes("evaluated") ||
-    status.includes("final quote") ||
-    status.includes("customer accepted") ||
-    status.includes("accepted item") ||
-    status.includes("return item") ||
-    status.includes("payment") ||
-    status.includes("declined")
-  ));
-  if (allEvaluated) return "final_quote";
-
-  const hasReceived = statuses.some((status) => status.includes("received") || status.includes("inspection"));
-  const hasIntakeStarted = notes.some((note) => note.received || note.verifiedCondition || Object.keys(note.accessories).length);
-  if (hasReceived && hasIntakeStarted) return "needs_eval";
-  if (hasReceived) return "received";
-  return "incoming";
+function completePriorWorkflowSteps(completed) {
+  const deepestIndex = WORKFLOW_STEPS.reduce((index, step, currentIndex) => {
+    return completed.has(step.key) ? Math.max(index, currentIndex) : index;
+  }, 0);
+  WORKFLOW_STEPS.slice(0, deepestIndex + 1).forEach((step) => completed.add(step.key));
 }
 
 function quoteReferenceCounts(items) {
@@ -1048,7 +1013,7 @@ function accessoryListFor(fields) {
 
 function filterOrders(items, filter) {
   return items.filter((order) => {
-    const matchesFilter = filter === "all" || queueStage(order) === filter;
+    const matchesFilter = filter === "all" || order.workflow.current.key === filter;
     return matchesFilter && orderMatchesSearch(order, searchQuery);
   });
 }
@@ -1177,18 +1142,15 @@ function escapeAttr(value) {
 
 loadButton.addEventListener("click", loadRecords);
 refreshButton.addEventListener("click", loadRecords);
-filterButtons.forEach((button) => {
-  button.addEventListener("click", () => {
-    activeFilter = button.dataset.filter;
-    const filtered = filterOrders(orders, activeFilter);
-    if (!filtered.some((order) => order.id === selectedOrderId)) {
-      selectedOrderId = filtered[0]?.id || null;
-      syncSelectedItem();
-    }
-    filterButtons.forEach((item) => item.classList.toggle("is-active", item === button));
-    renderQueue();
-    renderDetail();
-  });
+filterSelect.addEventListener("change", () => {
+  activeFilter = filterSelect.value;
+  const filtered = filterOrders(orders, activeFilter);
+  if (!filtered.some((order) => order.id === selectedOrderId)) {
+    selectedOrderId = filtered[0]?.id || null;
+    syncSelectedItem();
+  }
+  renderQueue();
+  renderDetail();
 });
 searchInput.addEventListener("input", () => {
   searchQuery = searchInput.value.trim();
