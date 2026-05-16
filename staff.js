@@ -1133,8 +1133,8 @@ function filterOrders(items, filter) {
 
 function sortOrders(items, sortKey) {
   const sorted = [...items];
-  if (sortKey === "newest") return sorted.sort((a, b) => new Date(b.submitted || 0).getTime() - new Date(a.submitted || 0).getTime());
-  if (sortKey === "first_received") return sorted.sort((a, b) => new Date(a.submitted || 0).getTime() - new Date(b.submitted || 0).getTime());
+  if (sortKey === "newest") return sorted.sort((a, b) => dateValue(b.submitted, -Infinity) - dateValue(a.submitted, -Infinity));
+  if (sortKey === "first_received") return sorted.sort((a, b) => dateValue(a.submitted, Infinity) - dateValue(b.submitted, Infinity));
   if (sortKey === "customer") return sorted.sort((a, b) => a.customer.localeCompare(b.customer));
   if (sortKey === "value") return sorted.sort((a, b) => (b.totals.final || b.totals.original) - (a.totals.final || a.totals.original));
   return sorted.sort(sortByNextAction);
@@ -1143,9 +1143,14 @@ function sortOrders(items, sortKey) {
 function sortByNextAction(a, b) {
   const stepDelta = workflowStepIndex(a.workflow.current.key) - workflowStepIndex(b.workflow.current.key);
   if (stepDelta !== 0) return stepDelta;
-  const submittedDelta = new Date(a.submitted || 0).getTime() - new Date(b.submitted || 0).getTime();
+  const submittedDelta = dateValue(a.submitted, Infinity) - dateValue(b.submitted, Infinity);
   if (submittedDelta !== 0) return submittedDelta;
   return a.customer.localeCompare(b.customer);
+}
+
+function dateValue(value, fallback) {
+  const timestamp = new Date(value || "").getTime();
+  return Number.isFinite(timestamp) ? timestamp : fallback;
 }
 
 function workflowStepIndex(key) {
