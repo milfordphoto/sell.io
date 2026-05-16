@@ -3,6 +3,7 @@ const API_BASE = resolveApiBase();
 const TEST_EMPLOYEE = "employee";
 const TEST_PASSWORD = "password";
 const DEMO_QUEUE_KEY = "mpUsedGearStaffQueue";
+const SECURE_STAFF_MODE = CONFIG.staffAuthMode === "cookie";
 
 const CONDITION_MULTIPLIERS = {
   "Like New": 0.7,
@@ -75,7 +76,7 @@ function resolveApiBase() {
 async function loadRecords() {
   const username = usernameInput.value.trim().toLowerCase();
   const password = passwordInput.value;
-  if (username !== TEST_EMPLOYEE || password !== TEST_PASSWORD) {
+  if (!SECURE_STAFF_MODE && (username !== TEST_EMPLOYEE || password !== TEST_PASSWORD)) {
     setStatus("Use employee / password for this local test.", true);
     return;
   }
@@ -86,7 +87,8 @@ async function loadRecords() {
 
   try {
     const response = await fetch(`${API_BASE}/api/staff/list`, {
-      headers: { "X-Staff-Secret": TEST_PASSWORD },
+      credentials: "include",
+      headers: staffHeaders(),
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.error || `Request failed with ${response.status}`);
@@ -794,9 +796,10 @@ async function updateRecord(body) {
 
   const response = await fetch(`${API_BASE}/api/staff/update`, {
     method: "POST",
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
-      "X-Staff-Secret": TEST_PASSWORD,
+      ...staffHeaders(),
     },
     body: JSON.stringify(body),
   });
@@ -810,6 +813,10 @@ function persistDemoRecord(updated) {
   const next = stored.map((record) => (record.id === updated.id ? updated : record));
   if (!next.some((record) => record.id === updated.id) && String(updated.id).startsWith("demo-live")) next.unshift(updated);
   localStorage.setItem(DEMO_QUEUE_KEY, JSON.stringify(next.slice(0, 40)));
+}
+
+function staffHeaders() {
+  return CONFIG.staffSecret ? { "X-Staff-Secret": CONFIG.staffSecret } : {};
 }
 
 function demoModeAllowed() {
@@ -1172,6 +1179,12 @@ passwordInput.addEventListener("keydown", (event) => {
 });
 
 if (new URLSearchParams(window.location.search).get("staffTest") === "1") {
+  usernameInput.value = TEST_EMPLOYEE;
+  passwordInput.value = TEST_PASSWORD;
+  loadRecords();
+}
+
+if (CONFIG.autoLoadStaff) {
   usernameInput.value = TEST_EMPLOYEE;
   passwordInput.value = TEST_PASSWORD;
   loadRecords();
