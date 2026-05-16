@@ -2,6 +2,7 @@ const CONFIG = window.MP_USED_GEAR_CONFIG || {};
 const API_BASE = resolveApiBase();
 const TEST_EMPLOYEE = "employee";
 const TEST_PASSWORD = "password";
+const DEMO_QUEUE_KEY = "mpUsedGearStaffQueue";
 
 const CONDITION_MULTIPLIERS = {
   "Like New": 0.7,
@@ -30,10 +31,22 @@ const WORKFLOW_STEPS = [
   { key: "return", label: "Items Shipped to Customer" },
 ];
 
+const QUEUE_FILTERS = {
+  incoming: { label: "Incoming", empty: "No incoming orders are waiting to arrive." },
+  received: { label: "Received", empty: "No received orders are waiting for intake." },
+  needs_eval: { label: "Needs Eval", empty: "No orders need evaluation right now." },
+  final_quote: { label: "Final Quote", empty: "No evaluated orders are waiting for final quote email." },
+  customer_decision: { label: "Decision", empty: "No orders are waiting on a customer decision." },
+  payout_return: { label: "Pay/Return", empty: "No orders need payout or return shipping." },
+  complete: { label: "Complete", empty: "No completed orders in this demo set." },
+  all: { label: "All", empty: "No orders found." },
+};
+
 const usernameInput = document.getElementById("staff-username");
 const passwordInput = document.getElementById("staff-password");
 const loadButton = document.getElementById("load-records");
 const refreshButton = document.getElementById("refresh-records");
+const searchInput = document.getElementById("staff-search");
 const loginEl = document.getElementById("staff-login");
 const statusEl = document.getElementById("staff-status");
 const countEl = document.getElementById("record-count");
@@ -46,7 +59,8 @@ let records = [];
 let orders = [];
 let selectedOrderId = null;
 let selectedItemId = null;
-let activeFilter = "active";
+let activeFilter = "incoming";
+let searchQuery = "";
 
 function resolveApiBase() {
   if (CONFIG.apiBase) return CONFIG.apiBase.replace(/\/$/, "");
@@ -86,8 +100,7 @@ async function loadRecords() {
     renderDetail();
     setStatus("Orders loaded.");
   } catch (error) {
-    const demoModeAllowed = window.location.hostname === "milfordphoto.github.io" || new URLSearchParams(window.location.search).get("demo") === "1";
-    if (demoModeAllowed) {
+    if (demoModeAllowed()) {
       records = demoRecords().sort(sortNewestFirst);
       orders = buildOrders(records);
       selectedOrderId = orders[0]?.id || null;
@@ -115,6 +128,7 @@ async function loadRecords() {
 function demoRecords() {
   const submitted = new Date().toISOString();
   return [
+    ...storedDemoRecords(),
     {
       id: "demo-r5",
       fields: {
@@ -131,6 +145,7 @@ function demoRecords() {
         Category: "Camera Body - Mirrorless",
         Condition: "Excellent",
         "Seller Notes": "Included items: USB connection cable, Rechargeable battery, Charger, Body cap, Strap\nQuote total cash: $1,379\nQuote total store credit: $1,516",
+        "Serial Number": "",
         "eBay Median Price": 2299,
         "Condition Multiplier": 60,
         "Milford Offer": 1379,
@@ -158,6 +173,7 @@ function demoRecords() {
         Category: "Lens - Mirrorless",
         Condition: "Excellent",
         "Seller Notes": "Lens mount: Sony E\nIncluded items: Rear cap, Lens cap, Lens hood\nQuote total cash: $555\nQuote total store credit: $611",
+        "Serial Number": "DEMO-SIGMA-2470",
         "eBay Median Price": 925,
         "Condition Multiplier": 60,
         "Milford Offer": 555,
@@ -184,6 +200,7 @@ function demoRecords() {
         Category: "Camera Body - Mirrorless",
         Condition: "Good",
         "Seller Notes": "Missing charger. Customer prefers store credit.",
+        "Serial Number": "",
         "eBay Median Price": 1380,
         "Condition Multiplier": 50,
         "Milford Offer": 690,
@@ -194,7 +211,100 @@ function demoRecords() {
         Source: "Online",
       },
     },
+    {
+      id: "demo-nikon-final",
+      fields: {
+        "Quote Reference": "MP-DEMO-3144",
+        "Seller Name": "Anna Roberts",
+        "Seller Email": "anna@example.com",
+        "Seller Phone": "203-555-0188",
+        "Seller Street": "18 Broad Street",
+        "Seller City": "Stratford",
+        "Seller State": "CT",
+        "Seller ZIP": "06615",
+        "Item Brand": "Nikon",
+        "Item Model": "Zf",
+        Category: "Camera Body - Mirrorless",
+        Condition: "Excellent",
+        "Seller Notes": "Included items: Rechargeable battery, Charger, Body cap, Strap",
+        "Serial Number": "DEMO-NIKON-ZF",
+        "Staff Notes": "INTAKE REVIEW\nReceived: Yes\nSerial number: DEMO-NIKON-ZF\nVerified condition: Excellent\nAll recommended accessories included: Yes\nAccessory check:\n- USB connection cable: missing\n- Rechargeable battery: received\n- Charger: received\n- Body cap: received\n- Strap: received\nCustomer decision: pending\nFinal offer: $1,113\nLast staff action: adjusted\nReason / notes: Missing USB cable only.",
+        "eBay Median Price": 1855,
+        "Condition Multiplier": 60,
+        "Milford Offer": 1113,
+        "Final Offer": 1113,
+        "Quote Submitted": new Date(Date.now() - 2 * 86400000).toISOString(),
+        "Quote Expires": new Date(Date.now() + 5 * 86400000).toISOString(),
+        Status: "Evaluated",
+        Source: "Online",
+      },
+    },
+    {
+      id: "demo-payout",
+      fields: {
+        "Quote Reference": "MP-DEMO-4091",
+        "Seller Name": "Chris Lee",
+        "Seller Email": "chris@example.com",
+        "Seller Phone": "860-555-0140",
+        "Seller Street": "5 Main Street",
+        "Seller City": "Milford",
+        "Seller State": "CT",
+        "Seller ZIP": "06460",
+        "Item Brand": "Canon",
+        "Item Model": "RF 24-70mm f/2.8L IS USM",
+        Category: "Lens - RF",
+        Condition: "Excellent",
+        "Seller Notes": "Included items: Rear cap, Lens cap, Lens hood",
+        "Serial Number": "DEMO-CANON-RF2470",
+        "Staff Notes": "INTAKE REVIEW\nReceived: Yes\nSerial number: DEMO-CANON-RF2470\nVerified condition: Excellent\nAll recommended accessories included: Yes\nAccessory check:\n- Rear cap: received\n- Lens cap: received\n- Lens hood: received\nCustomer decision: accept\nFinal offer: $1,050\nLast staff action: accepted\nReason / notes: Customer accepted final quote.",
+        "eBay Median Price": 1750,
+        "Condition Multiplier": 60,
+        "Milford Offer": 1050,
+        "Final Offer": 1050,
+        "Quote Submitted": new Date(Date.now() - 3 * 86400000).toISOString(),
+        "Quote Expires": new Date(Date.now() + 4 * 86400000).toISOString(),
+        Status: "Customer Accepted Item",
+        Source: "Online",
+      },
+    },
+    {
+      id: "demo-complete",
+      fields: {
+        "Quote Reference": "MP-DEMO-5128",
+        "Seller Name": "Sam Patel",
+        "Seller Email": "sam@example.com",
+        "Seller Phone": "203-555-0199",
+        "Seller Street": "91 Greenfield Avenue",
+        "Seller City": "New Haven",
+        "Seller State": "CT",
+        "Seller ZIP": "06511",
+        "Item Brand": "Sony",
+        "Item Model": "FE 20mm f/1.8 G",
+        Category: "Lens - Sony FE / E-Mount",
+        Condition: "Like New",
+        "Seller Notes": "Included items: Rear cap, Lens cap, Lens hood",
+        "Serial Number": "DEMO-SONY-20G",
+        "Staff Notes": "INTAKE REVIEW\nReceived: Yes\nSerial number: DEMO-SONY-20G\nVerified condition: Like New\nAll recommended accessories included: Yes\nAccessory check:\n- Rear cap: received\n- Lens cap: received\n- Lens hood: received\nCustomer decision: accept\nFinal offer: $520\nLast staff action: payment\nReason / notes: Paid by check.",
+        "eBay Median Price": 743,
+        "Condition Multiplier": 70,
+        "Milford Offer": 520,
+        "Final Offer": 520,
+        "Quote Submitted": new Date(Date.now() - 7 * 86400000).toISOString(),
+        "Quote Expires": new Date(Date.now() + 1 * 86400000).toISOString(),
+        Status: "Payment Sent",
+        Source: "Online",
+      },
+    },
   ];
+}
+
+function storedDemoRecords() {
+  try {
+    const records = JSON.parse(localStorage.getItem(DEMO_QUEUE_KEY) || "[]");
+    return Array.isArray(records) ? records : [];
+  } catch {
+    return [];
+  }
 }
 
 function buildOrders(items) {
@@ -238,10 +348,12 @@ function buildOrders(items) {
 
 function renderQueue() {
   const filtered = filterOrders(orders, activeFilter);
-  countEl.textContent = `${filtered.length} ${activeFilter} order${filtered.length === 1 ? "" : "s"}`;
+  const filterLabel = QUEUE_FILTERS[activeFilter]?.label || activeFilter;
+  const searched = searchQuery ? ` matching "${searchQuery}"` : "";
+  countEl.textContent = `${filtered.length} ${filterLabel.toLowerCase()} order${filtered.length === 1 ? "" : "s"}${searched}`;
 
   if (!filtered.length) {
-    listEl.innerHTML = `<div class="staff-empty-card">No orders in this view.</div>`;
+    listEl.innerHTML = `<div class="staff-empty-card">${escapeHtml(QUEUE_FILTERS[activeFilter]?.empty || "No orders in this view.")}</div>`;
     return;
   }
 
@@ -257,7 +369,7 @@ function renderQueue() {
 }
 
 function renderOrderCard(order) {
-  const status = order.workflow.isComplete ? "Complete" : `Next: ${order.workflow.current.label}`;
+  const status = queueActionLabel(order);
   const itemLabel = `${order.items.length} item${order.items.length === 1 ? "" : "s"}`;
   const total = order.totals.final || order.totals.original;
   const groupingNote = order.synthetic && order.items.length > 1 ? "Test grouped order" : "Order";
@@ -269,6 +381,7 @@ function renderOrderCard(order) {
         <span class="staff-status-pill">${escapeHtml(status)}</span>
       </span>
       <span class="staff-card-title">${escapeHtml(order.quote)}</span>
+      <span class="staff-card-gear">${escapeHtml(order.items.map((item) => shortGearTitle(item.fields || {})).join(", "))}</span>
       <span class="staff-card-meta">${escapeHtml(groupingNote)} - ${escapeHtml(itemLabel)} - $${formatMoney(total)}</span>
     </button>
   `;
@@ -348,6 +461,10 @@ function renderDetail() {
           <label class="staff-check-row">
             <input type="checkbox" id="received-check" ${parsed.received ? "checked" : ""} />
             This item has been received
+          </label>
+          <label class="field staff-serial-field">
+            <span>Serial number</span>
+            <input id="serial-number" type="text" value="${escapeAttr(parsed.serialNumber || fields["Serial Number"] || "")}" placeholder="Enter serial number during intake" autocomplete="off" />
           </label>
         </section>
 
@@ -655,6 +772,20 @@ async function handleOrderAction(order, status) {
 }
 
 async function updateRecord(body) {
+  if (demoModeAllowed() && String(body.recordId || "").startsWith("demo")) {
+    const current = records.find((record) => record.id === body.recordId) || { id: body.recordId, fields: {} };
+    const fields = { ...current.fields };
+    if (body.status) fields.Status = body.status;
+    if (body.finalOffer !== undefined && body.finalOffer !== null && body.finalOffer !== "") fields["Final Offer"] = Number(body.finalOffer);
+    if (body.paymentMethod) fields["Payment Method"] = body.paymentMethod === "bank_transfer" ? "Bank transfer" : "Check";
+    if (body.staffNotes) fields["Staff Notes"] = body.staffNotes;
+    if (body.declineReason) fields["Decline Reason"] = body.declineReason;
+    if (body.action === "payment_sent") fields["Payment Date"] = new Date().toISOString().slice(0, 10);
+    const updated = { ...current, fields };
+    persistDemoRecord(updated);
+    return updated;
+  }
+
   const response = await fetch(`${API_BASE}/api/staff/update`, {
     method: "POST",
     headers: {
@@ -666,6 +797,18 @@ async function updateRecord(body) {
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.error || `Request failed with ${response.status}`);
   return data.record || { id: body.recordId, fields: body };
+}
+
+function persistDemoRecord(updated) {
+  const stored = storedDemoRecords();
+  const next = stored.map((record) => (record.id === updated.id ? updated : record));
+  if (!next.some((record) => record.id === updated.id) && String(updated.id).startsWith("demo-live")) next.unshift(updated);
+  localStorage.setItem(DEMO_QUEUE_KEY, JSON.stringify(next.slice(0, 40)));
+}
+
+function demoModeAllowed() {
+  const params = new URLSearchParams(window.location.search);
+  return window.location.hostname === "milfordphoto.github.io" || params.get("demo") === "1" || params.get("staffTest") === "1";
 }
 
 function collectReviewState(accessories) {
@@ -682,6 +825,7 @@ function collectReviewState(accessories) {
     received: Boolean(document.getElementById("received-check")?.checked),
     allAccessories: Boolean(document.getElementById("all-accessories-check")?.checked),
     verifiedCondition,
+    serialNumber: document.getElementById("serial-number")?.value.trim() || "",
     accessories: accessoryState,
     decision: document.querySelector("input[name='item-decision']:checked")?.value || "pending",
     reason: document.getElementById("inspection-notes")?.value.trim() || "",
@@ -706,6 +850,7 @@ function buildStaffNotes(review, action, finalOffer) {
   return [
     "INTAKE REVIEW",
     `Received: ${review.received ? "Yes" : "No"}`,
+    `Serial number: ${review.serialNumber || "Not entered"}`,
     `Verified condition: ${review.verifiedCondition}`,
     `All recommended accessories included: ${review.allAccessories ? "Yes" : "No"}`,
     "Accessory check:",
@@ -731,6 +876,7 @@ function appendOrderNote(notes = "", status) {
 function parseStaffNotes(notes = "") {
   const parsed = {
     received: false,
+    serialNumber: "",
     allAccessories: false,
     verifiedCondition: "",
     accessories: {},
@@ -741,6 +887,7 @@ function parseStaffNotes(notes = "") {
   notes.split("\n").forEach((line) => {
     const clean = line.trim();
     if (clean.startsWith("Received:")) parsed.received = clean.includes("Yes");
+    if (clean.startsWith("Serial number:")) parsed.serialNumber = clean.replace("Serial number:", "").trim();
     if (clean.startsWith("All recommended accessories included:")) parsed.allAccessories = clean.includes("Yes");
     if (clean.startsWith("Verified condition:")) parsed.verifiedCondition = clean.replace("Verified condition:", "").trim();
     if (clean.startsWith("Customer decision:")) parsed.decision = clean.replace("Customer decision:", "").trim() || "pending";
@@ -767,6 +914,54 @@ function workflowState(order) {
 
   const current = WORKFLOW_STEPS.find((step) => !completed.has(step.key)) || WORKFLOW_STEPS[WORKFLOW_STEPS.length - 1];
   return { completed, current, isComplete: completed.size >= WORKFLOW_STEPS.length };
+}
+
+function queueActionLabel(order) {
+  const queue = queueStage(order);
+  const labels = {
+    incoming: "Next: Receive",
+    received: "Next: Intake",
+    needs_eval: "Next: Evaluate",
+    final_quote: "Next: Send final quote",
+    customer_decision: "Waiting on customer",
+    payout_return: "Next: Pay/Return",
+    complete: "Complete",
+  };
+  return labels[queue] || `Next: ${order.workflow.current.label}`;
+}
+
+function queueStage(order) {
+  const statuses = order.items.map((record) => String(record.fields?.Status || "").toLowerCase());
+  const notes = order.items.map((record) => parseStaffNotes(record.fields?.["Staff Notes"]));
+  const allTerminal = statuses.every((status) => status.includes("payment sent") || status.includes("returned") || status.includes("declined"));
+  if (allTerminal) return "complete";
+
+  const needsPayoutOrReturn = statuses.some((status) => (
+    status.includes("customer accepted") ||
+    status.includes("accepted item") ||
+    status.includes("return item")
+  ));
+  if (needsPayoutOrReturn) return "payout_return";
+
+  const waitingOnCustomer = statuses.some((status) => status.includes("final quote"));
+  if (waitingOnCustomer) return "customer_decision";
+
+  const allEvaluated = statuses.every((status) => (
+    status.includes("evaluated") ||
+    status.includes("final quote") ||
+    status.includes("customer accepted") ||
+    status.includes("accepted item") ||
+    status.includes("return item") ||
+    status.includes("payment") ||
+    status.includes("declined")
+  ));
+  if (allEvaluated) return "final_quote";
+
+  const hasReceived = statuses.some((status) => status.includes("received") || status.includes("inspection"));
+  const hasIntakeStarted = notes.some((note) => note.received || note.verifiedCondition || Object.keys(note.accessories).length);
+  if (hasReceived && hasIntakeStarted) return "needs_eval";
+  if (hasReceived) return "received";
+  return "incoming";
 }
 
 function quoteReferenceCounts(items) {
@@ -853,11 +1048,40 @@ function accessoryListFor(fields) {
 
 function filterOrders(items, filter) {
   return items.filter((order) => {
-    const statuses = order.items.map((record) => String(record.fields?.Status || "").toLowerCase());
-    if (filter === "received") return statuses.some((status) => status.includes("received") || status.includes("inspection") || status.includes("evaluated"));
-    if (filter === "done") return statuses.every((status) => status.includes("payment") || status.includes("declined") || status.includes("return"));
-    return !statuses.every((status) => status.includes("payment") || status.includes("declined") || status.includes("return"));
+    const matchesFilter = filter === "all" || queueStage(order) === filter;
+    return matchesFilter && orderMatchesSearch(order, searchQuery);
   });
+}
+
+function orderMatchesSearch(order, query) {
+  const normalized = normalizeGroupValue(query);
+  if (!normalized) return true;
+  const haystack = [
+    order.quote,
+    ...order.quoteRefs,
+    order.customer,
+    order.email,
+    order.phone,
+    order.address,
+    ...order.items.flatMap((record) => {
+      const fields = record.fields || {};
+      return [
+        record.id,
+        fields["Quote Reference"],
+        fields["Seller Name"],
+        fields["Seller Email"],
+        fields["Seller Phone"],
+        fields["Tracking Number"],
+        fields["Serial Number"],
+        fields["Item Brand"],
+        fields["Item Model"],
+        fields.Category,
+        fields.Condition,
+        fields.Status,
+      ];
+    }),
+  ].map((value) => normalizeGroupValue(value)).join(" ");
+  return haystack.includes(normalized);
 }
 
 function syncSelectedItem() {
@@ -965,6 +1189,16 @@ filterButtons.forEach((button) => {
     renderQueue();
     renderDetail();
   });
+});
+searchInput.addEventListener("input", () => {
+  searchQuery = searchInput.value.trim();
+  const filtered = filterOrders(orders, activeFilter);
+  if (!filtered.some((order) => order.id === selectedOrderId)) {
+    selectedOrderId = filtered[0]?.id || null;
+    syncSelectedItem();
+  }
+  renderQueue();
+  renderDetail();
 });
 usernameInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter") passwordInput.focus();

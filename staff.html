@@ -37,10 +37,19 @@
               </div>
               <button class="secondary-action" type="button" id="refresh-records">Refresh</button>
             </div>
+            <div class="staff-search-wrap">
+              <label for="staff-search">Search orders</label>
+              <input id="staff-search" type="search" placeholder="Customer, email, phone, order, tracking, or gear" autocomplete="off" />
+            </div>
             <div class="staff-filter-row" role="tablist" aria-label="Queue filters">
-              <button class="staff-filter is-active" type="button" data-filter="active">Active</button>
+              <button class="staff-filter is-active" type="button" data-filter="incoming">Incoming</button>
               <button class="staff-filter" type="button" data-filter="received">Received</button>
-              <button class="staff-filter" type="button" data-filter="done">Done</button>
+              <button class="staff-filter" type="button" data-filter="needs_eval">Needs Eval</button>
+              <button class="staff-filter" type="button" data-filter="final_quote">Final Quote</button>
+              <button class="staff-filter" type="button" data-filter="customer_decision">Decision</button>
+              <button class="staff-filter" type="button" data-filter="payout_return">Pay/Return</button>
+              <button class="staff-filter" type="button" data-filter="complete">Complete</button>
+              <button class="staff-filter" type="button" data-filter="all">All</button>
             </div>
             <div class="staff-record-list" id="records-list" aria-live="polite"></div>
           </aside>
@@ -56,6 +65,6 @@
       </section>
     </main>
 
-    <script src="./staff.js?v=cd7bb84"></script>
+    <script src="./staff.js?v=20260516-staff-queue"></script>
   </body>
 </html>

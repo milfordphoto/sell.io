@@ -7,6 +7,7 @@ const MANUAL_CATEGORY = "Manual Review / Vintage / Specialty";
 const SELECT_CATEGORY = "";
 const SELECT_BRAND = "";
 const SELECT_MODEL = "";
+const DEMO_QUEUE_KEY = "mpUsedGearStaffQueue";
 
 const FALLBACK_CATEGORIES = [
   "Digital Camera",
@@ -767,7 +768,7 @@ async function submitQuote(event) {
 
   try {
     const delivery = selectedRadioValue("delivery") || "ship";
-    const data = await apiPost("/api/submit", {
+    const payload = {
       quoteToken: state.quote.quoteToken,
       seller: {
         name: els.sellerName.value.trim(),
@@ -788,7 +789,8 @@ async function submitQuote(event) {
         height: numberOrNull(els.parcelHeight.value),
         weight: numberOrNull(els.parcelWeight.value),
       },
-    });
+    };
+    const data = demoQueueEnabled() ? saveDemoQueueSubmission(payload, delivery) : await apiPost("/api/submit", payload);
 
     state.submission = data;
     renderDone(data);
@@ -798,6 +800,72 @@ async function submitQuote(event) {
   } finally {
     els.submitQuote.disabled = false;
     els.submitQuote.textContent = "Submit quote";
+  }
+}
+
+function demoQueueEnabled() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("demoQueue") === "1" || params.get("demoSubmit") === "1";
+}
+
+function saveDemoQueueSubmission(payload, delivery) {
+  const quote = state.quote;
+  const seller = payload.seller;
+  const quoteRef = `MP-TEST-${String(Date.now()).slice(-6)}`;
+  const submitted = new Date().toISOString();
+  const records = quote.items.map((item, index) => ({
+    id: `demo-live-${quoteRef}-${index}`,
+    fields: {
+      "Quote Reference": quoteRef,
+      "Seller Name": seller.name,
+      "Seller Email": seller.email,
+      "Seller Phone": seller.phone || "",
+      "Seller Street": seller.address.street || "",
+      "Seller City": seller.address.city || "",
+      "Seller State": seller.address.state || "",
+      "Seller ZIP": seller.address.zip || "",
+      "Item Brand": item.brand,
+      "Item Model": item.model,
+      Category: item.category,
+      Condition: CONDITION_LABELS[item.condition] || item.condition,
+      "Seller Notes": [
+        item.notes || "",
+        `Included items: ${(item.includedItems || []).join(", ") || "Not listed"}`,
+        `Preferred payout: ${payload.paymentPreference || "Not selected"}`,
+        `Delivery: ${delivery}`,
+        "Demo queue record only. No email, shipping label, or Airtable record was created.",
+      ].filter(Boolean).join("\n"),
+      "eBay Median Price": item.marketPrice || 0,
+      "Condition Multiplier": item.preAdjustmentOffer && item.marketPrice ? Math.round((item.preAdjustmentOffer / item.marketPrice) * 100) : 0,
+      "Milford Offer": item.offerAmount || 0,
+      "Final Offer": item.offerAmount || 0,
+      "Quote Submitted": submitted,
+      "Quote Expires": quote.expiresAt,
+      Status: "Demo Submitted",
+      Source: "Online demo",
+      "Tracking Number": "",
+      "Serial Number": "",
+    },
+  }));
+
+  const stored = readDemoQueue();
+  localStorage.setItem(DEMO_QUEUE_KEY, JSON.stringify([...records, ...stored].slice(0, 40)));
+  return {
+    success: true,
+    quoteRef,
+    status: "Demo Submitted",
+    labelUrl: null,
+    trackingNumber: null,
+    nextStep: "Demo mode: this test quote was added to the employee dashboard queue in this browser. No email, shipping label, or Airtable record was created.",
+  };
+}
+
+function readDemoQueue() {
+  try {
+    const records = JSON.parse(localStorage.getItem(DEMO_QUEUE_KEY) || "[]");
+    return Array.isArray(records) ? records : [];
+  } catch {
+    return [];
   }
 }
 
