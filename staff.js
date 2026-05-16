@@ -552,14 +552,7 @@ function renderDetail() {
           </div>
         </section>
 
-        <section class="staff-actions-panel">
-          <button class="secondary-action" type="button" data-action="received">Mark item received</button>
-          <button class="secondary-action" type="button" data-action="save">Save item intake</button>
-          <button class="primary-action" type="button" data-action="adjusted">Finish item evaluation</button>
-          <button class="secondary-action" type="button" data-action="accepted">Mark item accepted</button>
-          <button class="secondary-action" type="button" data-action="payment">Payment sent</button>
-          <button class="secondary-action danger-action" type="button" data-action="return">Return item</button>
-        </section>
+        ${renderStaffActions(record, parsed)}
       </form>
 
       ${renderOrderDecisionPanel(order)}
@@ -631,6 +624,96 @@ function renderOrderDecisionPanel(order) {
       <button class="primary-action" type="button" id="send-final-quote" ${ready ? "" : "disabled"}>Send final quote email</button>
     </section>
   `;
+}
+
+function renderStaffActions(record, parsed) {
+  const actions = staffActionsFor(record, parsed);
+  return `
+    <section class="staff-actions-panel">
+      <div class="staff-actions-copy">
+        <strong>${escapeHtml(actions.title)}</strong>
+        <span>${escapeHtml(actions.copy)}</span>
+      </div>
+      <div class="staff-actions-buttons">
+        ${actions.buttons.map((button) => `
+          <button class="${escapeAttr(button.className)}" type="button" data-action="${escapeAttr(button.action)}">${escapeHtml(button.label)}</button>
+        `).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function staffActionsFor(record, parsed) {
+  const status = String(record.fields?.Status || "").toLowerCase();
+  const decision = parsed.decision || "pending";
+  if (!parsed.received && !status.includes("received") && !status.includes("inspection") && !status.includes("evaluated") && !status.includes("final")) {
+    return {
+      title: "Next step: receive this item",
+      copy: "Confirm this item arrived, enter the serial number, then continue intake.",
+      buttons: [
+        { action: "save", label: "Save intake progress", className: "secondary-action" },
+        { action: "received", label: "Mark item received", className: "primary-action" },
+      ],
+    };
+  }
+  if (!status.includes("evaluated") && !status.includes("final") && !status.includes("accepted item") && !status.includes("payment") && !status.includes("return")) {
+    return {
+      title: "Next step: finish evaluation",
+      copy: "Verify accessories, condition, serial number, and final item offer.",
+      buttons: [
+        { action: "save", label: "Save intake progress", className: "secondary-action" },
+        { action: "adjusted", label: "Finish item evaluation", className: "primary-action" },
+      ],
+    };
+  }
+  if (decision === "accept" || status.includes("accepted item")) {
+    return {
+      title: "Next step: payout",
+      copy: "Use this after payment has been sent for accepted gear.",
+      buttons: [
+        { action: "save", label: "Save note", className: "secondary-action" },
+        { action: "payment", label: "Payment sent", className: "primary-action" },
+      ],
+    };
+  }
+  if (decision === "return" || status.includes("return")) {
+    return {
+      title: "Next step: return item",
+      copy: "Use this after the item is packed or shipped back to the customer.",
+      buttons: [
+        { action: "save", label: "Save note", className: "secondary-action" },
+        { action: "return", label: "Return item", className: "secondary-action danger-action" },
+      ],
+    };
+  }
+  if (status.includes("final")) {
+    return {
+      title: "Next step: wait for customer decision",
+      copy: "After the final quote is sent, the customer can accept this item or request that it be returned.",
+      buttons: [
+        { action: "save", label: "Save decision note", className: "secondary-action" },
+        { action: "accepted", label: "Record item accepted", className: "secondary-action" },
+        { action: "return", label: "Record return request", className: "secondary-action danger-action" },
+      ],
+    };
+  }
+  if (status.includes("evaluated")) {
+    return {
+      title: "Item evaluated",
+      copy: "Move to the next item. When every item is evaluated, use the final quote email panel below.",
+      buttons: [
+        { action: "save", label: "Save changes", className: "secondary-action" },
+        { action: "adjusted", label: "Re-save evaluation", className: "secondary-action" },
+      ],
+    };
+  }
+  return {
+    title: "Next step: wait for customer decision",
+    copy: "After the final quote is sent, the customer can accept this item or request that it be returned.",
+    buttons: [
+      { action: "save", label: "Save decision note", className: "secondary-action" },
+    ],
+  };
 }
 
 function renderAccessory(item, parsed) {
@@ -749,16 +832,32 @@ async function handleStaffAction(record, accessories, action, buttons) {
     const updated = await updateRecord(body);
     records = records.map((item) => (item.id === record.id ? updated : item));
     orders = buildOrders(records);
-    selectedItemId = updated.id;
     selectedOrderId = selectedOrder()?.id || selectedOrderId;
+    selectedItemId = action === "adjusted" ? nextItemAfterEvaluation(updated.id) : updated.id;
     renderQueue();
     renderDetail();
+    if (action === "adjusted") scrollDetailToTop();
     setStatus(`Saved: ${statusByAction[action]}.`);
   } catch (error) {
     setStatus(error.message || "Unable to save item update.", true);
   } finally {
     setDetailBusy(buttons, false);
   }
+}
+
+function nextItemAfterEvaluation(currentItemId) {
+  const order = selectedOrder();
+  if (!order) return currentItemId;
+  const currentIndex = order.items.findIndex((item) => item.id === currentItemId);
+  const nextItems = [
+    ...order.items.slice(currentIndex + 1),
+    ...order.items.slice(0, Math.max(currentIndex, 0)),
+  ];
+  return nextItems.find((item) => itemStatusClass(item) !== "is-evaluated" && itemStatusClass(item) !== "is-return")?.id || currentItemId;
+}
+
+function scrollDetailToTop() {
+  detailEl.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 async function handleOrderAction(order, status) {
