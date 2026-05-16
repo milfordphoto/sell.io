@@ -1398,7 +1398,7 @@ fieldset {
 
 .staff-adjust-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -1443,6 +1443,11 @@ fieldset {
   padding: 12px;
   background: #ffffff;
   font-weight: 820;
+}
+
+.customer-decision-section {
+  border-color: rgba(35, 77, 125, 0.18);
+  background: rgba(35, 77, 125, 0.04);
 }
 
 .staff-decision-card:has(input:checked) {

@@ -509,7 +509,7 @@ function renderDetail() {
             <span>4</span>
             <div>
               <h3>Final item quote</h3>
-              <p>Set the final item offer and choose what happens if the customer declines this item.</p>
+              <p>Set the inspected final offer for this item. The customer will accept or return items after the final quote email is sent.</p>
             </div>
           </div>
           <div class="staff-adjust-grid">
@@ -521,32 +521,35 @@ function renderDetail() {
               <span>Custom final offer</span>
               <input id="custom-offer" type="number" min="0" step="1" value="${finalOffer}" />
             </label>
-            <label class="field">
-              <span>Payout method</span>
-              <select id="payment-method">
-                <option value="check" ${String(fields["Payment Method"] || "").toLowerCase().includes("check") ? "selected" : ""}>Check</option>
-                <option value="bank_transfer" ${String(fields["Payment Method"] || "").toLowerCase().includes("bank") ? "selected" : ""}>Bank transfer</option>
-              </select>
-            </label>
-          </div>
-          <div class="staff-decision-grid">
-            <label class="staff-decision-card">
-              <input type="radio" name="item-decision" value="pending" ${parsed.decision === "pending" ? "checked" : ""} />
-              <span>Await customer decision</span>
-            </label>
-            <label class="staff-decision-card">
-              <input type="radio" name="item-decision" value="accept" ${parsed.decision === "accept" ? "checked" : ""} />
-              <span>Customer accepts this item</span>
-            </label>
-            <label class="staff-decision-card">
-              <input type="radio" name="item-decision" value="return" ${parsed.decision === "return" ? "checked" : ""} />
-              <span>Customer wants this item returned</span>
-            </label>
           </div>
           <label class="field">
             <span>Adjustment reason / inspection notes</span>
             <textarea id="inspection-notes" rows="5" placeholder="Example: Customer selected Excellent, but inspection found heavy body wear and missing charger.">${escapeHtml(parsed.reason || fields["Decline Reason"] || "")}</textarea>
           </label>
+        </section>
+
+        <section class="staff-review-section customer-decision-section">
+          <div class="staff-section-title">
+            <span>5</span>
+            <div>
+              <h3>Customer decision</h3>
+              <p>Use this after the customer responds to the final quote, or to manually record a phone/in-store decision.</p>
+            </div>
+          </div>
+          <div class="staff-decision-grid">
+            <label class="staff-decision-card">
+              <input type="radio" name="item-decision" value="pending" ${parsed.decision === "pending" ? "checked" : ""} />
+              <span>Awaiting customer response</span>
+            </label>
+            <label class="staff-decision-card">
+              <input type="radio" name="item-decision" value="accept" ${parsed.decision === "accept" ? "checked" : ""} />
+              <span>Customer accepted this item</span>
+            </label>
+            <label class="staff-decision-card">
+              <input type="radio" name="item-decision" value="return" ${parsed.decision === "return" ? "checked" : ""} />
+              <span>Customer requested return</span>
+            </label>
+          </div>
         </section>
 
         <section class="staff-actions-panel">
