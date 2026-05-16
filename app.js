@@ -55,22 +55,17 @@ const INCLUDED_ITEMS = {
     { name: "Charger", value: 50, checked: true },
     { name: "Body cap", value: 10, checked: true },
     { name: "Strap", value: 20, checked: true },
-    { name: "Original box", value: 10, checked: false, bonus: true },
   ],
   filmCamera: [
     { name: "Body cap", value: 10, checked: true },
     { name: "Strap", value: 20, checked: true },
-    { name: "Original box", value: 10, checked: false, bonus: true },
   ],
   lens: [
     { name: "Rear cap", value: 10, checked: true },
     { name: "Lens cap", value: 15, checked: true },
     { name: "Lens hood", value: 35, checked: true },
-    { name: "Original box", value: 10, checked: false, bonus: true },
   ],
-  default: [
-    { name: "Original box", value: 10, checked: false, bonus: true },
-  ],
+  default: [],
 };
 
 const money = new Intl.NumberFormat("en-US", {
@@ -417,24 +412,16 @@ function renderIncludedItems() {
     `;
     return;
   }
-  const assumed = items.filter((item) => item.checked);
-  const optional = items.filter((item) => !item.checked);
   els.includedItems.innerHTML = `
     <div class="included-copy">
       <strong>Price assumes standard manufacturer accessories.</strong>
-      <span>Send what you have. Milford Photo will confirm everything after inspection and adjust the offer only if needed.</span>
+      <span>These are the original accessories normally included with this item. Send what you have; Milford Photo will confirm everything after inspection.</span>
     </div>
     <div class="included-columns">
       <div>
-        <h3>Included in this quote</h3>
+        <h3>Original included accessories</h3>
         <ul>
-          ${assumed.map((item) => `<li>${escapeHtml(item.name)}</li>`).join("")}
-        </ul>
-      </div>
-      <div>
-        <h3>Not included in this price</h3>
-        <ul>
-          ${optional.map((item) => `<li>${escapeHtml(item.name)}</li>`).join("") || "<li>Extra accessories can be mentioned in notes.</li>"}
+          ${items.map((item) => `<li>${escapeHtml(item.name)}</li>`).join("")}
         </ul>
       </div>
     </div>
@@ -649,8 +636,9 @@ function readItemForm(options = {}) {
     .filter((item) => item.checked)
     .map((item) => item.name);
   const mount = needsLensMount() ? els.lensMount.value.trim() : "";
+  const userNotes = els.itemNotes.value.trim();
   const notes = [
-    els.itemNotes.value.trim(),
+    userNotes ? `Customer notes: ${userNotes}` : "",
     mount ? `Lens mount: ${mount}` : "",
     accessories.length ? `Standard accessories assumed for quote: ${accessories.join(", ")}` : "",
   ]
@@ -682,7 +670,8 @@ function readItemForm(options = {}) {
     notes,
     includedItems: accessories,
     ebayQuery: mount ? `${brand} ${displayModelName(catalogItem?.name || model, selectedCategory)} ${mount}` : catalogItem?.ebayQuery || `${brand} ${model}`,
-    isManual: selectedCategory === MANUAL_CATEGORY,
+    isManual: selectedCategory === MANUAL_CATEGORY || Boolean(userNotes),
+    manualReviewRequested: Boolean(userNotes),
   };
 }
 
@@ -966,10 +955,10 @@ function renderSummary() {
   els.summaryCreditCard.hidden = !state.quote.totals.storeCredit;
   els.summaryRouting.textContent = state.quote.routing.message;
   els.summaryLabel.textContent = state.quote.routing.freeLabelEligible
-    ? "Free prepaid inbound label"
+    ? "Free prepaid inbound shipping"
     : state.quote.routing.requiresStaffBeforeLabel
       ? "Staff approval first"
-      : `Below ${money.format(state.quote.policy.freeShippingMin)} threshold`;
+      : `Below ${money.format(state.quote.policy.freeShippingMin)} free shipping threshold`;
 }
 
 function renderDone(result) {
