@@ -616,15 +616,77 @@ function renderItemTabs(order) {
 function renderOrderDecisionPanel(order) {
   const evaluated = order.items.filter((item) => itemStatusClass(item) === "is-evaluated").length;
   const ready = evaluated === order.items.length;
+  const emailState = orderEmailState(order, ready, evaluated);
   return `
     <section class="staff-order-decision">
       <div>
-        <h3>Final quote email</h3>
-        <p>${ready ? "All items are evaluated. Staff can send the item-by-item final quote for the customer to accept or return each item." : `${evaluated} of ${order.items.length} items evaluated. Finish every item before sending the final quote email.`}</p>
+        <h3>${escapeHtml(emailState.title)}</h3>
+        <p>${escapeHtml(emailState.copy)}</p>
       </div>
-      <button class="primary-action" type="button" id="send-final-quote" ${ready ? "" : "disabled"}>Send final quote email</button>
+      <button class="${escapeAttr(emailState.className)}" type="button" id="send-final-quote" data-order-status="${escapeAttr(emailState.status)}" data-order-action="${escapeAttr(emailState.action)}" ${emailState.disabled ? "disabled" : ""}>${escapeHtml(emailState.label)}</button>
     </section>
   `;
+}
+
+function orderEmailState(order, ready, evaluated) {
+  const statuses = order.items.map((item) => String(item.fields?.Status || "").toLowerCase());
+  const sent = statuses.some((status) => status.includes("final quote sent") || status.includes("payment info requested"));
+  const unchanged = orderQuoteUnchanged(order);
+
+  if (!ready) {
+    return {
+      title: "Final quote email",
+      copy: `${evaluated} of ${order.items.length} items evaluated. Finish every item before sending the customer email.`,
+      label: "Send final quote email",
+      status: "",
+      action: "",
+      className: "primary-action",
+      disabled: true,
+    };
+  }
+
+  if (sent) {
+    return {
+      title: unchanged ? "Payment info email" : "Final quote email",
+      copy: "Email sent. The customer can now respond with the next step.",
+      label: "Email sent",
+      status: "",
+      action: "",
+      className: "secondary-action is-sent",
+      disabled: true,
+    };
+  }
+
+  if (unchanged) {
+    return {
+      title: "Payment info email",
+      copy: "All items are evaluated and the quote is unchanged. Send the customer an email asking for payout information.",
+      label: "Send payment info email",
+      status: "Payment Info Requested",
+      action: "payment_info_requested",
+      className: "primary-action",
+      disabled: false,
+    };
+  }
+
+  return {
+    title: "Final quote email",
+    copy: "All items are evaluated. Staff can send the item-by-item final quote for the customer to accept or return each item.",
+    label: "Send final quote email",
+    status: "Final Quote Sent",
+    action: "final_quote_sent",
+    className: "primary-action",
+    disabled: false,
+  };
+}
+
+function orderQuoteUnchanged(order) {
+  return order.items.every((item) => {
+    const fields = item.fields || {};
+    const original = numberOrNull(fields["Milford Offer"]) ?? 0;
+    const final = numberOrNull(fields["Final Offer"]) ?? original;
+    return final === original;
+  });
 }
 
 function renderStaffActions(record, parsed) {
@@ -684,6 +746,16 @@ function staffActionsFor(record, parsed) {
       buttons: [
         { action: "save", label: "Save note", className: "secondary-action" },
         { action: "return", label: "Return item", className: "secondary-action danger-action" },
+      ],
+    };
+  }
+  if (status.includes("payment info")) {
+    return {
+      title: "Next step: payout",
+      copy: "Use this after the customer provides payout information and payment has been sent.",
+      buttons: [
+        { action: "save", label: "Save note", className: "secondary-action" },
+        { action: "payment", label: "Payment sent", className: "primary-action" },
       ],
     };
   }
@@ -785,7 +857,12 @@ function bindDetail(record, accessories) {
   });
 
   sendFinalQuoteButton.addEventListener("click", async () => {
-    await handleOrderAction(selectedOrder(), "Final Quote Sent");
+    await handleOrderAction(
+      selectedOrder(),
+      sendFinalQuoteButton.dataset.orderStatus || "Final Quote Sent",
+      sendFinalQuoteButton.dataset.orderAction || "final_quote_sent",
+      sendFinalQuoteButton,
+    );
   });
 }
 
@@ -861,13 +938,19 @@ function scrollDetailToTop() {
   detailEl.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-async function handleOrderAction(order, status) {
+async function handleOrderAction(order, status, action = "", triggerButton = null) {
   if (!order) return;
+  if (!status) return;
   setStatus("Saving order update...");
+  if (triggerButton) {
+    triggerButton.disabled = true;
+    triggerButton.textContent = "Sending...";
+  }
   try {
     const updatedRecords = await Promise.all(order.items.map((record, index) => updateRecord({
       recordId: record.id,
       status,
+      action,
       staffNotes: appendOrderNote(record.fields?.["Staff Notes"], status),
       notifyCustomer: index === 0,
     })));
@@ -879,6 +962,8 @@ async function handleOrderAction(order, status) {
     setStatus(`${status} saved for ${order.quote}.`);
   } catch (error) {
     setStatus(error.message || "Unable to save order update.", true);
+  } finally {
+    if (triggerButton) triggerButton.disabled = false;
   }
 }
 
@@ -1024,8 +1109,8 @@ function workflowState(order) {
   if (statuses.some((status) => status.includes("received") || status.includes("inspection") || status.includes("evaluated"))) completed.add("received");
   if (statuses.every((status) => status.includes("evaluated") || status.includes("final") || status.includes("accepted") || status.includes("payment") || status.includes("return") || status.includes("declined"))) completed.add("evaluated");
   if (statuses.some((status) => status.includes("final quote"))) completed.add("final");
-  if (statuses.some((status) => status.includes("accepted item") || status.includes("return item") || status.includes("customer accepted"))) completed.add("customer");
-  if (statuses.some((status) => status.includes("payment"))) completed.add("payout");
+  if (statuses.some((status) => status.includes("accepted item") || status.includes("return item") || status.includes("customer accepted") || status.includes("payment info requested"))) completed.add("customer");
+  if (statuses.some((status) => status.includes("payment sent"))) completed.add("payout");
   if (statuses.some((status) => status.includes("return"))) completed.add("return");
 
   completePriorWorkflowSteps(completed);

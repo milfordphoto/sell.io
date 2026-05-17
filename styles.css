@@ -1525,6 +1525,12 @@ fieldset {
   cursor: not-allowed;
 }
 
+.staff-order-decision button.is-sent {
+  border-color: #d9dde5;
+  background: #eef1f5;
+  color: var(--muted);
+}
+
 .final-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 340px;
