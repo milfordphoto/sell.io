@@ -788,7 +788,7 @@ async function submitQuote(event) {
     setStatus(error.message || "Unable to submit the quote right now.", "error");
   } finally {
     els.submitQuote.disabled = false;
-    els.submitQuote.textContent = "Submit quote";
+    updateDeliveryFields();
   }
 }
 
@@ -904,6 +904,7 @@ function renderQuote(quote) {
   els.quoteResults.innerHTML = quote.items.map(renderQuoteItem).join("");
   els.quoteMessage.textContent = quote.routing.message;
   els.acceptQuote.textContent = quote.totals.cash > 0 ? "Continue" : "Submit for review";
+  updateDeliveryFields();
 }
 
 function renderQuoteItem(item) {
@@ -962,14 +963,20 @@ function renderSummary() {
 }
 
 function renderDone(result) {
-  els.doneTitle.textContent = `Quote ${result.quoteRef} submitted`;
-  els.doneCopy.textContent =
-    result.nextStep ||
-    "Milford Photo will email you within 1 business day with your quote and shipping information. After the gear arrives, staff will inspect it, confirm or adjust the offer if needed, and send payment after you accept the final amount.";
+  const instantLabelFlow = isInstantLabelFlow();
+  els.doneTitle.textContent = instantLabelFlow ? `Offer ${result.quoteRef} accepted` : `Quote ${result.quoteRef} submitted`;
   if (result.labelUrl) {
+    els.doneCopy.textContent =
+      "Your prepaid shipping label is ready. Print the label from this page, pack your gear securely, and drop it off with the carrier shown on the label. We also emailed the label and packing instructions to you for reference.";
     els.labelLink.href = result.labelUrl;
+    els.labelLink.textContent = "Print / download shipping label";
     els.labelLink.hidden = false;
   } else {
+    els.doneCopy.textContent =
+      result.nextStep ||
+      (instantLabelFlow
+        ? "Your instant offer was accepted. Milford Photo will email the prepaid shipping label and packing instructions as soon as the label is ready."
+        : "Milford Photo will email you within 1 business day with your quote and shipping information. After the gear arrives, staff will inspect it, confirm or adjust the offer if needed, and send payment after you accept the final amount.");
     els.labelLink.hidden = true;
   }
   renderSummary();
@@ -990,14 +997,23 @@ function updateDeliveryFields() {
   if (delivery === "dropoff") {
     els.mailCopy.textContent = "Use a prepaid label when the quote qualifies.";
   } else if (freeLabel) {
-    els.mailCopy.textContent = "Milford Photo can email a prepaid label after the quote is submitted. No box dimensions needed here.";
+    els.mailCopy.textContent = "Accept the instant offer and get a prepaid label on the next screen. A copy will also be emailed to you.";
   } else if (state.quote?.routing?.requiresStaffBeforeLabel) {
     els.mailCopy.textContent = "Milford Photo will review before sending shipping instructions.";
   } else {
     els.mailCopy.textContent = "This quote can be dropped off or shipped after Milford Photo follows up.";
   }
 
+  if (state.quote?.totals?.cash > 0) {
+    els.submitQuote.textContent = delivery === "ship" && freeLabel ? "Accept offer & get shipping label" : "Submit quote";
+    els.acceptQuote.textContent = delivery === "ship" && freeLabel ? "Accept offer" : "Continue";
+  }
+
   resizeParentFrame();
+}
+
+function isInstantLabelFlow() {
+  return Boolean(state.quote?.routing?.freeLabelEligible) && (selectedRadioValue("delivery") || "ship") === "ship";
 }
 
 function setStep(step) {
