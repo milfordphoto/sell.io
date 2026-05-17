@@ -1,6 +1,6 @@
 const CONFIG = window.MP_USED_GEAR_CONFIG || {};
 const API_BASE = resolveApiBase();
-const TEST_EMPLOYEE = "employee";
+const TEST_STAFF_USERS = ["staff", "employee"];
 const TEST_PASSWORD = "password";
 const DEMO_QUEUE_KEY = "mpUsedGearStaffQueue";
 const SECURE_STAFF_MODE = CONFIG.staffAuthMode === "cookie";
@@ -78,8 +78,8 @@ function resolveApiBase() {
 async function loadRecords() {
   const username = usernameInput.value.trim().toLowerCase();
   const password = passwordInput.value;
-  if (!SECURE_STAFF_MODE && (username !== TEST_EMPLOYEE || password !== TEST_PASSWORD)) {
-    setStatus("Use employee / password for this local test.", true);
+  if (!SECURE_STAFF_MODE && (!TEST_STAFF_USERS.includes(username) || password !== TEST_PASSWORD)) {
+    setStatus("Use staff / password for this local test.", true);
     return;
   }
 
@@ -554,10 +554,9 @@ function renderDetail() {
           </div>
         </section>
 
+        ${renderOrderDecisionPanel(order)}
         ${renderStaffActions(record, parsed)}
       </form>
-
-      ${renderOrderDecisionPanel(order)}
     </article>
   `;
 
@@ -668,7 +667,7 @@ function staffActionsFor(record, parsed) {
       ],
     };
   }
-  if (decision === "accept" || status.includes("accepted item")) {
+  if (status.includes("accepted item") || status.includes("customer accepted") || status.includes("payment")) {
     return {
       title: "Next step: payout",
       copy: "Use this after payment has been sent for accepted gear.",
@@ -678,7 +677,7 @@ function staffActionsFor(record, parsed) {
       ],
     };
   }
-  if (decision === "return" || status.includes("return")) {
+  if (status.includes("return")) {
     return {
       title: "Next step: return item",
       copy: "Use this after the item is packed or shipped back to the customer.",

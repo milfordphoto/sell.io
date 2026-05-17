@@ -845,7 +845,7 @@ function saveDemoQueueSubmission(payload, delivery) {
     status: "Demo Submitted",
     labelUrl: null,
     trackingNumber: null,
-    nextStep: "Demo mode: this test quote was added to the employee dashboard queue in this browser. No email, shipping label, or Airtable record was created.",
+    nextStep: "Demo mode: this test quote was added to the staff dashboard queue in this browser. No email, shipping label, or Airtable record was created.",
   };
 }
 
@@ -965,7 +965,7 @@ function renderDone(result) {
   els.doneTitle.textContent = `Quote ${result.quoteRef} submitted`;
   els.doneCopy.textContent =
     result.nextStep ||
-    "Watch your email for shipping or drop-off instructions. Milford Photo will inspect the gear after it arrives, confirm or adjust the offer if needed, and send payment after you accept the final amount.";
+    "Milford Photo will email you within 1 business day with your quote and shipping information. After the gear arrives, staff will inspect it, confirm or adjust the offer if needed, and send payment after you accept the final amount.";
   if (result.labelUrl) {
     els.labelLink.href = result.labelUrl;
     els.labelLink.hidden = false;
