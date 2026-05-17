@@ -563,6 +563,19 @@ fieldset {
   line-height: 1.25;
 }
 
+.cart-title-actions {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.cart-item-offer {
+  color: var(--ink);
+  font-weight: 860;
+  white-space: nowrap;
+}
+
 .remove-item {
   width: 30px;
   height: 30px;

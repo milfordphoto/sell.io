@@ -878,15 +878,22 @@ function renderCart() {
 
   els.cartList.innerHTML = displayItems
     .map(
-      (item) => `
+      (item, index) => {
+        const quoteItem = state.quote?.items?.[index];
+        const offerCopy = quoteItem ? formatItemOffer(quoteItem) : "";
+        return `
         <article class="cart-item">
           <div class="cart-title">
             <strong>${escapeHtml(item.brand)} ${escapeHtml(item.model)}${item.isPreview ? " (current)" : ""}</strong>
-            ${item.isPreview ? "" : `<button class="remove-item" type="button" aria-label="Remove item" data-remove-id="${escapeAttribute(item.id)}">x</button>`}
+            <span class="cart-title-actions">
+              ${offerCopy ? `<span class="cart-item-offer">${escapeHtml(offerCopy)}</span>` : ""}
+              ${item.isPreview ? "" : `<button class="remove-item" type="button" aria-label="Remove item" data-remove-id="${escapeAttribute(item.id)}">x</button>`}
+            </span>
           </div>
           <span class="cart-meta">${escapeHtml(item.category)} · ${escapeHtml(CONDITION_LABELS[item.condition] || item.condition)}</span>
         </article>
-      `,
+      `;
+      },
     )
     .join("");
 
@@ -901,15 +908,22 @@ function renderCart() {
 }
 
 function renderQuote(quote) {
+  renderCart();
   els.quoteResults.innerHTML = quote.items.map(renderQuoteItem).join("");
   els.quoteMessage.textContent = quote.routing.message;
   els.acceptQuote.textContent = quote.totals.cash > 0 ? "Continue" : "Submit for review";
   updateDeliveryFields();
 }
 
+function formatItemOffer(item) {
+  if (item.offerAmount) return money.format(item.offerAmount);
+  if (item.status === "declined") return "$0";
+  return "Review";
+}
+
 function renderQuoteItem(item) {
   const statusClass = item.status === "quoted" ? "quoted" : item.status === "declined" ? "declined" : "review";
-  const price = item.offerAmount ? money.format(item.offerAmount) : item.status === "declined" ? "$0" : "Review";
+  const price = formatItemOffer(item);
   const credit = item.storeCreditAmount ? `${money.format(item.storeCreditAmount)} store credit` : item.message || "Staff follow-up needed";
   const marketCopy = item.marketPrice ? `Market estimate: ${money.format(item.marketPrice)}` : item.message || "";
 
