@@ -973,10 +973,10 @@ function renderDone(result) {
     els.labelLink.hidden = false;
   } else {
     els.doneCopy.textContent =
-      result.nextStep ||
       (instantLabelFlow
         ? "Your instant offer was accepted. Milford Photo will email the prepaid shipping label and packing instructions as soon as the label is ready."
-        : "Milford Photo will email you within 1 business day with your quote and shipping information. After the gear arrives, staff will inspect it, confirm or adjust the offer if needed, and send payment after you accept the final amount.");
+        : result.nextStep ||
+          "Milford Photo will email you within 1 business day with your quote and shipping information. After the gear arrives, staff will inspect it, confirm or adjust the offer if needed, and send payment after you accept the final amount.");
     els.labelLink.hidden = true;
   }
   renderSummary();
