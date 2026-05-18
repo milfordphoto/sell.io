@@ -806,6 +806,9 @@ function saveDemoQueueSubmission(payload, delivery) {
   const submitted = new Date().toISOString();
   const demoLabelEligible = delivery === "ship" && quote.routing.freeLabelEligible;
   const demoLabelUrl = "https://example.com/milford-photo-demo-shipping-label.pdf";
+  const demoFollowUpCopy = quote.routing.requiresStaffBeforeLabel
+    ? "Milford Photo will email you within 1 business day with your quote and shipping information. After the gear arrives, staff will inspect it, confirm or adjust the offer if needed, and send payment after you accept the final amount."
+    : "Demo mode: this test quote was added to the staff dashboard queue in this browser. No email, shipping label, or Airtable record was created.";
   const records = quote.items.map((item, index) => ({
     id: `demo-live-${quoteRef}-${index}`,
     fields: {
@@ -851,7 +854,7 @@ function saveDemoQueueSubmission(payload, delivery) {
     trackingNumber: demoLabelEligible ? `DEMO-${quoteRef.replace("MP-TEST-", "")}` : null,
     nextStep: demoLabelEligible
       ? "Demo mode: this instant quote was accepted and a sample label link was shown. No email, shipping label, or Airtable record was created."
-      : "Demo mode: this test quote was added to the staff dashboard queue in this browser. No email, shipping label, or Airtable record was created.",
+      : demoFollowUpCopy,
   };
 }
 
