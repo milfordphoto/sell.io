@@ -804,6 +804,8 @@ function saveDemoQueueSubmission(payload, delivery) {
   const seller = payload.seller;
   const quoteRef = `MP-TEST-${String(Date.now()).slice(-6)}`;
   const submitted = new Date().toISOString();
+  const demoLabelEligible = delivery === "ship" && quote.routing.freeLabelEligible;
+  const demoLabelUrl = "https://example.com/milford-photo-demo-shipping-label.pdf";
   const records = quote.items.map((item, index) => ({
     id: `demo-live-${quoteRef}-${index}`,
     fields: {
@@ -832,9 +834,9 @@ function saveDemoQueueSubmission(payload, delivery) {
       "Final Offer": item.offerAmount || 0,
       "Quote Submitted": submitted,
       "Quote Expires": quote.expiresAt,
-      Status: "Demo Submitted",
+      Status: demoLabelEligible ? "Label Generated" : "Demo Submitted",
       Source: "Online demo",
-      "Tracking Number": "",
+      "Tracking Number": demoLabelEligible ? `DEMO-${quoteRef.replace("MP-TEST-", "")}` : "",
       "Serial Number": "",
     },
   }));
@@ -844,10 +846,12 @@ function saveDemoQueueSubmission(payload, delivery) {
   return {
     success: true,
     quoteRef,
-    status: "Demo Submitted",
-    labelUrl: null,
-    trackingNumber: null,
-    nextStep: "Demo mode: this test quote was added to the staff dashboard queue in this browser. No email, shipping label, or Airtable record was created.",
+    status: demoLabelEligible ? "Label Generated" : "Demo Submitted",
+    labelUrl: demoLabelEligible ? demoLabelUrl : null,
+    trackingNumber: demoLabelEligible ? `DEMO-${quoteRef.replace("MP-TEST-", "")}` : null,
+    nextStep: demoLabelEligible
+      ? "Demo mode: this instant quote was accepted and a sample label link was shown. No email, shipping label, or Airtable record was created."
+      : "Demo mode: this test quote was added to the staff dashboard queue in this browser. No email, shipping label, or Airtable record was created.",
   };
 }
 
