@@ -14,11 +14,13 @@ const els = {
 
 const state = {
   quoteRef: new URLSearchParams(window.location.search).get("quote") || "",
+  token: new URLSearchParams(window.location.search).get("token") || "",
   records: [],
   decisions: {},
   payout: "check",
   submitted: false,
   mode: "demo",
+  loadError: "",
 };
 
 async function init() {
@@ -46,10 +48,14 @@ async function matchingRecords() {
   }
   if (state.quoteRef) {
     try {
-      const data = await apiGet(`/api/final-quote?quote=${encodeURIComponent(state.quoteRef)}`);
+      const params = new URLSearchParams({ quote: state.quoteRef });
+      if (state.token) params.set("token", state.token);
+      const data = await apiGet(`/api/final-quote?${params}`);
       state.mode = "api";
+      state.loadError = "";
       return data.records || [];
-    } catch {
+    } catch (error) {
+      state.loadError = error.message || "Unable to load this final quote.";
       state.mode = "demo";
       return [];
     }
@@ -101,8 +107,8 @@ function renderMissing() {
       <h2>Quote not found</h2>
     </div>
     <div class="final-intro-card">
-      <strong>We could not find this quote in the demo queue.</strong>
-      <span>For local testing, submit a quote with demo mode in this same browser, then open the final quote link again.</span>
+      <strong>${state.loadError ? escapeHtml(state.loadError) : "We could not find this quote."}</strong>
+      <span>Use the secure final quote link from Milford Photo. If the link expired or was copied incorrectly, reply to the email and Milford Photo can resend it.</span>
     </div>
     <div class="final-empty-actions">
       <a class="primary-action" href="./index.html?demoQueue=1">Create demo quote</a>
@@ -225,6 +231,7 @@ async function submitDecision(event) {
     try {
       await apiPost("/api/final-decision", {
         quoteRef: state.quoteRef,
+        token: state.token,
         paymentMethod: state.payout,
         decisions: state.records.map((record) => ({
           recordId: record.id,
