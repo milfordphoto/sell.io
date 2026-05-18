@@ -770,7 +770,16 @@ function staffActionsFor(record, parsed) {
       ],
     };
   }
-  if (status.includes("accepted item") || status.includes("customer accepted") || status.includes("payment")) {
+  if (status.includes("payment sent")) {
+    return {
+      title: "Payment recorded",
+      copy: "Payment has been marked as sent for this item.",
+      buttons: [
+        { action: "save", label: "Save note", className: "secondary-action" },
+      ],
+    };
+  }
+  if (status.includes("accepted item") || status.includes("customer accepted")) {
     return {
       title: "Next step: payout",
       copy: "Use this after payment has been sent for accepted gear.",
@@ -780,13 +789,22 @@ function staffActionsFor(record, parsed) {
       ],
     };
   }
-  if (status.includes("return")) {
+  if (status.includes("items shipped to customer") || status.includes("returned to seller")) {
     return {
-      title: "Next step: return item",
-      copy: "Use this after the item is packed or shipped back to the customer.",
+      title: "Return shipment recorded",
+      copy: "This item has been marked as shipped back to the customer.",
       buttons: [
         { action: "save", label: "Save note", className: "secondary-action" },
-        { action: "return", label: "Return item", className: "secondary-action danger-action" },
+      ],
+    };
+  }
+  if (status.includes("return")) {
+    return {
+      title: "Next step: ship return item",
+      copy: "Use this after the item has been packed and shipped back to the customer.",
+      buttons: [
+        { action: "save", label: "Save note", className: "secondary-action" },
+        { action: "return_shipped", label: "Mark return shipped", className: "secondary-action danger-action" },
       ],
     };
   }
@@ -926,6 +944,7 @@ async function handleStaffAction(record, accessories, action, buttons) {
     accepted: "Customer Accepted Item",
     payment: "Payment Sent",
     return: "Return Item",
+    return_shipped: "Items Shipped to Customer",
   };
 
   const body = {
@@ -934,7 +953,7 @@ async function handleStaffAction(record, accessories, action, buttons) {
     finalOffer,
     serialNumber: review.serialNumber,
     staffNotes: buildStaffNotes(review, action, finalOffer),
-    notifyCustomer: action === "payment" || action === "return",
+    notifyCustomer: action === "payment" || action === "return" || action === "return_shipped",
   };
 
   if (action === "payment") {
@@ -943,6 +962,10 @@ async function handleStaffAction(record, accessories, action, buttons) {
   }
   if (action === "return") {
     body.declineReason = review.reason || "Customer wants this item returned.";
+  }
+  if (action === "return_shipped") {
+    body.action = "return_shipped";
+    body.declineReason = review.reason || "Return shipment sent to customer.";
   }
 
   setDetailBusy(buttons, true);
@@ -1168,7 +1191,7 @@ function workflowState(order) {
   if (statuses.some((status) => status.includes("final quote"))) completed.add("final");
   if (statuses.some((status) => status.includes("accepted item") || status.includes("return item") || status.includes("customer accepted") || status.includes("payment info requested"))) completed.add("customer");
   if (statuses.some((status) => status.includes("payment sent"))) completed.add("payout");
-  if (statuses.some((status) => status.includes("return"))) completed.add("return");
+  if (statuses.some((status) => status.includes("items shipped to customer") || status.includes("returned to seller"))) completed.add("return");
 
   completePriorWorkflowSteps(completed);
 
@@ -1220,7 +1243,7 @@ function normalizeGroupValue(value) {
 
 function itemStatusClass(record) {
   const status = recordStatusText(record).toLowerCase();
-  if (status.includes("return") || status.includes("declined")) return "is-return";
+  if (status.includes("return") || status.includes("items shipped to customer") || status.includes("returned to seller") || status.includes("declined")) return "is-return";
   if (status.includes("evaluated") || status.includes("final") || status.includes("accepted item") || status.includes("payment")) return "is-evaluated";
   if (status.includes("received") || status.includes("inspection")) return "is-progress";
   return "is-new";
