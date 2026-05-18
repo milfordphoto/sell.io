@@ -948,13 +948,25 @@ async function handleOrderAction(order, status, action = "", triggerButton = nul
     triggerButton.textContent = "Sending...";
   }
   try {
-    const updatedRecords = await Promise.all(order.items.map((record, index) => updateRecord({
-      recordId: record.id,
-      status,
-      action,
-      staffNotes: appendOrderNote(record.fields?.["Staff Notes"], status),
-      notifyCustomer: index === 0,
-    })));
+    const updatedRecords = [];
+    for (const record of order.items) {
+      updatedRecords.push(await updateRecord({
+        recordId: record.id,
+        status,
+        action,
+        staffNotes: appendOrderNote(record.fields?.["Staff Notes"], status),
+        notifyCustomer: false,
+      }));
+    }
+    if (updatedRecords[0]) {
+      updatedRecords[0] = await updateRecord({
+        recordId: updatedRecords[0].id,
+        status,
+        action,
+        staffNotes: appendOrderNote(updatedRecords[0].fields?.["Staff Notes"], status),
+        notifyCustomer: true,
+      });
+    }
     const updatedMap = new Map(updatedRecords.map((record) => [record.id, record]));
     records = records.map((record) => updatedMap.get(record.id) || record);
     orders = buildOrders(records);
