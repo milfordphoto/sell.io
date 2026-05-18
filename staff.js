@@ -770,7 +770,7 @@ function staffActionsFor(record, parsed) {
       ],
     };
   }
-  if (!status.includes("evaluated") && !status.includes("final") && !status.includes("accepted item") && !status.includes("payment") && !status.includes("return")) {
+  if (!status.includes("evaluated") && !status.includes("final") && !status.includes("accepted item") && !status.includes("customer accepted") && !status.includes("payment") && !status.includes("return") && !status.includes("items shipped to customer") && !status.includes("returned to seller")) {
     return {
       title: "Next step: finish evaluation",
       copy: "Verify accessories, condition, serial number, and final item offer.",
