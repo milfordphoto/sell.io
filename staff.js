@@ -1406,13 +1406,13 @@ passwordInput.addEventListener("keydown", (event) => {
 });
 
 if (new URLSearchParams(window.location.search).get("staffTest") === "1") {
-  usernameInput.value = TEST_EMPLOYEE;
+  usernameInput.value = TEST_STAFF_USERS[0];
   passwordInput.value = TEST_PASSWORD;
   loadRecords();
 }
 
 if (CONFIG.autoLoadStaff) {
-  usernameInput.value = TEST_EMPLOYEE;
+  usernameInput.value = TEST_STAFF_USERS[0];
   passwordInput.value = TEST_PASSWORD;
   loadRecords();
 }
