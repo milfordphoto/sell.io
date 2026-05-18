@@ -624,13 +624,14 @@ function readItemForm(options = {}) {
   const selectedBrand = els.brand.value;
   const selectedCategory = els.category.value;
   const selectedModel = els.model.value;
+  const manualModel = els.manualModel.value.trim();
   const catalogItem =
     selectedBrand !== MANUAL_BRAND && selectedModel !== MANUAL_MODEL
       ? safeCatalogItem(selectedBrand, selectedCategory, selectedModel)
       : null;
 
   const brand = selectedBrand === MANUAL_BRAND ? els.manualBrand.value.trim() : selectedBrand;
-  let model = selectedModel === MANUAL_MODEL ? els.manualModel.value.trim() : displayModelName(selectedModel, selectedCategory);
+  let model = selectedModel === MANUAL_MODEL || (!selectedModel && manualModel) ? manualModel : displayModelName(selectedModel, selectedCategory);
   const condition = selectedRadioValue("condition");
   const accessories = includedItemsForCategory(selectedCategory)
     .filter((item) => item.checked)
@@ -645,7 +646,8 @@ function readItemForm(options = {}) {
     .filter(Boolean)
     .join("\n");
 
-  if (!selectedCategory || !selectedBrand || !selectedModel || !brand || !model || model === MANUAL_MODEL || (needsLensMount() && !mount)) {
+  const missingModel = !selectedModel && !manualModel;
+  if (!selectedCategory || !selectedBrand || missingModel || !brand || !model || model === MANUAL_MODEL || (needsLensMount() && !mount)) {
     if (!options.silent) {
       const message = !selectedCategory
         ? "Please select a category before adding the item."
