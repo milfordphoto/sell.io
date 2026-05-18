@@ -630,8 +630,14 @@ function renderOrderDecisionPanel(order) {
 
 function orderEmailState(order, ready, evaluated) {
   const statuses = order.items.map((item) => recordStatusText(item).toLowerCase());
-  const sent = statuses.some((status) => status.includes("final quote sent") || status.includes("payment info requested"));
+  const sent = statuses.some((status) =>
+    status.includes("final quote sent") ||
+    status.includes("payment info requested") ||
+    status.includes("customer accepted item") ||
+    status.includes("payment sent")
+  );
   const unchanged = orderQuoteUnchanged(order);
+  const paymentMethod = orderPaymentMethod(order);
 
   if (!ready) {
     return {
@@ -658,11 +664,25 @@ function orderEmailState(order, ready, evaluated) {
   }
 
   if (unchanged) {
+    if (paymentMethod === "bank_transfer") {
+      return {
+        title: "Bank transfer info email",
+        copy: "All items are evaluated and the quote is unchanged. Send the customer secure bank-transfer instructions before payout.",
+        label: "Send bank transfer instructions",
+        status: "Payment Info Requested",
+        action: "payment_info_requested",
+        className: "primary-action",
+        disabled: false,
+      };
+    }
+
     return {
-      title: "Payment info email",
-      copy: "All items are evaluated and the quote is unchanged. Send the customer an email asking for payout information.",
-      label: "Send payment info email",
-      status: "Payment Info Requested",
+      title: "Verified quote email",
+      copy: paymentMethod === "store_credit"
+        ? "All items are evaluated and the quote is unchanged. Send confirmation that store credit will be issued, then move accepted items to payout."
+        : "All items are evaluated and the quote is unchanged. Send confirmation that check payment will be issued, then move accepted items to payout.",
+      label: "Send verified quote email",
+      status: "Customer Accepted Item",
       action: "payment_info_requested",
       className: "primary-action",
       disabled: false,
@@ -687,6 +707,27 @@ function orderQuoteUnchanged(order) {
     const final = numberOrNull(fields["Final Offer"]) ?? original;
     return final === original;
   });
+}
+
+function orderPaymentMethod(order) {
+  const value = order.items
+    .map((item) => item.fields?.["Payment Method"] || "")
+    .find(Boolean) || "";
+  return normalizePaymentMethod(value);
+}
+
+function normalizePaymentMethod(value = "") {
+  const method = String(value || "").toLowerCase();
+  if (method.includes("bank") || method.includes("ach")) return "bank_transfer";
+  if (method.includes("store")) return "store_credit";
+  return "check";
+}
+
+function paymentMethodLabel(value = "") {
+  const method = normalizePaymentMethod(value);
+  if (method === "bank_transfer") return "Bank transfer";
+  if (method === "store_credit") return "Store credit";
+  return "Check";
 }
 
 function renderStaffActions(record, parsed) {
@@ -954,6 +995,7 @@ async function handleOrderAction(order, status, action = "", triggerButton = nul
         recordId: record.id,
         status,
         action,
+        paymentMethod: orderPaymentMethod(order),
         staffNotes: appendOrderNote(record.fields?.["Staff Notes"], status),
         notifyCustomer: false,
       }));
@@ -963,6 +1005,7 @@ async function handleOrderAction(order, status, action = "", triggerButton = nul
         recordId: updatedRecords[0].id,
         status,
         action,
+        paymentMethod: orderPaymentMethod(order),
         staffNotes: appendOrderNote(updatedRecords[0].fields?.["Staff Notes"], status),
         notifyCustomer: true,
       });
@@ -987,7 +1030,7 @@ async function updateRecord(body) {
     if (body.status) fields.Status = body.status;
     if (body.finalOffer !== undefined && body.finalOffer !== null && body.finalOffer !== "") fields["Final Offer"] = Number(body.finalOffer);
     if (body.serialNumber !== undefined) fields["Serial Number"] = body.serialNumber;
-    if (body.paymentMethod) fields["Payment Method"] = body.paymentMethod === "bank_transfer" ? "Bank transfer" : "Check";
+    if (body.paymentMethod) fields["Payment Method"] = paymentMethodLabel(body.paymentMethod);
     if (body.staffNotes) fields["Staff Notes"] = body.staffNotes;
     if (body.declineReason) fields["Decline Reason"] = body.declineReason;
     if (body.action === "payment_sent") fields["Payment Date"] = new Date().toISOString().slice(0, 10);
