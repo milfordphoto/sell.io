@@ -750,7 +750,17 @@ function renderStaffActions(record, parsed) {
 function staffActionsFor(record, parsed) {
   const status = recordStatusText(record).toLowerCase();
   const decision = parsed.decision || "pending";
-  if (!parsed.received && !status.includes("received") && !status.includes("inspection") && !status.includes("evaluated") && !status.includes("final")) {
+  const hasMovedBeyondArrival = status.includes("received")
+    || status.includes("inspection")
+    || status.includes("evaluated")
+    || status.includes("final")
+    || status.includes("accepted item")
+    || status.includes("customer accepted")
+    || status.includes("payment")
+    || status.includes("return")
+    || status.includes("items shipped to customer")
+    || status.includes("returned to seller");
+  if (!parsed.received && !hasMovedBeyondArrival) {
     return {
       title: "Next step: receive this item",
       copy: "Confirm this item arrived, enter the serial number, then continue intake.",
