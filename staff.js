@@ -430,7 +430,7 @@ function renderDetail() {
         <div class="staff-offer-box">
           <span>Item quote</span>
           <strong>$${formatMoney(finalOffer)}</strong>
-          <small>${escapeHtml(fields.Status || "New")}</small>
+          <small>${escapeHtml(recordStatusText(record) || "New")}</small>
         </div>
       </header>
 
@@ -629,7 +629,7 @@ function renderOrderDecisionPanel(order) {
 }
 
 function orderEmailState(order, ready, evaluated) {
-  const statuses = order.items.map((item) => String(item.fields?.Status || "").toLowerCase());
+  const statuses = order.items.map((item) => recordStatusText(item).toLowerCase());
   const sent = statuses.some((status) => status.includes("final quote sent") || status.includes("payment info requested"));
   const unchanged = orderQuoteUnchanged(order);
 
@@ -707,7 +707,7 @@ function renderStaffActions(record, parsed) {
 }
 
 function staffActionsFor(record, parsed) {
-  const status = String(record.fields?.Status || "").toLowerCase();
+  const status = recordStatusText(record).toLowerCase();
   const decision = parsed.decision || "pending";
   if (!parsed.received && !status.includes("received") && !status.includes("inspection") && !status.includes("evaluated") && !status.includes("final")) {
     return {
@@ -891,6 +891,7 @@ async function handleStaffAction(record, accessories, action, buttons) {
     recordId: record.id,
     status: statusByAction[action],
     finalOffer,
+    serialNumber: review.serialNumber,
     staffNotes: buildStaffNotes(review, action, finalOffer),
     notifyCustomer: action === "payment" || action === "return",
   };
@@ -973,6 +974,7 @@ async function updateRecord(body) {
     const fields = { ...current.fields };
     if (body.status) fields.Status = body.status;
     if (body.finalOffer !== undefined && body.finalOffer !== null && body.finalOffer !== "") fields["Final Offer"] = Number(body.finalOffer);
+    if (body.serialNumber !== undefined) fields["Serial Number"] = body.serialNumber;
     if (body.paymentMethod) fields["Payment Method"] = body.paymentMethod === "bank_transfer" ? "Bank transfer" : "Check";
     if (body.staffNotes) fields["Staff Notes"] = body.staffNotes;
     if (body.declineReason) fields["Decline Reason"] = body.declineReason;
@@ -1103,7 +1105,7 @@ function parseStaffNotes(notes = "") {
 }
 
 function workflowState(order) {
-  const statuses = order.items.map((item) => String(item.fields?.Status || "").toLowerCase());
+  const statuses = order.items.map((item) => recordStatusText(item).toLowerCase());
   const completed = new Set(["initial"]);
   if (statuses.some((status) => status.includes("label") || status.includes("accepted") || status.includes("shipped"))) completed.add("shipped");
   if (statuses.some((status) => status.includes("received") || status.includes("inspection") || status.includes("evaluated"))) completed.add("received");
@@ -1162,7 +1164,7 @@ function normalizeGroupValue(value) {
 }
 
 function itemStatusClass(record) {
-  const status = String(record.fields?.Status || "").toLowerCase();
+  const status = recordStatusText(record).toLowerCase();
   if (status.includes("return") || status.includes("declined")) return "is-return";
   if (status.includes("evaluated") || status.includes("final") || status.includes("accepted item") || status.includes("payment")) return "is-evaluated";
   if (status.includes("received") || status.includes("inspection")) return "is-progress";
@@ -1267,10 +1269,16 @@ function orderMatchesSearch(order, query) {
         fields.Category,
         fields.Condition,
         fields.Status,
+        fields["Workflow Step"],
       ];
     }),
   ].map((value) => normalizeGroupValue(value)).join(" ");
   return haystack.includes(normalized);
+}
+
+function recordStatusText(record) {
+  const fields = record.fields || {};
+  return String(fields["Workflow Step"] || fields.Status || "");
 }
 
 function syncSelectedItem() {
