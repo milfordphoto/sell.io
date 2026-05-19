@@ -427,6 +427,7 @@ function renderDetail() {
   const fields = record.fields || {};
   const accessories = accessoryListFor(fields);
   const parsed = parseStaffNotes(fields["Staff Notes"]);
+  const pricingDetails = staffPricingDetails(fields);
   const baseOffer = numberOrNull(fields["Milford Offer"]) ?? 0;
   const finalOffer = numberOrNull(fields["Final Offer"]) ?? calculateOffer(fields, parsed, accessories, baseOffer);
 
@@ -461,7 +462,8 @@ function renderDetail() {
           <h3>Original quote</h3>
           <p>Item cash offer: <strong>$${formatMoney(baseOffer)}</strong></p>
           <p>Order total: <strong>$${formatMoney(order.totals.original)}</strong></p>
-          <p>eBay median: ${moneyOrDash(fields["eBay Median Price"])}</p>
+          <p>Market median: ${moneyOrDash(fields["eBay Median Price"])}</p>
+          ${pricingDetails.map((line) => `<p>${escapeHtml(line)}</p>`).join("")}
           <p>Expires: ${formatDate(fields["Quote Expires"]) || "-"}</p>
         </section>
         <section>
@@ -1308,6 +1310,50 @@ function parseStaffNotes(notes = "") {
   });
 
   return parsed;
+}
+
+function staffPricingDetails(fields) {
+  const notes = fields["Seller Notes"] || "";
+  const source = sellerNoteValue(notes, "Pricing source");
+  const confidence = sellerNoteValue(notes, "Pricing confidence");
+  const sampleSize = sellerNoteValue(notes, "Sample size");
+  const lines = [];
+  if (confidence) lines.push(`Pricing confidence: ${staffConfidenceLabel(confidence, sampleSize)}`);
+  if (source) lines.push(`Pricing source: ${staffPricingSourceLabel(source)}`);
+  return lines;
+}
+
+function sellerNoteValue(notes, label) {
+  const prefix = `${label}:`;
+  return String(notes || "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .find((line) => line.toLowerCase().startsWith(prefix.toLowerCase()))
+    ?.slice(prefix.length)
+    .trim() || "";
+}
+
+function staffConfidenceLabel(confidence, sampleSize) {
+  const normalized = normalizeGroupValue(confidence);
+  const samples = Number(sampleSize);
+  const sampleCopy = Number.isFinite(samples) && samples > 0 ? ` (${samples} comps)` : "";
+  if (normalized === "high") return `High${sampleCopy}`;
+  if (normalized === "medium") return `Medium${sampleCopy}`;
+  if (normalized === "low") return `Limited${sampleCopy}`;
+  if (normalized === "stub") return `Demo estimate${sampleCopy}`;
+  if (normalized === "manual") return "Manual review";
+  if (normalized === "unavailable") return "Unavailable";
+  return `${confidence}${sampleCopy}`;
+}
+
+function staffPricingSourceLabel(source) {
+  const normalized = normalizeGroupValue(source);
+  if (normalized.includes("completed") || normalized.includes("sold")) return "Completed sold marketplace data";
+  if (normalized.includes("browse") || normalized.includes("active")) return "Current listed marketplace fallback";
+  if (normalized.includes("stub")) return "Demo pricing fallback";
+  if (normalized.includes("manual")) return "Manual review";
+  if (normalized.includes("missing") || normalized.includes("unavailable")) return "Pricing unavailable";
+  return source;
 }
 
 function workflowState(order) {

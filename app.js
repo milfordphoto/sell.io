@@ -933,8 +933,8 @@ function formatItemOffer(item) {
 function renderQuoteItem(item) {
   const statusClass = item.status === "quoted" ? "quoted" : item.status === "declined" ? "declined" : "review";
   const price = formatItemOffer(item);
-  const credit = item.storeCreditAmount ? `${money.format(item.storeCreditAmount)} store credit` : item.message || "Staff follow-up needed";
-  const marketCopy = item.marketPrice ? `Market estimate: ${money.format(item.marketPrice)}` : item.message || "";
+  const credit = item.storeCreditAmount ? `${money.format(item.storeCreditAmount)} store credit` : "Milford Photo follow-up";
+  const pricingLines = customerPricingLines(item);
 
   return `
     <article class="quote-item">
@@ -945,7 +945,7 @@ function renderQuoteItem(item) {
         </div>
         <div class="quote-meta">
           ${escapeHtml(CONDITION_LABELS[item.condition] || item.condition)} · ${escapeHtml(item.category)}
-          ${marketCopy ? `<br />${escapeHtml(marketCopy)}` : ""}
+          ${pricingLines.map((line) => `<br />${escapeHtml(line)}`).join("")}
         </div>
       </div>
       <div class="quote-price">
@@ -954,6 +954,33 @@ function renderQuoteItem(item) {
       </div>
     </article>
   `;
+}
+
+function customerPricingLines(item) {
+  if (item.status === "declined") {
+    return [item.message || "Milford Photo is not currently buying this item online."];
+  }
+  if (item.status !== "quoted" && item.status !== "high_value_review") {
+    return [
+      "Needs Milford Photo review before a final quote.",
+      "We will email a full quote, usually within 1 business day.",
+    ];
+  }
+
+  const lines = [];
+  if (item.marketPrice) lines.push(`Used-market estimate: ${money.format(item.marketPrice)}`);
+  const confidence = pricingConfidenceLabel(item.confidence, item.sampleSize);
+  if (confidence) lines.push(confidence);
+  return lines;
+}
+
+function pricingConfidenceLabel(confidence, sampleSize) {
+  const sampleText = sampleSize ? ` from ${sampleSize} comparable listings` : "";
+  if (confidence === "high") return `Strong pricing match${sampleText}.`;
+  if (confidence === "medium") return `Good pricing match${sampleText}.`;
+  if (confidence === "low") return `Limited pricing data${sampleText}; Milford Photo will verify after arrival.`;
+  if (confidence === "stub") return "Demo pricing only; not a live market quote.";
+  return "";
 }
 
 function renderSummary() {
