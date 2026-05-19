@@ -1201,7 +1201,13 @@ function workflowState(order) {
   if (statuses.some((status) => status.includes("final quote"))) completed.add("final");
   if (statuses.some((status) => status.includes("accepted item") || status.includes("return item") || status.includes("customer accepted") || status.includes("payment info requested"))) completed.add("customer");
   if (statuses.some((status) => status.includes("payment sent"))) completed.add("payout");
-  if (statuses.some((status) => status.includes("items shipped to customer") || status.includes("returned to seller"))) completed.add("return");
+  const hasPendingReturn = statuses.some((status) => status.includes("return item") && !status.includes("items shipped to customer") && !status.includes("returned to seller"));
+  if (
+    statuses.some((status) => status.includes("items shipped to customer") || status.includes("returned to seller")) ||
+    (statuses.some((status) => status.includes("payment sent")) && !hasPendingReturn)
+  ) {
+    completed.add("return");
+  }
 
   completePriorWorkflowSteps(completed);
 
