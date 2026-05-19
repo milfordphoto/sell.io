@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Milford Photo Staff Testing Guide</title>
+    <meta name="description" content="Step-by-step testing guide for the Milford Photo used gear prototype." />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="mp-used-app">
+      <section class="shell guide-shell" aria-labelledby="guide-title">
+        <header class="hero">
+          <p class="brand-line">Milford Photo Used Department</p>
+          <h1 id="guide-title">Staff testing guide</h1>
+          <p class="intro">Use this checklist to test the used gear quote app and staff intake dashboard before real customer launch.</p>
+        </header>
+
+        <section class="guide-panel">
+          <h2>Before You Start</h2>
+          <ul>
+            <li>Use fake customer names, phone numbers, and addresses.</li>
+            <li>Do not ship real gear from a test label.</li>
+            <li>Do not enter real bank information during prototype testing.</li>
+            <li>If anything is confusing, use the staff dashboard feedback box and explain what happened.</li>
+          </ul>
+        </section>
+
+        <section class="guide-panel">
+          <h2>Customer Quote Test</h2>
+          <ol>
+            <li>Open the customer app at <a href="https://milfordphoto.com/sell" target="_blank" rel="noreferrer">milfordphoto.com/sell</a>.</li>
+            <li>Add one common item, such as a Canon EOS R5, Nikon Zf, or Sony A7 IV.</li>
+            <li>Choose a condition and review the cash offer, store credit offer, and free shipping status.</li>
+            <li>Add a second item so you can test a multi-item order.</li>
+            <li>Continue to details, choose mail-in or in-store dropoff, and submit the quote.</li>
+            <li>Confirm the done screen explains the correct next step.</li>
+          </ol>
+        </section>
+
+        <section class="guide-panel">
+          <h2>Staff Intake Test</h2>
+          <ol>
+            <li>Open the protected staff dashboard.</li>
+            <li>Sign in with the test staff login.</li>
+            <li>Search for the test customer name, email, phone, or quote number.</li>
+            <li>Use the order tabs to switch between each piece of gear in the order.</li>
+            <li>For each item, mark it received and enter a fake serial number.</li>
+            <li>Verify included accessories and condition.</li>
+            <li>Save the item evaluation, then move to the next item.</li>
+            <li>When every item is evaluated, send the final quote or payment-info email.</li>
+          </ol>
+        </section>
+
+        <section class="guide-panel">
+          <h2>Customer Decision Test</h2>
+          <ol>
+            <li>For an unchanged quote, confirm the staff app sends the correct payment or store-credit next step.</li>
+            <li>For an adjusted quote, open the final quote link and accept one item.</li>
+            <li>Request return on another item if the order has multiple pieces of gear.</li>
+            <li>Return to the staff dashboard and confirm the order moves to payout or return shipment.</li>
+            <li>Mark payment sent or return shipped only after the correct customer decision is recorded.</li>
+          </ol>
+        </section>
+
+        <section class="guide-panel">
+          <h2>What To Report</h2>
+          <ul>
+            <li>Any button where the next step is not obvious.</li>
+            <li>Any quote that seems wildly too high or too low.</li>
+            <li>Any missing camera, lens, mount, accessory, or condition option.</li>
+            <li>Any customer email or screen that does not clearly explain what happens next.</li>
+            <li>Any page that is hard to use on an iPad or phone.</li>
+          </ul>
+        </section>
+
+        <section class="guide-panel guide-links">
+          <a class="primary-action" href="https://milford-used-gear-system-mvp.milfordphoto.workers.dev/staff">Open staff dashboard</a>
+          <a class="secondary-action" href="https://milfordphoto.com/sell">Open customer quote page</a>
+        </section>
+      </section>
+    </main>
+  </body>
+</html>
