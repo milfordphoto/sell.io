@@ -1394,6 +1394,7 @@ function orderMatchesSearch(order, query) {
 }
 
 function isTestOrder(order) {
+  if (order.synthetic && order.items.length > 1) return true;
   const haystack = [
     order.id,
     order.quote,
