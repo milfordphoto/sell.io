@@ -572,6 +572,7 @@ function renderDetail() {
         ${renderOrderDecisionPanel(order)}
         ${renderStaffActions(record, parsed)}
       </form>
+      ${renderStaffFeedbackPanel(order, record)}
     </article>
   `;
 
@@ -764,6 +765,36 @@ function renderStaffActions(record, parsed) {
   `;
 }
 
+function renderStaffFeedbackPanel(order, record) {
+  return `
+    <section class="staff-feedback-panel">
+      <div>
+        <h3>Report testing feedback</h3>
+        <p>Use this during store testing for confusing steps, bugs, pricing issues, missing gear details, or customer-copy notes.</p>
+      </div>
+      <form id="staff-feedback-form" class="staff-feedback-form">
+        <label class="field">
+          <span>Feedback type</span>
+          <select id="staff-feedback-category">
+            <option value="Usability issue">Usability issue</option>
+            <option value="Bug">Bug</option>
+            <option value="Pricing issue">Pricing issue</option>
+            <option value="Missing gear/model">Missing gear/model</option>
+            <option value="Customer copy">Customer copy</option>
+            <option value="Workflow question">Workflow question</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>What should we fix or review?</span>
+          <textarea id="staff-feedback-text" rows="4" placeholder="Example: This order is ready for payout, but I was not sure which button to press."></textarea>
+        </label>
+        <button class="secondary-action" type="submit" id="staff-feedback-submit">Send feedback</button>
+        <p class="staff-feedback-note">Attached to ${escapeHtml(record.fields?.["Quote Reference"] || order.quote)}.</p>
+      </form>
+    </section>
+  `;
+}
+
 function staffActionsFor(record, parsed) {
   const status = recordStatusText(record).toLowerCase();
   const decision = parsed.decision || "pending";
@@ -950,6 +981,12 @@ function bindDetail(record, accessories) {
       sendFinalQuoteButton,
     );
   });
+
+  const feedbackForm = document.getElementById("staff-feedback-form");
+  feedbackForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    await handleStaffFeedback(selectedOrder(), record);
+  });
 }
 
 function updateSuggestedOffer(record, accessories) {
@@ -1101,6 +1138,70 @@ async function updateRecord(body) {
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.error || `Request failed with ${response.status}`);
   return data.record || { id: body.recordId, fields: body };
+}
+
+async function handleStaffFeedback(order, record) {
+  const feedbackInput = document.getElementById("staff-feedback-text");
+  const categoryInput = document.getElementById("staff-feedback-category");
+  const button = document.getElementById("staff-feedback-submit");
+  const feedback = feedbackInput?.value.trim() || "";
+  if (!feedback) {
+    setStatus("Add a feedback note before sending.", true);
+    feedbackInput?.focus();
+    return;
+  }
+
+  const body = {
+    category: categoryInput?.value || "Usability issue",
+    feedback,
+    quoteRef: record.fields?.["Quote Reference"] || order?.quote || "",
+    orderId: order?.id || "",
+    recordId: record.id || "",
+    itemId: record.id || "",
+    pageUrl: window.location.href,
+  };
+
+  button.disabled = true;
+  setStatus("Sending staff feedback...");
+  try {
+    if (demoModeAllowed() && !SECURE_STAFF_MODE && !CONFIG.staffSecret) {
+      persistDemoFeedback(body);
+      feedbackInput.value = "";
+      setStatus("Feedback saved locally for this demo session.");
+      return;
+    }
+
+    const response = await fetch(`${API_BASE}/api/staff/feedback`, {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        ...staffHeaders(),
+      },
+      body: JSON.stringify(body),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || `Request failed with ${response.status}`);
+    feedbackInput.value = "";
+    setStatus("Feedback sent.");
+  } catch (error) {
+    setStatus(error.message || "Unable to send feedback.", true);
+  } finally {
+    button.disabled = false;
+  }
+}
+
+function persistDemoFeedback(feedback) {
+  const key = "mpUsedGearStaffFeedback";
+  let items = [];
+  try {
+    items = JSON.parse(localStorage.getItem(key) || "[]");
+    if (!Array.isArray(items)) items = [];
+  } catch {
+    items = [];
+  }
+  items.unshift({ ...feedback, submittedAt: new Date().toISOString() });
+  localStorage.setItem(key, JSON.stringify(items.slice(0, 50)));
 }
 
 function persistDemoRecord(updated) {

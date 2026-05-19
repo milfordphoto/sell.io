@@ -1623,6 +1623,40 @@ fieldset {
   color: var(--muted);
 }
 
+.staff-feedback-panel {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+  border: 1px solid rgba(35, 77, 125, 0.18);
+  border-radius: var(--radius);
+  padding: 18px;
+  background: #ffffff;
+}
+
+.staff-feedback-panel h3,
+.staff-feedback-panel p {
+  margin: 0;
+}
+
+.staff-feedback-panel p {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.staff-feedback-form {
+  display: grid;
+  gap: 12px;
+}
+
+.staff-feedback-form .secondary-action {
+  width: fit-content;
+}
+
+.staff-feedback-note {
+  font-size: 0.86rem;
+  font-weight: 750;
+}
+
 .final-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 340px;
