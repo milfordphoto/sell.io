@@ -316,9 +316,9 @@ function clearGearSearch() {
 }
 
 function updateManualFields() {
-  const needsManualText = els.brand.value === MANUAL_BRAND || els.model.value === MANUAL_MODEL;
+  const needsManualText = els.category.value === MANUAL_CATEGORY || els.brand.value === MANUAL_BRAND || els.model.value === MANUAL_MODEL;
   els.manualFields.hidden = !needsManualText;
-  els.manualBrand.required = els.brand.value === MANUAL_BRAND;
+  els.manualBrand.required = els.category.value === MANUAL_CATEGORY || els.brand.value === MANUAL_BRAND;
   els.manualModel.required = needsManualText;
   resizeParentFrame();
 }
@@ -630,7 +630,7 @@ function readItemForm(options = {}) {
       ? safeCatalogItem(selectedBrand, selectedCategory, selectedModel)
       : null;
 
-  const brand = selectedBrand === MANUAL_BRAND ? els.manualBrand.value.trim() : selectedBrand;
+  const brand = selectedCategory === MANUAL_CATEGORY || selectedBrand === MANUAL_BRAND ? els.manualBrand.value.trim() : selectedBrand;
   let model = selectedModel === MANUAL_MODEL || (!selectedModel && manualModel) ? manualModel : displayModelName(selectedModel, selectedCategory);
   const condition = selectedRadioValue("condition");
   const accessories = includedItemsForCategory(selectedCategory)
@@ -646,14 +646,15 @@ function readItemForm(options = {}) {
     .filter(Boolean)
     .join("\n");
 
-  const missingModel = !selectedModel && !manualModel;
-  if (!selectedCategory || !selectedBrand || missingModel || !brand || !model || model === MANUAL_MODEL || (needsLensMount() && !mount)) {
+  const missingBrand = selectedCategory !== MANUAL_CATEGORY && !selectedBrand;
+  const missingModel = selectedCategory !== MANUAL_CATEGORY && !selectedModel && !manualModel;
+  if (!selectedCategory || missingBrand || missingModel || !brand || !model || model === MANUAL_MODEL || (needsLensMount() && !mount)) {
     if (!options.silent) {
       const message = !selectedCategory
         ? "Please select a category before adding the item."
-        : !selectedBrand
+        : missingBrand
           ? "Please select a brand before adding the item."
-          : !selectedModel
+          : missingModel
             ? "Please select a model before adding the item."
             : needsLensMount() && !mount
               ? "Please select the lens mount before adding the item."
@@ -807,7 +808,7 @@ function saveDemoQueueSubmission(payload, delivery) {
   const demoLabelEligible = delivery === "ship" && quote.routing.freeLabelEligible;
   const demoLabelUrl = "https://example.com/milford-photo-demo-shipping-label.pdf";
   const demoFollowUpCopy = quote.routing.requiresStaffBeforeLabel
-    ? "Milford Photo will email you within 1 business day with your quote and shipping information. After the gear arrives, staff will inspect it, confirm or adjust the offer if needed, and send payment after you accept the final amount."
+    ? "Milford Photo will review this submission and email a full quote with shipping instructions, usually within 1 business day."
     : "Demo mode: this test quote was added to the staff dashboard queue in this browser. No email, shipping label, or Airtable record was created.";
   const records = quote.items.map((item, index) => ({
     id: `demo-live-${quoteRef}-${index}`,
@@ -1014,19 +1015,33 @@ function renderSummary() {
 
 function renderDone(result) {
   const instantLabelFlow = isInstantLabelFlow();
+  const delivery = selectedRadioValue("delivery") || "ship";
+  const requiresStaffBeforeLabel = Boolean(state.quote?.routing?.requiresStaffBeforeLabel);
+  const freeLabelEligible = Boolean(state.quote?.routing?.freeLabelEligible);
   els.doneTitle.textContent = instantLabelFlow ? `Offer ${result.quoteRef} accepted` : `Quote ${result.quoteRef} submitted`;
   if (result.labelUrl) {
     els.doneCopy.textContent =
-      "Your prepaid shipping label is ready. Print the label from this page, pack your gear securely, and drop it off with the carrier shown on the label. We also emailed the label and packing instructions to you for reference.";
+      "Your prepaid shipping label is ready now. Print the label from this page, pack your gear securely, and drop it off with the carrier shown on the label. We also emailed the label, item list, and packing instructions to you for reference.";
     els.labelLink.href = result.labelUrl;
     els.labelLink.textContent = "Print / download shipping label";
     els.labelLink.hidden = false;
   } else {
-    els.doneCopy.textContent =
-      (instantLabelFlow
-        ? "Your instant offer was accepted. Milford Photo will email the prepaid shipping label and packing instructions as soon as the label is ready."
-        : result.nextStep ||
-          "Milford Photo will email you within 1 business day with your quote and shipping information. After the gear arrives, staff will inspect it, confirm or adjust the offer if needed, and send payment after you accept the final amount.");
+    if (instantLabelFlow) {
+      els.doneCopy.textContent =
+        "Your instant offer was accepted. Milford Photo will email the prepaid shipping label and packing instructions as soon as the label is generated. No quote review is needed before shipping unless staff contacts you.";
+    } else if (delivery === "dropoff") {
+      els.doneCopy.textContent =
+        "Your quote is saved for in-store drop-off. Bring your gear and quote number to Milford Photo. Staff will inspect the gear, verify accessories, record serial numbers, and confirm the final payout.";
+    } else if (requiresStaffBeforeLabel) {
+      els.doneCopy.textContent =
+        "Milford Photo will review this submission and email a full quote with shipping instructions, usually within 1 business day. Photos and serial numbers can be handled after the gear arrives unless staff asks for them first.";
+    } else if (!freeLabelEligible && state.quote?.totals?.cash > 0) {
+      els.doneCopy.textContent =
+        "Your quote is saved. This order can still be mailed in, but free prepaid shipping does not apply automatically. Milford Photo will email shipping options within 1 business day, or you can bring the gear to the store.";
+    } else {
+      els.doneCopy.textContent =
+        result.nextStep || "Milford Photo will email you within 1 business day with the next step for this quote.";
+    }
     els.labelLink.hidden = true;
   }
   renderSummary();
@@ -1045,13 +1060,13 @@ function updateDeliveryFields() {
   els.zip.required = addressRequired;
 
   if (delivery === "dropoff") {
-    els.mailCopy.textContent = "Use a prepaid label when the quote qualifies.";
+    els.mailCopy.textContent = "Bring your gear and quote number to Milford Photo for inspection.";
   } else if (freeLabel) {
     els.mailCopy.textContent = "Accept the instant offer and get a prepaid label on the next screen. A copy will also be emailed to you.";
   } else if (state.quote?.routing?.requiresStaffBeforeLabel) {
-    els.mailCopy.textContent = "Milford Photo will review before sending shipping instructions.";
+    els.mailCopy.textContent = "Milford Photo will review and email a full quote with shipping instructions, usually within 1 business day.";
   } else {
-    els.mailCopy.textContent = "This quote can be dropped off or shipped after Milford Photo follows up.";
+    els.mailCopy.textContent = "You can still mail this in. Milford Photo will email shipping options within 1 business day.";
   }
 
   if (state.quote?.totals?.cash > 0) {
