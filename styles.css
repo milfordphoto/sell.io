@@ -1019,6 +1019,25 @@ fieldset {
   font-weight: 750;
 }
 
+.staff-toggle-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border-bottom: 1px solid var(--line);
+  background: #ffffff;
+  color: var(--ink);
+  font-size: 0.9rem;
+  font-weight: 850;
+}
+
+.staff-toggle-row input {
+  width: auto;
+  min-height: auto;
+  accent-color: var(--mp-red);
+}
+
 .staff-record-list {
   display: grid;
   min-width: 0;
@@ -1047,12 +1066,41 @@ fieldset {
   background: rgba(213, 33, 39, 0.04);
 }
 
+.staff-record-card.is-test-order {
+  background: #fffdf3;
+}
+
 .staff-card-top {
   display: flex;
   min-width: 0;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+}
+
+.staff-card-badges {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.staff-demo-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: #fff1b8;
+  color: #6a4b00;
+  padding: 5px 9px;
+  font-size: 0.74rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.staff-demo-pill-inline {
+  margin-left: 8px;
+  vertical-align: middle;
 }
 
 .staff-card-title {
@@ -1076,6 +1124,17 @@ fieldset {
   min-width: 0;
   color: var(--muted);
   font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+
+.staff-card-action {
+  min-width: 0;
+  border-left: 3px solid var(--mp-red);
+  padding-left: 9px;
+  color: var(--ink-soft);
+  font-size: 0.86rem;
+  font-weight: 800;
+  line-height: 1.35;
   overflow-wrap: anywhere;
 }
 
@@ -1134,6 +1193,12 @@ fieldset {
   margin: 0;
   color: var(--muted);
   overflow-wrap: anywhere;
+}
+
+.staff-order-header .staff-next-action-line {
+  margin-top: 8px;
+  color: var(--ink);
+  font-weight: 850;
 }
 
 .staff-order-total {

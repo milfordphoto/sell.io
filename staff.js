@@ -51,6 +51,7 @@ const refreshButton = document.getElementById("refresh-records");
 const searchInput = document.getElementById("staff-search");
 const filterSelect = document.getElementById("staff-filter");
 const sortSelect = document.getElementById("staff-sort");
+const hideTestOrdersInput = document.getElementById("hide-test-orders");
 const loginEl = document.getElementById("staff-login");
 const statusEl = document.getElementById("staff-status");
 const countEl = document.getElementById("record-count");
@@ -65,6 +66,7 @@ let selectedItemId = null;
 let activeFilter = "all";
 let activeSort = "first_received";
 let searchQuery = "";
+let hideTestOrders = true;
 
 function resolveApiBase() {
   if (CONFIG.apiBase) return CONFIG.apiBase.replace(/\/$/, "");
@@ -98,6 +100,7 @@ async function loadRecords() {
     records = (data.records || []).sort(sortNewestFirst);
     orders = buildOrders(records);
     if (!selectedOrderId && orders.length) selectedOrderId = orders[0].id;
+    syncSelectedOrderToQueue();
     syncSelectedItem();
     loginEl.hidden = true;
     workspaceEl.hidden = false;
@@ -109,6 +112,7 @@ async function loadRecords() {
       records = demoRecords().sort(sortNewestFirst);
       orders = buildOrders(records);
       selectedOrderId = orders[0]?.id || null;
+      syncSelectedOrderToQueue();
       syncSelectedItem();
       loginEl.hidden = true;
       workspaceEl.hidden = false;
@@ -353,15 +357,20 @@ function buildOrders(items) {
 
 function renderQueue() {
   const filtered = filterOrders(orders, activeFilter);
+  const visibleTestCount = orders.filter((order) => isTestOrder(order) && orderMatchesCurrentFilterSearch(order, activeFilter)).length;
   const filterLabel = QUEUE_FILTERS[activeFilter]?.label || activeFilter;
   const searched = searchQuery ? ` matching "${searchQuery}"` : "";
   const countLabel = activeFilter === "all"
     ? `${filtered.length} order${filtered.length === 1 ? "" : "s"}`
     : `${filtered.length} ${filterLabel.toLowerCase()} order${filtered.length === 1 ? "" : "s"}`;
-  countEl.textContent = `${countLabel}${searched}`;
+  const hiddenLabel = hideTestOrders && visibleTestCount ? ` · ${visibleTestCount} test/demo hidden` : "";
+  countEl.textContent = `${countLabel}${searched}${hiddenLabel}`;
 
   if (!filtered.length) {
-    listEl.innerHTML = `<div class="staff-empty-card">${escapeHtml(QUEUE_FILTERS[activeFilter]?.empty || "No orders in this view.")}</div>`;
+    const emptyCopy = hideTestOrders && visibleTestCount
+      ? "Only test/demo orders match this view. Turn off Hide test/demo orders to see them."
+      : QUEUE_FILTERS[activeFilter]?.empty || "No orders in this view.";
+    listEl.innerHTML = `<div class="staff-empty-card">${escapeHtml(emptyCopy)}</div>`;
     return;
   }
 
@@ -381,16 +390,22 @@ function renderOrderCard(order) {
   const itemLabel = `${order.items.length} item${order.items.length === 1 ? "" : "s"}`;
   const total = order.totals.final || order.totals.original;
   const groupingNote = order.synthetic && order.items.length > 1 ? "Test grouped order" : "Order";
+  const testOrder = isTestOrder(order);
+  const actionSummary = orderActionSummary(order);
 
   return `
-    <button class="staff-record-card ${order.id === selectedOrderId ? "is-selected" : ""}" type="button" data-order-id="${escapeAttr(order.id)}">
+    <button class="staff-record-card ${order.id === selectedOrderId ? "is-selected" : ""} ${testOrder ? "is-test-order" : ""}" type="button" data-order-id="${escapeAttr(order.id)}">
       <span class="staff-card-top">
         <strong>${escapeHtml(order.customer)}</strong>
-        <span class="staff-status-pill">${escapeHtml(status)}</span>
+        <span class="staff-card-badges">
+          ${testOrder ? `<span class="staff-demo-pill">Test/demo</span>` : ""}
+          <span class="staff-status-pill">${escapeHtml(status)}</span>
+        </span>
       </span>
       <span class="staff-card-title">${escapeHtml(order.quote)}</span>
       <span class="staff-card-gear">${escapeHtml(order.items.map((item) => shortGearTitle(item.fields || {})).join(", "))}</span>
       <span class="staff-card-meta">${escapeHtml(groupingNote)} - ${escapeHtml(itemLabel)} - $${formatMoney(total)}</span>
+      <span class="staff-card-action">${escapeHtml(actionSummary)}</span>
     </button>
   `;
 }
@@ -564,12 +579,14 @@ function renderDetail() {
 }
 
 function renderOrderHeader(order) {
+  const testOrder = isTestOrder(order);
   return `
     <section class="staff-order-header">
       <div>
         <p class="brand-line">Order ${escapeHtml(order.quote)}</p>
-        <h2>${escapeHtml(order.customer)}</h2>
+        <h2>${escapeHtml(order.customer)}${testOrder ? ` <span class="staff-demo-pill staff-demo-pill-inline">Test/demo</span>` : ""}</h2>
         <p>${escapeHtml(order.items.length)} item${order.items.length === 1 ? "" : "s"} in this order${order.synthetic && order.items.length > 1 ? " - grouped for testing from same customer/address/time window" : ""}</p>
+        <p class="staff-next-action-line">Next action: ${escapeHtml(orderActionSummary(order))}</p>
       </div>
       <div class="staff-order-total">
         <span>Final order total</span>
@@ -1306,9 +1323,15 @@ function accessoryListFor(fields) {
 
 function filterOrders(items, filter) {
   return sortOrders(items.filter((order) => {
-    const matchesFilter = filter === "all" || order.workflow.current.key === filter;
-    return matchesFilter && orderMatchesSearch(order, searchQuery);
+    const matchesFilter = orderMatchesCurrentFilterSearch(order, filter);
+    const matchesTestVisibility = !hideTestOrders || !isTestOrder(order);
+    return matchesFilter && matchesTestVisibility;
   }), activeSort);
+}
+
+function orderMatchesCurrentFilterSearch(order, filter) {
+  const matchesFilter = filter === "all" || order.workflow.current.key === filter;
+  return matchesFilter && orderMatchesSearch(order, searchQuery);
 }
 
 function sortOrders(items, sortKey) {
@@ -1370,6 +1393,48 @@ function orderMatchesSearch(order, query) {
   return haystack.includes(normalized);
 }
 
+function isTestOrder(order) {
+  const haystack = [
+    order.id,
+    order.quote,
+    ...order.quoteRefs,
+    order.customer,
+    order.email,
+    order.phone,
+    order.address,
+    ...order.items.flatMap((record) => {
+      const fields = record.fields || {};
+      return [
+        record.id,
+        fields.Source,
+        fields["Quote Reference"],
+        fields["Seller Name"],
+        fields["Seller Email"],
+        fields["Seller Phone"],
+        fields["Seller Notes"],
+        fields["Staff Notes"],
+        fields["Tracking Number"],
+      ];
+    }),
+  ].map((value) => normalizeGroupValue(value)).join(" ");
+
+  return /\b(codex|demo|test|prototype|please ignore|fake)\b/.test(haystack) || haystack.includes("+codex");
+}
+
+function orderActionSummary(order) {
+  if (order.workflow.isComplete) return "No action needed - order complete.";
+  const step = order.workflow.current.key;
+  if (step === "initial") return "Review quote routing before shipment or dropoff.";
+  if (step === "shipped") return "Wait for package/dropoff, then receive each item.";
+  if (step === "received") return "Inspect gear, verify accessories, enter serial numbers, and finish evaluation.";
+  if (step === "evaluated") return "Review final amounts and send the customer their final quote or payment instructions.";
+  if (step === "final") return "Send final quote email, then wait for customer decision.";
+  if (step === "customer") return "Waiting for customer to accept items or request returns.";
+  if (step === "payout") return "Issue payment or store credit for accepted items.";
+  if (step === "return") return "Ship return items back to the customer and mark complete.";
+  return "Review this order and choose the next staff action.";
+}
+
 function recordStatusText(record) {
   const fields = record.fields || {};
   return String(fields["Workflow Step"] || fields.Status || "");
@@ -1382,6 +1447,13 @@ function syncSelectedItem() {
     return;
   }
   if (!order.items.some((item) => item.id === selectedItemId)) selectedItemId = order.items[0]?.id || null;
+}
+
+function syncSelectedOrderToQueue() {
+  const filtered = filterOrders(orders, activeFilter);
+  if (!filtered.some((order) => order.id === selectedOrderId)) {
+    selectedOrderId = filtered[0]?.id || null;
+  }
 }
 
 function selectedOrder() {
@@ -1470,11 +1542,8 @@ loadButton.addEventListener("click", loadRecords);
 refreshButton.addEventListener("click", loadRecords);
 filterSelect.addEventListener("change", () => {
   activeFilter = filterSelect.value;
-  const filtered = filterOrders(orders, activeFilter);
-  if (!filtered.some((order) => order.id === selectedOrderId)) {
-    selectedOrderId = filtered[0]?.id || null;
-    syncSelectedItem();
-  }
+  syncSelectedOrderToQueue();
+  syncSelectedItem();
   renderQueue();
   renderDetail();
 });
@@ -1484,14 +1553,20 @@ sortSelect.addEventListener("change", () => {
 });
 searchInput.addEventListener("input", () => {
   searchQuery = searchInput.value.trim();
-  const filtered = filterOrders(orders, activeFilter);
-  if (!filtered.some((order) => order.id === selectedOrderId)) {
-    selectedOrderId = filtered[0]?.id || null;
-    syncSelectedItem();
-  }
+  syncSelectedOrderToQueue();
+  syncSelectedItem();
   renderQueue();
   renderDetail();
 });
+if (hideTestOrdersInput) {
+  hideTestOrdersInput.addEventListener("change", () => {
+    hideTestOrders = hideTestOrdersInput.checked;
+    syncSelectedOrderToQueue();
+    syncSelectedItem();
+    renderQueue();
+    renderDetail();
+  });
+}
 usernameInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter") passwordInput.focus();
 });
