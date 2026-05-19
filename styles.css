@@ -1046,6 +1046,12 @@ fieldset {
   accent-color: var(--mp-red);
 }
 
+.staff-small-action {
+  width: calc(100% - 24px);
+  min-height: 42px;
+  margin: 12px;
+}
+
 .staff-record-list {
   display: grid;
   min-width: 0;

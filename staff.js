@@ -52,6 +52,8 @@ const searchInput = document.getElementById("staff-search");
 const filterSelect = document.getElementById("staff-filter");
 const sortSelect = document.getElementById("staff-sort");
 const hideTestOrdersInput = document.getElementById("hide-test-orders");
+const testOnlyInput = document.getElementById("show-test-orders-only");
+const clearLocalDemoButton = document.getElementById("clear-local-demo-orders");
 const loginEl = document.getElementById("staff-login");
 const statusEl = document.getElementById("staff-status");
 const countEl = document.getElementById("record-count");
@@ -67,6 +69,7 @@ let activeFilter = "all";
 let activeSort = "first_received";
 let searchQuery = "";
 let hideTestOrders = true;
+let showTestOrdersOnly = false;
 const historyByQuote = new Map();
 
 function resolveApiBase() {
@@ -361,14 +364,18 @@ function renderQueue() {
   const visibleTestCount = orders.filter((order) => isTestOrder(order) && orderMatchesCurrentFilterSearch(order, activeFilter)).length;
   const filterLabel = QUEUE_FILTERS[activeFilter]?.label || activeFilter;
   const searched = searchQuery ? ` matching "${searchQuery}"` : "";
-  const countLabel = activeFilter === "all"
-    ? `${filtered.length} order${filtered.length === 1 ? "" : "s"}`
-    : `${filtered.length} ${filterLabel.toLowerCase()} order${filtered.length === 1 ? "" : "s"}`;
-  const hiddenLabel = hideTestOrders && visibleTestCount ? ` · ${visibleTestCount} test/demo hidden` : "";
+  const countLabel = showTestOrdersOnly
+    ? `${filtered.length} test/demo order${filtered.length === 1 ? "" : "s"}`
+    : activeFilter === "all"
+      ? `${filtered.length} order${filtered.length === 1 ? "" : "s"}`
+      : `${filtered.length} ${filterLabel.toLowerCase()} order${filtered.length === 1 ? "" : "s"}`;
+  const hiddenLabel = hideTestOrders && !showTestOrdersOnly && visibleTestCount ? ` · ${visibleTestCount} test/demo hidden` : "";
   countEl.textContent = `${countLabel}${searched}${hiddenLabel}`;
 
   if (!filtered.length) {
-    const emptyCopy = hideTestOrders && visibleTestCount
+    const emptyCopy = showTestOrdersOnly
+      ? "No test/demo orders match this view."
+      : hideTestOrders && visibleTestCount
       ? "Only test/demo orders match this view. Turn off Hide test/demo orders to see them."
       : QUEUE_FILTERS[activeFilter]?.empty || "No orders in this view.";
     listEl.innerHTML = `<div class="staff-empty-card">${escapeHtml(emptyCopy)}</div>`;
@@ -1650,7 +1657,8 @@ function accessoryListFor(fields) {
 function filterOrders(items, filter) {
   return sortOrders(items.filter((order) => {
     const matchesFilter = orderMatchesCurrentFilterSearch(order, filter);
-    const matchesTestVisibility = !hideTestOrders || !isTestOrder(order);
+    const testOrder = isTestOrder(order);
+    const matchesTestVisibility = showTestOrdersOnly ? testOrder : (!hideTestOrders || !testOrder);
     return matchesFilter && matchesTestVisibility;
   }), activeSort);
 }
@@ -1901,10 +1909,39 @@ searchInput.addEventListener("input", () => {
 if (hideTestOrdersInput) {
   hideTestOrdersInput.addEventListener("change", () => {
     hideTestOrders = hideTestOrdersInput.checked;
+    if (hideTestOrders && testOnlyInput) {
+      testOnlyInput.checked = false;
+      showTestOrdersOnly = false;
+    }
     syncSelectedOrderToQueue();
     syncSelectedItem();
     renderQueue();
     renderDetail();
+  });
+}
+if (testOnlyInput) {
+  testOnlyInput.addEventListener("change", () => {
+    showTestOrdersOnly = testOnlyInput.checked;
+    if (showTestOrdersOnly && hideTestOrdersInput) {
+      hideTestOrdersInput.checked = false;
+      hideTestOrders = false;
+    }
+    syncSelectedOrderToQueue();
+    syncSelectedItem();
+    renderQueue();
+    renderDetail();
+  });
+}
+if (clearLocalDemoButton) {
+  clearLocalDemoButton.addEventListener("click", () => {
+    localStorage.removeItem(DEMO_QUEUE_KEY);
+    records = records.filter((record) => !String(record.id || "").startsWith("demo-live"));
+    orders = buildOrders(records);
+    syncSelectedOrderToQueue();
+    syncSelectedItem();
+    renderQueue();
+    renderDetail();
+    setStatus("Local demo submissions cleared. Real Airtable test records are preserved and can be hidden with the test/demo filter.");
   });
 }
 usernameInput.addEventListener("keydown", (event) => {
