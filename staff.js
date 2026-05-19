@@ -67,6 +67,7 @@ let activeFilter = "all";
 let activeSort = "first_received";
 let searchQuery = "";
 let hideTestOrders = true;
+const historyByQuote = new Map();
 
 function resolveApiBase() {
   if (CONFIG.apiBase) return CONFIG.apiBase.replace(/\/$/, "");
@@ -474,6 +475,8 @@ function renderDetail() {
         </section>
       </div>
 
+      ${renderOrderHistoryPanel(order)}
+
       <form class="staff-review-form" id="staff-review-form">
         <section class="staff-review-section">
           <div class="staff-section-title">
@@ -579,6 +582,7 @@ function renderDetail() {
   `;
 
   bindDetail(record, accessories);
+  loadOrderHistory(order);
 }
 
 function renderOrderHeader(order) {
@@ -795,6 +799,181 @@ function renderStaffFeedbackPanel(order, record) {
       </form>
     </section>
   `;
+}
+
+function renderOrderHistoryPanel(order) {
+  const history = historyByQuote.get(order.quote);
+  return `
+    <section class="staff-history-panel" id="staff-history-panel">
+      <div class="staff-history-header">
+        <div>
+          <h3>Order history</h3>
+          <p>Recent emails, staff updates, shipping details, and inspection notes for this order.</p>
+        </div>
+        <button class="secondary-action" type="button" id="refresh-history">Refresh history</button>
+      </div>
+      <div class="staff-history-list" id="staff-history-list">
+        ${history ? renderHistoryItems(order, history) : `<p class="staff-history-empty">Loading history...</p>`}
+      </div>
+    </section>
+  `;
+}
+
+async function loadOrderHistory(order) {
+  const panel = document.getElementById("staff-history-list");
+  const refreshButton = document.getElementById("refresh-history");
+  if (!order || !panel) return;
+
+  refreshButton?.addEventListener("click", async () => {
+    historyByQuote.delete(order.quote);
+    panel.innerHTML = `<p class="staff-history-empty">Refreshing history...</p>`;
+    await loadOrderHistory(order);
+  }, { once: true });
+
+  if (historyByQuote.has(order.quote)) {
+    panel.innerHTML = renderHistoryItems(order, historyByQuote.get(order.quote));
+    return;
+  }
+
+  if (demoModeAllowed() && !SECURE_STAFF_MODE && !CONFIG.staffSecret) {
+    const demoHistory = demoHistoryForOrder(order);
+    historyByQuote.set(order.quote, demoHistory);
+    panel.innerHTML = renderHistoryItems(order, demoHistory);
+    return;
+  }
+
+  try {
+    const quoteRef = order.quoteRefs?.[0] || order.quote;
+    const response = await fetch(`${API_BASE}/api/staff/history?quoteRef=${encodeURIComponent(quoteRef)}`, {
+      credentials: "include",
+      headers: staffHeaders(),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || `Request failed with ${response.status}`);
+    historyByQuote.set(order.quote, data);
+    panel.innerHTML = renderHistoryItems(order, data);
+  } catch (error) {
+    panel.innerHTML = `
+      <p class="staff-history-empty">History could not be loaded here. Staff can still use the item notes, email status, and order status above.</p>
+      <p class="staff-history-error">${escapeHtml(error.message || "Unable to load history.")}</p>
+    `;
+  }
+}
+
+function renderHistoryItems(order, history = {}) {
+  const items = [
+    ...orderDerivedHistory(order),
+    ...(history.emailEvents || []).map(emailHistoryItem),
+    ...(history.staffActions || []).map(staffActionHistoryItem),
+  ]
+    .filter(Boolean)
+    .sort((a, b) => new Date(b.at || 0).getTime() - new Date(a.at || 0).getTime())
+    .slice(0, 12);
+
+  if (!items.length) return `<p class="staff-history-empty">No history events have been recorded for this order yet.</p>`;
+
+  return items.map((item) => `
+    <article class="staff-history-item">
+      <span class="staff-history-type">${escapeHtml(item.type)}</span>
+      <div>
+        <strong>${escapeHtml(item.title)}</strong>
+        <p>${escapeHtml(item.copy)}</p>
+        <small>${escapeHtml(formatDateTime(item.at) || "Time not recorded")}</small>
+      </div>
+    </article>
+  `).join("");
+}
+
+function orderDerivedHistory(order) {
+  const events = [];
+  if (order.submitted) {
+    events.push({
+      type: "Order",
+      title: "Quote submitted",
+      copy: `${order.items.length} item${order.items.length === 1 ? "" : "s"} submitted by ${order.customer}.`,
+      at: order.submitted,
+    });
+  }
+
+  order.items.forEach((record) => {
+    const fields = record.fields || {};
+    const status = recordStatusText(record);
+    const staffNotes = parseStaffNotes(fields["Staff Notes"] || "");
+    const eventTime = fields["Last Modified"] || fields["Quote Submitted"] || order.submitted;
+
+    if (fields["Tracking Number"] || fields["Shippo Label URL"]) {
+      events.push({
+        type: "Shipping",
+        title: "Inbound label/tracking recorded",
+        copy: `${gearTitle(fields)} · ${fields["Tracking Number"] || "Label available"}`,
+        at: eventTime,
+      });
+    }
+    if (staffNotes.serialNumber || fields["Serial Number"]) {
+      events.push({
+        type: "Intake",
+        title: "Serial number recorded",
+        copy: `${gearTitle(fields)} · ${staffNotes.serialNumber || fields["Serial Number"]}`,
+        at: eventTime,
+      });
+    }
+    if (status) {
+      events.push({
+        type: "Status",
+        title: status,
+        copy: `${gearTitle(fields)} is currently marked ${status}.`,
+        at: eventTime,
+      });
+    }
+    if (staffNotes.reason) {
+      events.push({
+        type: "Note",
+        title: "Inspection note",
+        copy: `${gearTitle(fields)} · ${staffNotes.reason}`,
+        at: eventTime,
+      });
+    }
+  });
+
+  return events;
+}
+
+function emailHistoryItem(record) {
+  const fields = record.fields || {};
+  return {
+    type: fields.Sent ? "Email sent" : "Email issue",
+    title: fields.Template || "Email event",
+    copy: `${fields.Recipient || "Recipient not recorded"}${fields.Subject ? ` · ${fields.Subject}` : ""}`,
+    at: fields["Sent At"] || fields.Created || "",
+  };
+}
+
+function staffActionHistoryItem(record) {
+  const fields = record.fields || {};
+  return {
+    type: "Staff",
+    title: fields.Action || fields["New Status"] || "Staff update",
+    copy: [fields["Staff User"], fields["New Status"], fields.Notes].filter(Boolean).join(" · "),
+    at: fields.Timestamp || fields.Created || "",
+  };
+}
+
+function demoHistoryForOrder(order) {
+  return {
+    emailEvents: [
+      {
+        id: "demo-email",
+        fields: {
+          Template: order.workflow.completed.has("shipped") ? "label_ready" : "quote_received",
+          Recipient: order.email,
+          Subject: `Milford Photo used gear update - ${order.quote}`,
+          Sent: true,
+          "Sent At": order.submitted || new Date().toISOString(),
+        },
+      },
+    ],
+    staffActions: [],
+  };
 }
 
 function staffActionsFor(record, parsed) {
@@ -1660,6 +1839,19 @@ function formatDate(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+
+function formatDateTime(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
 }
 
 function setStatus(message, isError = false) {
