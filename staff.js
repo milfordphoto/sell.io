@@ -53,6 +53,7 @@ const filterSelect = document.getElementById("staff-filter");
 const sortSelect = document.getElementById("staff-sort");
 const hideTestOrdersInput = document.getElementById("hide-test-orders");
 const testOnlyInput = document.getElementById("show-test-orders-only");
+const newWalkInOrderButton = document.getElementById("new-walkin-order");
 const clearLocalDemoButton = document.getElementById("clear-local-demo-orders");
 const loginEl = document.getElementById("staff-login");
 const statusEl = document.getElementById("staff-status");
@@ -494,7 +495,7 @@ function renderDetail() {
             </div>
           </div>
           <label class="staff-check-row">
-            <input type="checkbox" id="received-check" ${parsed.received ? "checked" : ""} />
+            <input type="checkbox" id="received-check" ${parsed.received || hasReceivedStatus(record) ? "checked" : ""} />
             This item has been received
           </label>
           <label class="field staff-serial-field">
@@ -515,7 +516,7 @@ function renderDetail() {
             ${accessories.map((item) => renderAccessory(item, parsed)).join("")}
           </div>
           <label class="staff-check-row">
-            <input type="checkbox" id="all-accessories-check" ${parsed.allAccessories ? "checked" : ""} />
+            <input type="checkbox" id="all-accessories-check" ${allAccessoriesChecked(accessories, parsed) ? "checked" : ""} />
             All recommended accessories included
           </label>
         </section>
@@ -557,32 +558,9 @@ function renderDetail() {
           </label>
         </section>
 
-        <section class="staff-review-section customer-decision-section">
-          <div class="staff-section-title">
-            <span>5</span>
-            <div>
-              <h3>Customer decision</h3>
-              <p>Use this after the customer responds to the final quote, or to manually record a phone/in-store decision.</p>
-            </div>
-          </div>
-          <div class="staff-decision-grid">
-            <label class="staff-decision-card">
-              <input type="radio" name="item-decision" value="pending" ${parsed.decision === "pending" ? "checked" : ""} />
-              <span>Awaiting customer response</span>
-            </label>
-            <label class="staff-decision-card">
-              <input type="radio" name="item-decision" value="accept" ${parsed.decision === "accept" ? "checked" : ""} />
-              <span>Customer accepted this item</span>
-            </label>
-            <label class="staff-decision-card">
-              <input type="radio" name="item-decision" value="return" ${parsed.decision === "return" ? "checked" : ""} />
-              <span>Customer requested return</span>
-            </label>
-          </div>
-        </section>
-
-        ${renderOrderDecisionPanel(order)}
         ${renderStaffActions(record, parsed)}
+        ${renderOrderDecisionPanel(order)}
+        ${renderCustomerDecisionSection(record, parsed)}
       </form>
       ${renderStaffFeedbackPanel(order, record)}
     </article>
@@ -609,6 +587,63 @@ function renderOrderHeader(order) {
       </div>
     </section>
   `;
+}
+
+function renderCustomerDecisionSection(record, parsed) {
+  if (!shouldShowCustomerDecision(record)) return "";
+  return `
+    <section class="staff-review-section customer-decision-section">
+      <div class="staff-section-title">
+        <span>5</span>
+        <div>
+          <h3>Customer decision</h3>
+          <p>Use this after the final quote email is sent, or to manually record a phone/in-store decision.</p>
+        </div>
+      </div>
+      <div class="staff-decision-grid">
+        <label class="staff-decision-card">
+          <input type="radio" name="item-decision" value="pending" ${parsed.decision === "pending" ? "checked" : ""} />
+          <span>Awaiting customer response</span>
+        </label>
+        <label class="staff-decision-card">
+          <input type="radio" name="item-decision" value="accept" ${parsed.decision === "accept" ? "checked" : ""} />
+          <span>Customer accepted this item</span>
+        </label>
+        <label class="staff-decision-card">
+          <input type="radio" name="item-decision" value="return" ${parsed.decision === "return" ? "checked" : ""} />
+          <span>Customer requested return</span>
+        </label>
+      </div>
+    </section>
+  `;
+}
+
+function shouldShowCustomerDecision(record) {
+  const status = recordStatusText(record).toLowerCase();
+  return status.includes("final")
+    || status.includes("payment info")
+    || status.includes("accepted item")
+    || status.includes("customer accepted")
+    || status.includes("payment")
+    || status.includes("return")
+    || status.includes("items shipped to customer")
+    || status.includes("returned to seller");
+}
+
+function hasReceivedStatus(record) {
+  const status = recordStatusText(record).toLowerCase();
+  return status.includes("received")
+    || status.includes("inspection")
+    || status.includes("evaluated")
+    || status.includes("final")
+    || status.includes("accepted")
+    || status.includes("payment")
+    || status.includes("return");
+}
+
+function allAccessoriesChecked(accessories, parsed) {
+  if (parsed.allAccessories) return true;
+  return accessories.every((item) => parsed.accessories[item.name] !== false);
 }
 
 function renderWorkflow(order) {
@@ -642,6 +677,279 @@ function renderItemTabs(order) {
       }).join("")}
     </div>
   `;
+}
+
+function renderWalkInQuoteBuilder() {
+  detailEl.innerHTML = `
+    <article class="staff-intake">
+      <header class="staff-order-header">
+        <div>
+          <p class="brand-line">In-store quote</p>
+          <h2>Build a walk-in quote</h2>
+          <p>Create a customer order without using the public form. Values update as condition and accessories change.</p>
+        </div>
+        <div class="staff-order-total walkin-total">
+          <span>Estimated offer</span>
+          <strong id="walkin-offer-total">$0</strong>
+          <small id="walkin-store-credit-total">$0 store credit</small>
+        </div>
+      </header>
+
+      <form class="staff-review-form walkin-form" id="walkin-form">
+        <section class="staff-review-section">
+          <div class="staff-section-title">
+            <span>1</span>
+            <div>
+              <h3>Customer</h3>
+              <p>Add the seller information staff needs to find this order later.</p>
+            </div>
+          </div>
+          <div class="three-col">
+            <label class="field">
+              <span>Name</span>
+              <input id="walkin-name" required placeholder="Customer name" />
+            </label>
+            <label class="field">
+              <span>Email</span>
+              <input id="walkin-email" type="email" placeholder="Customer email" />
+            </label>
+            <label class="field">
+              <span>Phone</span>
+              <input id="walkin-phone" placeholder="Customer phone" />
+            </label>
+          </div>
+        </section>
+
+        <section class="staff-review-section">
+          <div class="staff-section-title">
+            <span>2</span>
+            <div>
+              <h3>Gear</h3>
+              <p>Use market value until final sold-listing pricing is approved for staff-created quotes.</p>
+            </div>
+          </div>
+          <div class="three-col">
+            <label class="field">
+              <span>Category</span>
+              <select id="walkin-category">
+                <option>Digital Camera</option>
+                <option>Film Camera</option>
+                <option>Lens</option>
+                <option>Video / Cinema Gear</option>
+                <option>Flash / Lighting</option>
+                <option>Tripod / Support</option>
+                <option>Bags & Cases</option>
+                <option>Filters</option>
+                <option>Specialty / Other</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Brand</span>
+              <input id="walkin-brand" required placeholder="Canon, Nikon, Sony..." />
+            </label>
+            <label class="field">
+              <span>Model</span>
+              <input id="walkin-model" required placeholder="EOS R5, 24-70mm..." />
+            </label>
+          </div>
+          <div class="two-col">
+            <label class="field">
+              <span>Estimated market value</span>
+              <input id="walkin-market" type="number" min="0" step="1" value="0" />
+            </label>
+            <label class="field">
+              <span>Serial number</span>
+              <input id="walkin-serial" placeholder="Record now or during intake" />
+            </label>
+          </div>
+        </section>
+
+        <section class="staff-review-section compact-condition-section">
+          <div class="staff-section-title">
+            <span>3</span>
+            <div>
+              <h3>Condition</h3>
+              <p>The selected grade sets the Milford Photo offer multiplier.</p>
+            </div>
+          </div>
+          <div class="staff-condition-grid walkin-condition-grid">
+            ${Object.keys(CONDITION_MULTIPLIERS).map((condition) => renderCondition(condition, condition === "Excellent" ? "Excellent" : "")).join("")}
+          </div>
+        </section>
+
+        <section class="staff-review-section">
+          <div class="staff-section-title">
+            <span>4</span>
+            <div>
+              <h3>Included accessories</h3>
+              <p>Uncheck missing items to show the customer how each accessory changes the offer.</p>
+            </div>
+          </div>
+          <div class="staff-accessory-grid" id="walkin-accessories"></div>
+        </section>
+
+        <section class="staff-actions-panel walkin-actions-panel">
+          <div class="staff-actions-copy">
+            <strong>Ready to intake</strong>
+            <span>This creates an in-store quote in the staff queue for same-day trade-in workflow testing.</span>
+          </div>
+          <div class="staff-actions-buttons">
+            <button class="secondary-action" type="button" id="walkin-reset">Clear form</button>
+            <button class="primary-action" type="submit">Create in-store quote</button>
+          </div>
+        </section>
+      </form>
+    </article>
+  `;
+  bindWalkInQuoteBuilder();
+}
+
+function bindWalkInQuoteBuilder() {
+  const form = document.getElementById("walkin-form");
+  const category = document.getElementById("walkin-category");
+  const resetButton = document.getElementById("walkin-reset");
+
+  const refreshAccessories = () => {
+    const accessoryWrap = document.getElementById("walkin-accessories");
+    accessoryWrap.innerHTML = walkInAccessoryListForCategory(category.value)
+      .map((item) => renderWalkInAccessory(item))
+      .join("");
+    accessoryWrap.querySelectorAll("[data-walkin-accessory]").forEach((input) => {
+      input.addEventListener("change", updateWalkInOffer);
+    });
+    updateWalkInOffer();
+  };
+
+  form.querySelectorAll("input, select").forEach((input) => {
+    input.addEventListener("input", updateWalkInOffer);
+    input.addEventListener("change", updateWalkInOffer);
+  });
+
+  form.querySelectorAll("input[name='verified-condition']").forEach((input) => {
+    input.name = "walkin-condition";
+    input.addEventListener("change", () => {
+      form.querySelectorAll(".walkin-condition-grid .staff-condition-option").forEach((option) => option.classList.remove("is-selected"));
+      input.closest(".staff-condition-option").classList.add("is-selected");
+      updateWalkInOffer();
+    });
+  });
+
+  category.addEventListener("change", refreshAccessories);
+  resetButton.addEventListener("click", renderWalkInQuoteBuilder);
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    createWalkInOrder();
+  });
+
+  refreshAccessories();
+}
+
+function renderWalkInAccessory(item) {
+  return `
+    <label class="staff-accessory-item">
+      <input type="checkbox" data-walkin-accessory="${escapeAttr(item.name)}" data-deduction="${item.deduction}" checked />
+      <span>${escapeHtml(item.name)}</span>
+      <strong>${formatAccessoryValue(item.deduction)}</strong>
+    </label>
+  `;
+}
+
+function walkInAccessoryListForCategory(category) {
+  return accessoryListFor({ Category: category });
+}
+
+function updateWalkInOffer() {
+  const offer = calculateWalkInOffer();
+  const totalEl = document.getElementById("walkin-offer-total");
+  const creditEl = document.getElementById("walkin-store-credit-total");
+  if (totalEl) totalEl.textContent = `$${formatMoney(offer)}`;
+  if (creditEl) creditEl.textContent = `$${formatMoney(Math.floor(offer * 1.1))} store credit`;
+}
+
+function calculateWalkInOffer() {
+  const market = numberOrNull(document.getElementById("walkin-market")?.value) ?? 0;
+  const condition = document.querySelector("input[name='walkin-condition']:checked")?.value || "Excellent";
+  const base = Math.floor(market * (CONDITION_MULTIPLIERS[condition] || CONDITION_MULTIPLIERS.Excellent));
+  const missing = Array.from(document.querySelectorAll("[data-walkin-accessory]")).reduce((total, input) => {
+    return input.checked ? total : total + (Number(input.dataset.deduction) || 0);
+  }, 0);
+  return Math.max(0, base - missing);
+}
+
+function createWalkInOrder() {
+  const name = document.getElementById("walkin-name").value.trim();
+  const brand = document.getElementById("walkin-brand").value.trim();
+  const model = document.getElementById("walkin-model").value.trim();
+  if (!name || !brand || !model) {
+    setStatus("Name, brand, and model are required for an in-store quote.", true);
+    return;
+  }
+
+  const condition = document.querySelector("input[name='walkin-condition']:checked")?.value || "Excellent";
+  const category = document.getElementById("walkin-category").value;
+  const market = numberOrNull(document.getElementById("walkin-market").value) ?? 0;
+  const offer = calculateWalkInOffer();
+  const quoteRef = `MP-INSTORE-${crypto.randomUUID().slice(0, 4).toUpperCase()}`;
+  const included = Array.from(document.querySelectorAll("[data-walkin-accessory]:checked")).map((input) => input.dataset.walkinAccessory);
+  const missing = Array.from(document.querySelectorAll("[data-walkin-accessory]:not(:checked)")).map((input) => input.dataset.walkinAccessory);
+
+  const record = {
+    id: `demo-live-instore-${crypto.randomUUID()}`,
+    fields: {
+      "Quote Reference": quoteRef,
+      "Seller Name": name,
+      "Seller Email": document.getElementById("walkin-email").value.trim(),
+      "Seller Phone": document.getElementById("walkin-phone").value.trim(),
+      "Item Brand": brand,
+      "Item Model": model,
+      Category: category,
+      Condition: condition,
+      "Seller Notes": [
+        "Created by staff from in-store quote builder.",
+        `Included items: ${included.join(", ") || "None marked"}`,
+        missing.length ? `Missing items: ${missing.join(", ")}` : "",
+        `Quote total cash: $${formatMoney(offer)}`,
+        `Quote total store credit: $${formatMoney(Math.floor(offer * 1.1))}`,
+      ].filter(Boolean).join("\n"),
+      "Serial Number": document.getElementById("walkin-serial").value.trim(),
+      "Staff Notes": [
+        "INTAKE REVIEW",
+        "Received: Yes",
+        `Serial number: ${document.getElementById("walkin-serial").value.trim() || "Not entered"}`,
+        `Verified condition: ${condition}`,
+        `All recommended accessories included: ${missing.length ? "No" : "Yes"}`,
+        "Accessory check:",
+        ...walkInAccessoryListForCategory(category).map((item) => `- ${item.name}: ${included.includes(item.name) ? "received" : "missing"}`),
+        "Customer decision: pending",
+        `Final offer: $${offer}`,
+        "Last staff action: created_in_store",
+        "Reason / notes: None",
+        `Updated: ${new Date().toLocaleString()}`,
+      ].join("\n"),
+      "eBay Median Price": market,
+      "Condition Multiplier": Math.round((CONDITION_MULTIPLIERS[condition] || 0.6) * 100),
+      "Milford Offer": offer,
+      "Final Offer": offer,
+      "Quote Submitted": new Date().toISOString(),
+      "Quote Expires": new Date(Date.now() + 7 * 86400000).toISOString(),
+      Status: "Received",
+      "Workflow Step": "Received",
+      Source: "In Store",
+    },
+  };
+
+  persistDemoRecord(record);
+  records = [record, ...records.filter((item) => item.id !== record.id)];
+  orders = buildOrders(records);
+  selectedOrderId = orders.find((order) => order.items.some((item) => item.id === record.id))?.id || `quote:${quoteRef}`;
+  selectedItemId = record.id;
+  hideTestOrders = false;
+  showTestOrdersOnly = false;
+  if (hideTestOrdersInput) hideTestOrdersInput.checked = false;
+  if (testOnlyInput) testOnlyInput.checked = false;
+  renderQueue();
+  renderDetail();
+  setStatus(`Created in-store quote ${quoteRef}.`);
 }
 
 function renderOrderDecisionPanel(order) {
@@ -1930,6 +2238,15 @@ if (testOnlyInput) {
     syncSelectedItem();
     renderQueue();
     renderDetail();
+  });
+}
+if (newWalkInOrderButton) {
+  newWalkInOrderButton.addEventListener("click", () => {
+    selectedOrderId = null;
+    selectedItemId = null;
+    renderQueue();
+    renderWalkInQuoteBuilder();
+    setStatus("Building a new in-store quote.");
   });
 }
 if (clearLocalDemoButton) {

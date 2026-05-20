@@ -1511,6 +1511,11 @@ fieldset {
   gap: 8px;
 }
 
+.compact-condition-section .staff-condition-grid,
+.walkin-condition-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
 .staff-condition-option {
   min-height: 84px;
   padding: 11px;
@@ -1546,6 +1551,15 @@ fieldset {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--soft);
+}
+
+.walkin-actions-panel {
+  border-color: rgba(20, 122, 80, 0.22);
+  background: rgba(20, 122, 80, 0.06);
+}
+
+.walkin-total {
+  border-top-color: var(--green);
 }
 
 .staff-actions-copy {
