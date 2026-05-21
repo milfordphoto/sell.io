@@ -436,6 +436,7 @@ function renderDetail() {
   const fields = record.fields || {};
   const accessories = accessoryListFor(fields);
   const parsed = parseStaffNotes(fields["Staff Notes"]);
+  const sectionState = reviewSectionState(record, fields, parsed, accessories);
   const pricingDetails = staffPricingDetails(fields);
   const baseOffer = numberOrNull(fields["Milford Offer"]) ?? 0;
   const finalOffer = numberOrNull(fields["Final Offer"]) ?? calculateOffer(fields, parsed, accessories, baseOffer);
@@ -486,7 +487,7 @@ function renderDetail() {
       ${renderOrderHistoryPanel(order)}
 
       <form class="staff-review-form" id="staff-review-form">
-        <section class="staff-review-section">
+        <section class="staff-review-section ${sectionState.received ? "is-complete" : ""}">
           <div class="staff-section-title">
             <span>1</span>
             <div>
@@ -504,7 +505,7 @@ function renderDetail() {
           </label>
         </section>
 
-        <section class="staff-review-section">
+        <section class="staff-review-section ${sectionState.accessories ? "is-complete" : ""}">
           <div class="staff-section-title">
             <span>2</span>
             <div>
@@ -521,7 +522,7 @@ function renderDetail() {
           </label>
         </section>
 
-        <section class="staff-review-section">
+        <section class="staff-review-section ${sectionState.condition ? "is-complete" : ""}">
           <div class="staff-section-title">
             <span>3</span>
             <div>
@@ -534,7 +535,7 @@ function renderDetail() {
           </div>
         </section>
 
-        <section class="staff-review-section">
+        <section class="staff-review-section ${sectionState.quote ? "is-complete" : ""}">
           <div class="staff-section-title">
             <span>4</span>
             <div>
@@ -644,6 +645,18 @@ function hasReceivedStatus(record) {
 function allAccessoriesChecked(accessories, parsed) {
   if (parsed.allAccessories) return true;
   return accessories.every((item) => parsed.accessories[item.name] !== false);
+}
+
+function reviewSectionState(record, fields, parsed, accessories) {
+  const serial = parsed.serialNumber || fields["Serial Number"] || "";
+  const received = (parsed.received || hasReceivedStatus(record)) && Boolean(String(serial).trim());
+  const evaluatedOrBeyond = itemStatusClass(record) === "is-evaluated" || itemStatusClass(record) === "is-return";
+  return {
+    received,
+    accessories: evaluatedOrBeyond || Boolean(parsed.allAccessories) || (hasReceivedStatus(record) && allAccessoriesChecked(accessories, parsed)),
+    condition: evaluatedOrBeyond || Boolean(parsed.verifiedCondition),
+    quote: evaluatedOrBeyond,
+  };
 }
 
 function renderWorkflow(order) {
@@ -1092,7 +1105,7 @@ function shippingLabelCopy(fields = {}) {
 function renderStaffActions(record, parsed) {
   const actions = staffActionsFor(record, parsed);
   return `
-    <section class="staff-actions-panel">
+    <section class="staff-actions-panel ${escapeAttr(actions.stateClass || "")}">
       <div class="staff-actions-copy">
         <strong>${escapeHtml(actions.title)}</strong>
         <span>${escapeHtml(actions.copy)}</span>
@@ -1108,49 +1121,58 @@ function renderStaffActions(record, parsed) {
 
 function renderStaffFeedbackPanel(order, record) {
   return `
-    <section class="staff-feedback-panel">
-      <div>
+    <details class="staff-feedback-panel staff-feedback-drawer">
+      <summary>Report testing feedback</summary>
+      <div class="staff-feedback-drawer-body">
+        <div>
         <h3>Report testing feedback</h3>
         <p>Use this during store testing for confusing steps, bugs, pricing issues, missing gear details, or customer-copy notes.</p>
+        </div>
+        <form id="staff-feedback-form" class="staff-feedback-form">
+          <label class="field">
+            <span>Feedback type</span>
+            <select id="staff-feedback-category">
+              <option value="Usability issue">Usability issue</option>
+              <option value="Bug">Bug</option>
+              <option value="Pricing issue">Pricing issue</option>
+              <option value="Missing gear/model">Missing gear/model</option>
+              <option value="Customer copy">Customer copy</option>
+              <option value="Workflow question">Workflow question</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>What should we fix or review?</span>
+            <textarea id="staff-feedback-text" rows="4" placeholder="Example: This order is ready for payout, but I was not sure which button to press."></textarea>
+          </label>
+          <button class="secondary-action" type="submit" id="staff-feedback-submit">Send feedback</button>
+          <p class="staff-feedback-note">Attached to ${escapeHtml(record.fields?.["Quote Reference"] || order.quote)}.</p>
+        </form>
       </div>
-      <form id="staff-feedback-form" class="staff-feedback-form">
-        <label class="field">
-          <span>Feedback type</span>
-          <select id="staff-feedback-category">
-            <option value="Usability issue">Usability issue</option>
-            <option value="Bug">Bug</option>
-            <option value="Pricing issue">Pricing issue</option>
-            <option value="Missing gear/model">Missing gear/model</option>
-            <option value="Customer copy">Customer copy</option>
-            <option value="Workflow question">Workflow question</option>
-          </select>
-        </label>
-        <label class="field">
-          <span>What should we fix or review?</span>
-          <textarea id="staff-feedback-text" rows="4" placeholder="Example: This order is ready for payout, but I was not sure which button to press."></textarea>
-        </label>
-        <button class="secondary-action" type="submit" id="staff-feedback-submit">Send feedback</button>
-        <p class="staff-feedback-note">Attached to ${escapeHtml(record.fields?.["Quote Reference"] || order.quote)}.</p>
-      </form>
-    </section>
+    </details>
   `;
 }
 
 function renderOrderHistoryPanel(order) {
   const history = historyByQuote.get(order.quote);
   return `
-    <section class="staff-history-panel" id="staff-history-panel">
-      <div class="staff-history-header">
+    <details class="staff-history-panel" id="staff-history-panel">
+      <summary class="staff-history-summary">
         <div>
-          <h3>Order history</h3>
-          <p>Recent emails, staff updates, shipping details, and inspection notes for this order.</p>
+          <strong>Order history</strong>
+          <span>Recent emails, staff updates, shipping details, and inspection notes.</span>
         </div>
+        <span class="staff-history-toggle-text">Show history</span>
+      </summary>
+      <div class="staff-history-body">
+        <div class="staff-history-header">
+          <p>Recent emails, staff updates, shipping details, and inspection notes for this order.</p>
         <button class="secondary-action" type="button" id="refresh-history">Refresh history</button>
       </div>
       <div class="staff-history-list" id="staff-history-list">
         ${history ? renderHistoryItems(order, history) : `<p class="staff-history-empty">Loading history...</p>`}
       </div>
-    </section>
+      </div>
+    </details>
   `;
 }
 
@@ -1348,6 +1370,7 @@ function staffActionsFor(record, parsed) {
     return {
       title: "Payment recorded",
       copy: "Payment has been marked as sent for this item.",
+      stateClass: "is-complete",
       buttons: [
         { action: "save", label: "Save note", className: "secondary-action" },
       ],
@@ -1367,6 +1390,7 @@ function staffActionsFor(record, parsed) {
     return {
       title: "Return shipment recorded",
       copy: "This item has been marked as shipped back to the customer.",
+      stateClass: "is-complete",
       buttons: [
         { action: "save", label: "Save note", className: "secondary-action" },
       ],
@@ -1407,9 +1431,10 @@ function staffActionsFor(record, parsed) {
     return {
       title: "Item evaluated",
       copy: "Move to the next item. When every item is evaluated, use the final quote email panel below.",
+      stateClass: "is-complete",
       buttons: [
         { action: "save", label: "Save changes", className: "secondary-action" },
-        { action: "adjusted", label: "Re-save evaluation", className: "secondary-action" },
+        { action: "adjusted", label: "Re-save evaluation", className: "secondary-action success-action" },
       ],
     };
   }
@@ -1831,9 +1856,10 @@ function staffPricingDetails(fields) {
   const source = sellerNoteValue(notes, "Pricing source");
   const confidence = sellerNoteValue(notes, "Pricing confidence");
   const sampleSize = sellerNoteValue(notes, "Sample size");
+  const lookback = sellerNoteValue(notes, "Pricing lookback") || sellerNoteValue(notes, "Lookback") || "last 3 months";
   const lines = [];
-  if (confidence) lines.push(`Pricing confidence: ${staffConfidenceLabel(confidence, sampleSize)}`);
-  if (source) lines.push(`Pricing source: ${staffPricingSourceLabel(source)}`);
+  if (confidence) lines.push(`Pricing confidence: ${staffConfidenceLabel(confidence)}`);
+  if (source) lines.push(`Pricing source: ${staffPricingSourceLabel(source, sampleSize, lookback)}`);
   return lines;
 }
 
@@ -1847,23 +1873,30 @@ function sellerNoteValue(notes, label) {
     .trim() || "";
 }
 
-function staffConfidenceLabel(confidence, sampleSize) {
+function staffConfidenceLabel(confidence) {
   const normalized = normalizeGroupValue(confidence);
-  const samples = Number(sampleSize);
-  const sampleCopy = Number.isFinite(samples) && samples > 0 ? ` (${samples} comps)` : "";
-  if (normalized === "high") return `High${sampleCopy}`;
-  if (normalized === "medium") return `Medium${sampleCopy}`;
-  if (normalized === "low") return `Limited${sampleCopy}`;
-  if (normalized === "stub") return `Demo estimate${sampleCopy}`;
+  if (normalized === "high") return "High";
+  if (normalized === "medium") return "Medium";
+  if (normalized === "low" || normalized === "limited") return "Low";
+  if (normalized === "stub") return "Demo estimate";
   if (normalized === "manual") return "Manual review";
   if (normalized === "unavailable") return "Unavailable";
-  return `${confidence}${sampleCopy}`;
+  return confidence;
 }
 
-function staffPricingSourceLabel(source) {
+function staffPricingSourceLabel(source, sampleSize, lookback = "last 3 months") {
   const normalized = normalizeGroupValue(source);
-  if (normalized.includes("completed") || normalized.includes("sold")) return "Completed sold marketplace data";
-  if (normalized.includes("browse") || normalized.includes("active")) return "Current listed marketplace fallback";
+  const samples = Number(sampleSize);
+  const sampleCopy = Number.isFinite(samples) && samples > 0
+    ? `${samples} eBay ${samples === 1 ? "listing" : "listings"}`
+    : "eBay listings";
+  if (normalized.includes("completed") || normalized.includes("sold")) {
+    const soldCopy = Number.isFinite(samples) && samples > 0
+      ? `${samples} eBay sold ${samples === 1 ? "listing" : "listings"}`
+      : "eBay sold listings";
+    return `${soldCopy} in ${lookback}`;
+  }
+  if (normalized.includes("browse") || normalized.includes("active")) return `${sampleCopy} currently listed - fallback until sold-listing access is approved`;
   if (normalized.includes("stub")) return "Demo pricing fallback";
   if (normalized.includes("manual")) return "Manual review";
   if (normalized.includes("missing") || normalized.includes("unavailable")) return "Pricing unavailable";

@@ -36,7 +36,10 @@
                 <strong id="record-count">No quotes loaded</strong>
                 <span id="staff-status"></span>
               </div>
-              <button class="secondary-action" type="button" id="refresh-records">Refresh</button>
+              <div class="staff-toolbar-actions">
+                <button class="primary-action staff-small-action" type="button" id="new-walkin-order">New in-store quote</button>
+                <button class="secondary-action" type="button" id="refresh-records">Refresh</button>
+              </div>
             </div>
             <div class="staff-search-wrap">
               <label for="staff-search">Search orders</label>
@@ -74,7 +77,6 @@
               <input id="show-test-orders-only" type="checkbox" />
               <span>Show only test/demo orders</span>
             </label>
-            <button class="primary-action staff-small-action" type="button" id="new-walkin-order">New in-store quote</button>
             <button class="secondary-action staff-small-action" type="button" id="clear-local-demo-orders">Clear local demo orders</button>
             <div class="staff-record-list" id="records-list" aria-live="polite"></div>
           </aside>
@@ -90,6 +92,6 @@
       </section>
     </main>
 
-    <script src="./staff.js?v=20260520-safe-demo-flow"></script>
+    <script src="./staff.js?v=20260521-staff-workflow-polish"></script>
   </body>
 </html>
