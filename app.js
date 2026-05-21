@@ -803,7 +803,7 @@ function demoQueueEnabled() {
 function saveDemoQueueSubmission(payload, delivery) {
   const quote = state.quote;
   const seller = payload.seller;
-  const quoteRef = `MP-TEST-${String(Date.now()).slice(-6)}`;
+  const quoteRef = quote.quoteId || `MP-TEST-${String(Date.now()).slice(-6)}`;
   const submitted = new Date().toISOString();
   const demoLabelEligible = delivery === "ship" && quote.routing.freeLabelEligible;
   const demoLabelUrl = "https://example.com/milford-photo-demo-shipping-label.pdf";
@@ -841,6 +841,7 @@ function saveDemoQueueSubmission(payload, delivery) {
       Status: demoLabelEligible ? "Label Generated" : "Demo Submitted",
       Source: "Online demo",
       "Tracking Number": demoLabelEligible ? `DEMO-${quoteRef.replace("MP-TEST-", "")}` : "",
+      "Shippo Label URL": demoLabelEligible ? demoLabelUrl : "",
       "Serial Number": "",
     },
   }));
@@ -1026,7 +1027,11 @@ function renderDone(result) {
     els.labelLink.textContent = "Print / download shipping label";
     els.labelLink.hidden = false;
   } else {
-    if (instantLabelFlow) {
+    if (result.labelDryRun) {
+      els.doneCopy.textContent =
+        "Your instant offer was accepted. Real prepaid labels are currently disabled while Milford Photo tests the system, so the live version will email your prepaid label and packing instructions immediately after this step.";
+      els.labelLink.hidden = true;
+    } else if (instantLabelFlow) {
       els.doneCopy.textContent =
         "Your instant offer was accepted. Milford Photo will email the prepaid shipping label and packing instructions as soon as the label is generated. No quote review is needed before shipping unless staff contacts you.";
     } else if (delivery === "dropoff") {

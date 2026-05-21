@@ -478,7 +478,7 @@ function renderDetail() {
         <section>
           <h3>Shipping</h3>
           <p>Tracking: ${escapeHtml(fields["Tracking Number"] || "-")}</p>
-          <p>${fields["Shippo Label URL"] ? `<a href="${escapeAttr(fields["Shippo Label URL"])}" target="_blank" rel="noreferrer">Open label</a>` : "No label link"}</p>
+          <p>${shippingLabelCopy(fields)}</p>
           <p>Payment method: ${escapeHtml(fields["Payment Method"] || "-")}</p>
         </section>
       </div>
@@ -1069,6 +1069,26 @@ function paymentMethodLabel(value = "") {
   return "Check";
 }
 
+function shippingLabelCopy(fields = {}) {
+  const labelUrl = fields["Shippo Label URL"];
+  if (labelUrl) {
+    return `<a href="${escapeAttr(labelUrl)}" target="_blank" rel="noreferrer">Open label</a>`;
+  }
+
+  const labelContext = [
+    fields["Staff Notes"],
+    fields.Status,
+    fields["Workflow Step"],
+    fields["Tracking Number"],
+  ].join(" ").toLowerCase();
+
+  if (labelContext.includes("dry run") || labelContext.includes("dry-run")) {
+    return `<span class="staff-muted">Label dry-run only. Real Shippo labels are disabled for testing.</span>`;
+  }
+
+  return "No label link";
+}
+
 function renderStaffActions(record, parsed) {
   const actions = staffActionsFor(record, parsed);
   return `
@@ -1333,13 +1353,13 @@ function staffActionsFor(record, parsed) {
       ],
     };
   }
-  if (status.includes("accepted item") || status.includes("customer accepted")) {
+  if (status.includes("accepted item") || status.includes("customer accepted") || status.includes("verified quote")) {
     return {
       title: "Next step: payout",
-      copy: "Use this after payment has been sent for accepted gear.",
+      copy: "Issue the payout manually for now. PayPal payout automation stays in dry-run until Milford approves live payouts.",
       buttons: [
         { action: "save", label: "Save note", className: "secondary-action" },
-        { action: "payment", label: "Payment sent", className: "primary-action" },
+        { action: "payment", label: "Record payment sent", className: "primary-action" },
       ],
     };
   }
@@ -1365,10 +1385,10 @@ function staffActionsFor(record, parsed) {
   if (status.includes("payment info")) {
     return {
       title: "Next step: payout",
-      copy: "Use this after the customer provides payout information and payment has been sent.",
+      copy: "Use this after the customer provides payout information and payment has been sent manually. PayPal automation remains in dry-run.",
       buttons: [
         { action: "save", label: "Save note", className: "secondary-action" },
-        { action: "payment", label: "Payment sent", className: "primary-action" },
+        { action: "payment", label: "Record payment sent", className: "primary-action" },
       ],
     };
   }
