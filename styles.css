@@ -1880,6 +1880,10 @@ fieldset {
   width: fit-content;
 }
 
+.staff-feedback-guide-link {
+  width: fit-content;
+}
+
 .staff-feedback-note {
   font-size: 0.86rem;
   font-weight: 750;

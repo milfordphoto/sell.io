@@ -1125,9 +1125,10 @@ function renderStaffFeedbackPanel(order, record) {
       <summary>Report testing feedback</summary>
       <div class="staff-feedback-drawer-body">
         <div>
-        <h3>Report testing feedback</h3>
-        <p>Use this during store testing for confusing steps, bugs, pricing issues, missing gear details, or customer-copy notes.</p>
+          <h3>Report testing feedback</h3>
+          <p>Use this during store testing for confusing steps, bugs, pricing issues, missing gear details, or customer-copy notes.</p>
         </div>
+        <a class="secondary-action staff-feedback-guide-link" href="./staff-testing-guide.html" target="_blank" rel="noreferrer">Open testing guide</a>
         <form id="staff-feedback-form" class="staff-feedback-form">
           <label class="field">
             <span>Feedback type</span>
