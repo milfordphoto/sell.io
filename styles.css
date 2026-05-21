@@ -222,6 +222,21 @@ legend {
   font-weight: 820;
 }
 
+.field small,
+.field-note {
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.field-note {
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border: 1px solid #dde2ea;
+  border-radius: var(--radius);
+  background: var(--soft);
+}
+
 input,
 select,
 textarea {

@@ -160,11 +160,13 @@
                 </label>
                 <label class="field">
                   <span>Preferred payout</span>
+                  <small>How would you like to be paid for your gear?</small>
                   <select id="payment-preference">
                     <option value="check">Check</option>
                     <option value="bank_transfer">Bank transfer</option>
                     <option value="store_credit">Store credit</option>
                   </select>
+                  <small id="payout-helper">We'll mail payment to the address you enter below after your gear is inspected and verified.</small>
                 </label>
               </div>
 
@@ -183,6 +185,9 @@
               </fieldset>
 
               <div class="address-fields" id="address-fields">
+                <div class="field-note" id="address-helper">
+                  Use the address where you want return shipments and check payments sent. If you choose check payment, this should match the address where Milford Photo should mail your check.
+                </div>
                 <label class="field">
                   <span>Street address</span>
                   <input id="street" autocomplete="street-address" />
@@ -289,6 +294,6 @@
     <script src="./catalog-sony-fuji-oly.js"></script>
     <script src="./catalog-panasonic-pentax-third-party.js"></script>
     <script src="./catalog.js"></script>
-    <script src="./app.js?v=20260520-safe-demo-flow"></script>
+    <script src="./app.js?v=20260520-payout-address-copy"></script>
   </body>
 </html>

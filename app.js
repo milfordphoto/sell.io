@@ -108,8 +108,10 @@ const els = {
   sellerEmail: byId("seller-email"),
   sellerPhone: byId("seller-phone"),
   paymentPreference: byId("payment-preference"),
+  payoutHelper: byId("payout-helper"),
   mailCopy: byId("mail-option-copy"),
   addressFields: byId("address-fields"),
+  addressHelper: byId("address-helper"),
   parcelFields: byId("parcel-fields"),
   street: byId("street"),
   city: byId("city"),
@@ -220,6 +222,7 @@ function bindEvents() {
   document.querySelectorAll('input[name="delivery"]').forEach((input) => {
     input.addEventListener("change", updateDeliveryFields);
   });
+  els.paymentPreference.addEventListener("change", updatePayoutHelper);
 
   window.addEventListener("resize", resizeParentFrame);
 }
@@ -1079,6 +1082,34 @@ function updateDeliveryFields() {
     els.acceptQuote.textContent = delivery === "ship" && freeLabel ? "Accept offer" : "Continue";
   }
 
+  updatePayoutHelper();
+  resizeParentFrame();
+}
+
+function updatePayoutHelper() {
+  const method = els.paymentPreference.value;
+  const delivery = selectedRadioValue("delivery") || "ship";
+
+  if (method === "bank_transfer") {
+    els.payoutHelper.textContent = "After inspection, we'll email you a secure link to enter your bank information.";
+    els.addressHelper.textContent = delivery === "ship"
+      ? "Use the address where you want return shipments sent if Milford Photo needs to send gear back to you."
+      : "Use the address Milford Photo should keep on file for this quote.";
+    resizeParentFrame();
+    return;
+  }
+
+  if (method === "store_credit") {
+    els.payoutHelper.textContent = "After inspection, Milford Photo will issue store credit for the verified amount.";
+    els.addressHelper.textContent = delivery === "ship"
+      ? "Use the address where you want return shipments sent if Milford Photo needs to send gear back to you."
+      : "Use the address Milford Photo should keep on file for this quote.";
+    resizeParentFrame();
+    return;
+  }
+
+  els.payoutHelper.textContent = "We'll mail payment to the address you enter below after your gear is inspected and verified.";
+  els.addressHelper.textContent = "Use the address where you want return shipments and check payments sent. If you choose check payment, this should match the address where Milford Photo should mail your check.";
   resizeParentFrame();
 }
 
