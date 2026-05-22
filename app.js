@@ -1090,8 +1090,8 @@ function updatePayoutHelper() {
   const method = els.paymentPreference.value;
   const delivery = selectedRadioValue("delivery") || "ship";
 
-  if (method === "bank_transfer") {
-    els.payoutHelper.textContent = "After inspection, we'll email you a secure link to enter your bank information.";
+  if (method === "paypal" || method === "bank_transfer") {
+    els.payoutHelper.textContent = "After inspection and final approval, Milford Photo will send your payout through PayPal.";
     els.addressHelper.textContent = delivery === "ship"
       ? "Use the address where you want return shipments sent if Milford Photo needs to send gear back to you."
       : "Use the address Milford Photo should keep on file for this quote.";

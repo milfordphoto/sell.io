@@ -1016,11 +1016,11 @@ function orderEmailState(order, ready, evaluated) {
   }
 
   if (unchanged) {
-    if (paymentMethod === "bank_transfer") {
+    if (paymentMethod === "paypal") {
       return {
-        title: "Bank transfer info email",
-        copy: "All items are evaluated and the quote is unchanged. Send the customer secure bank-transfer instructions before payout.",
-        label: "Send bank transfer instructions",
+        title: "PayPal payout email",
+        copy: "All items are evaluated and the quote is unchanged. Send confirmation that PayPal payout will be processed, then move accepted items to payout.",
+        label: "Send PayPal payout instructions",
         status: "Payment Info Requested",
         action: "payment_info_requested",
         className: "primary-action",
@@ -1070,14 +1070,14 @@ function orderPaymentMethod(order) {
 
 function normalizePaymentMethod(value = "") {
   const method = String(value || "").toLowerCase();
-  if (method.includes("bank") || method.includes("ach")) return "bank_transfer";
+  if (method.includes("paypal") || method.includes("bank") || method.includes("ach")) return "paypal";
   if (method.includes("store")) return "store_credit";
   return "check";
 }
 
 function paymentMethodLabel(value = "") {
   const method = normalizePaymentMethod(value);
-  if (method === "bank_transfer") return "Bank transfer";
+  if (method === "paypal") return "PayPal";
   if (method === "store_credit") return "Store credit";
   return "Check";
 }
