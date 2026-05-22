@@ -1489,6 +1489,11 @@ function bindDetail(record, accessories) {
     input.addEventListener("change", () => updateSuggestedOffer(record, accessories));
   });
 
+  const customOfferInput = document.getElementById("custom-offer");
+  customOfferInput?.addEventListener("input", () => {
+    customOfferInput.dataset.customEdited = "true";
+  });
+
   allAccessoriesCheck.addEventListener("change", () => {
     accessoryInputs.forEach((input) => {
       input.checked = allAccessoriesCheck.checked;
@@ -1536,13 +1541,24 @@ function updateSuggestedOffer(record, accessories) {
   const suggested = calculateOffer(fields, collectReviewState(accessories), accessories, numberOrNull(fields["Milford Offer"]) ?? 0);
   const suggestedInput = document.getElementById("suggested-offer");
   const customInput = document.getElementById("custom-offer");
+  const previousSuggested = numberOrNull(suggestedInput.dataset.suggestedOffer ?? suggestedInput.value);
+  const currentCustom = numberOrNull(customInput.value);
+  const customDiffersFromPriorSuggestion = previousSuggested !== null
+    && currentCustom !== null
+    && currentCustom !== previousSuggested;
+  const keepCustom = customInput.dataset.customEdited === "true"
+    || document.activeElement === customInput
+    || customDiffersFromPriorSuggestion;
   suggestedInput.value = suggested;
-  if (document.activeElement !== customInput) customInput.value = suggested;
+  suggestedInput.dataset.suggestedOffer = String(suggested);
+  if (!keepCustom) customInput.value = suggested;
 }
 
 async function handleStaffAction(record, accessories, action, buttons) {
   const review = collectReviewState(accessories);
-  const finalOffer = numberOrNull(document.getElementById("custom-offer").value) ?? review.suggestedOffer;
+  const finalOffer = numberOrNull(document.getElementById("custom-offer").value)
+    ?? numberOrNull(document.getElementById("suggested-offer")?.value)
+    ?? 0;
   const statusByAction = {
     received: "Received - Needs Inspection",
     save: "Inspection In Progress",
