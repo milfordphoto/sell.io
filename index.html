@@ -142,22 +142,27 @@
                 <h2>Send this to Milford Photo</h2>
               </div>
 
-              <div class="two-col">
-                <label class="field">
-                  <span>Name</span>
-                  <input id="seller-name" autocomplete="name" required />
-                </label>
-                <label class="field">
-                  <span>Email</span>
-                  <input id="seller-email" inputmode="email" autocomplete="email" pattern="[^@\s]+@[^@\s]+\.[^@\s]+" required />
-                </label>
-              </div>
+              <section class="details-group" aria-labelledby="contact-details-title">
+                <h3 id="contact-details-title">Customer information</h3>
+                <div class="two-col">
+                  <label class="field">
+                    <span>Name</span>
+                    <input id="seller-name" autocomplete="name" required />
+                  </label>
+                  <label class="field">
+                    <span>Email</span>
+                    <input id="seller-email" inputmode="email" autocomplete="email" pattern="[^@\s]+@[^@\s]+\.[^@\s]+" required />
+                  </label>
+                </div>
 
-              <div class="two-col">
-                <label class="field">
+                <label class="field compact-field">
                   <span>Phone</span>
                   <input id="seller-phone" type="tel" autocomplete="tel" />
                 </label>
+              </section>
+
+              <section class="details-group" aria-labelledby="payout-details-title">
+                <h3 id="payout-details-title">Payout preference</h3>
                 <label class="field">
                   <span>Preferred payout</span>
                   <small>How would you like to be paid for your gear?</small>
@@ -168,7 +173,7 @@
                   </select>
                   <small id="payout-helper">We'll mail payment to the address you enter below after your gear is inspected and verified.</small>
                 </label>
-              </div>
+              </section>
 
               <fieldset class="delivery-grid">
                 <legend>Delivery</legend>
@@ -185,6 +190,7 @@
               </fieldset>
 
               <div class="address-fields" id="address-fields">
+                <h3>Address</h3>
                 <div class="field-note" id="address-helper">
                   Use the address where you want return shipments and check payments sent. If you choose check payment, this should match the address where Milford Photo should mail your check.
                 </div>

@@ -250,6 +250,11 @@ textarea {
   outline: none;
 }
 
+input,
+select {
+  height: 48px;
+}
+
 textarea {
   resize: vertical;
 }
@@ -264,6 +269,7 @@ textarea:focus {
 .two-col,
 .three-col {
   display: grid;
+  align-items: start;
   gap: 14px;
 }
 
@@ -293,6 +299,29 @@ fieldset {
   margin: 0 0 18px;
   padding: 0;
   border: 0;
+}
+
+.details-group {
+  display: grid;
+  gap: 0;
+  margin-bottom: 20px;
+}
+
+.details-group h3,
+.address-fields h3 {
+  margin: 0 0 12px;
+  color: var(--ink);
+  font-size: 1rem;
+  line-height: 1.25;
+}
+
+.details-group .field:last-child,
+.address-fields .field:last-child {
+  margin-bottom: 0;
+}
+
+.compact-field {
+  max-width: min(100%, 360px);
 }
 
 .condition-grid,
@@ -723,6 +752,7 @@ fieldset {
 .address-fields,
 .parcel-fields {
   margin-top: 6px;
+  padding-top: 2px;
 }
 
 .consent {

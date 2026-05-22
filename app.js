@@ -225,6 +225,10 @@ function bindEvents() {
   els.paymentPreference.addEventListener("change", updatePayoutHelper);
 
   window.addEventListener("resize", resizeParentFrame);
+  window.addEventListener("load", resizeParentFrame);
+  if ("ResizeObserver" in window) {
+    new ResizeObserver(resizeParentFrame).observe(document.documentElement);
+  }
 }
 
 function populateBrands() {
@@ -1175,10 +1179,17 @@ function escapeAttribute(value = "") {
 
 function resizeParentFrame() {
   window.requestAnimationFrame(() => {
+    const height = Math.max(
+      document.body.scrollHeight,
+      document.body.offsetHeight,
+      document.documentElement.clientHeight,
+      document.documentElement.scrollHeight,
+      document.documentElement.offsetHeight,
+    );
     window.parent?.postMessage(
       {
         type: "MP_USED_GEAR_HEIGHT",
-        height: document.documentElement.scrollHeight,
+        height,
       },
       "*",
     );
