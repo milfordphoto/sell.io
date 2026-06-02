@@ -47,6 +47,7 @@ const DEMO_ORDER_PATTERNS = [
   "redravenuas",
   "mikewilson.filmmaker",
 ];
+const SOFT_LAUNCH_STARTED_AT = Date.parse("2026-06-02T00:00:00Z");
 
 const CONDITION_MULTIPLIERS = {
   "Like New": 0.7,
@@ -234,6 +235,9 @@ function isDemoRecord(record) {
   const hasSeller = Boolean(String(fields["Seller Name"] || fields["Seller Email"] || "").trim());
   const hasGear = Boolean(String(fields.Brand || fields.Model || fields.Category || "").trim());
   if (!hasSeller && !hasGear) return true;
+
+  const submittedAt = Date.parse(fields["Quote Submitted"] || "");
+  if (Number.isFinite(submittedAt) && submittedAt >= SOFT_LAUNCH_STARTED_AT) return false;
 
   const searchable = [
     fields["Seller Name"],
