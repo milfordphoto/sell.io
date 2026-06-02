@@ -54,7 +54,6 @@ const CONDITION_MULTIPLIERS = {
   Good: 0.5,
   "Well Used": 0.4,
   "Heavily Used": 0.25,
-  "Not Working": 0,
 };
 
 const CONDITION_COPY = {
@@ -63,7 +62,6 @@ const CONDITION_COPY = {
   Good: "Visible wear, fully usable, no major defects.",
   "Well Used": "Heavy wear or missing parts; still usable.",
   "Heavily Used": "Damaged, incomplete, or uncertain operation.",
-  "Not Working": "Will not power on or has known functional problems.",
 };
 
 const STAFF_INTAKE_CONDITIONS = [
@@ -72,7 +70,6 @@ const STAFF_INTAKE_CONDITIONS = [
   { value: "good", label: "Good", copy: CONDITION_COPY.Good },
   { value: "well_used", label: "Well Used", copy: CONDITION_COPY["Well Used"] },
   { value: "heavily_used", label: "Heavily Used", copy: CONDITION_COPY["Heavily Used"] },
-  { value: "not_working", label: "Not Working", copy: CONDITION_COPY["Not Working"] },
 ];
 
 const STATUS_LABELS = {
