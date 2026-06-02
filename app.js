@@ -83,10 +83,14 @@ const money = new Intl.NumberFormat("en-US", {
 const state = {
   activeStep: "gear",
   cart: [],
-  previewItem: null,
-  suppressCurrentPreview: false,
-  liveQuoteRequest: 0,
-  liveQuoteTimer: null,
+  currentItem: null,
+  currentQuote: null,
+  currentQuoteLoading: false,
+  currentQuoteRequest: 0,
+  currentQuoteTimer: null,
+  cartQuoteLoading: false,
+  cartQuoteRequest: 0,
+  cartQuoteTimer: null,
   quote: null,
   submission: null,
 };
@@ -132,6 +136,9 @@ const els = {
   doneCopy: byId("done-copy"),
   labelLink: byId("label-link"),
   quoteRef: byId("quote-ref"),
+  currentOfferCard: byId("current-offer-card"),
+  currentOfferCash: byId("current-offer-cash"),
+  currentOfferCredit: byId("current-offer-credit"),
   summaryCash: byId("summary-cash"),
   summarySubtitle: byId("summary-subtitle"),
   summaryCredit: byId("summary-credit"),
@@ -163,10 +170,11 @@ function init() {
   renderIncludedItems();
   bindEvents();
   renderCart();
+  renderCurrentOffer();
   renderSummary();
   updateDeliveryFields();
   setStep("gear");
-  scheduleLiveQuote();
+  scheduleCurrentOffer();
   resizeParentFrame();
 }
 
@@ -194,43 +202,37 @@ function bindEvents() {
   });
   els.brand.addEventListener("change", () => {
     clearGearSearch();
-    state.suppressCurrentPreview = false;
     populateModels();
     renderIncludedItems();
     updateMountField();
     updateManualFields();
-    scheduleLiveQuote();
+    scheduleCurrentOffer();
   });
   els.category.addEventListener("change", () => {
     clearGearSearch();
-    state.suppressCurrentPreview = false;
     populateBrands();
     populateModels();
     renderIncludedItems();
     updateMountField();
     updateManualFields();
-    scheduleLiveQuote();
+    scheduleCurrentOffer();
   });
   els.model.addEventListener("change", () => {
     clearGearSearch();
-    state.suppressCurrentPreview = false;
     updateMountField();
     updateManualFields();
-    scheduleLiveQuote();
+    scheduleCurrentOffer();
   });
   els.lensMount.addEventListener("change", () => {
-    state.suppressCurrentPreview = false;
-    scheduleLiveQuote();
+    scheduleCurrentOffer();
   });
   document.querySelectorAll('input[name="condition"]').forEach((input) =>
     input.addEventListener("change", () => {
-      state.suppressCurrentPreview = false;
-      scheduleLiveQuote();
+      scheduleCurrentOffer();
     }),
   );
   els.itemNotes.addEventListener("input", () => {
-    state.suppressCurrentPreview = false;
-    scheduleLiveQuote();
+    scheduleCurrentOffer();
   });
   els.addItem.addEventListener("click", addCurrentItem);
   els.getQuote.addEventListener("click", getQuote);
@@ -398,7 +400,6 @@ function applyGearSearch() {
 }
 
 function applyGearSearchOption(match) {
-  state.suppressCurrentPreview = false;
   els.category.value = match.category;
   populateBrands();
   els.brand.value = match.brand;
@@ -409,7 +410,7 @@ function applyGearSearchOption(match) {
   renderIncludedItems();
   els.gearSearch.value = match.label;
   hideGearSearchResults();
-  scheduleLiveQuote();
+  scheduleCurrentOffer();
 }
 
 function clearGearSearch() {
@@ -800,25 +801,14 @@ function addCurrentItem() {
   const item = readItemForm();
   if (!item) return false;
   state.cart.push(item);
-  state.previewItem = null;
-  state.suppressCurrentPreview = true;
   state.quote = null;
+  state.cartQuoteLoading = true;
   els.itemNotes.value = "";
   renderCart();
-  scheduleLiveQuote();
+  renderSummary();
+  scheduleCartQuote();
   setStatus(`${item.brand} ${item.model} added.`, "success");
   return true;
-}
-
-function quoteItemsIncludingCurrent() {
-  if (state.suppressCurrentPreview) {
-    state.previewItem = null;
-    return state.cart;
-  }
-  const item = readItemForm({ silent: true });
-  state.previewItem = item;
-  if (!item) return state.cart;
-  return [...state.cart, item];
 }
 
 function readItemForm(options = {}) {
@@ -902,9 +892,13 @@ function selectedRadioValue(name) {
 
 async function getQuote() {
   clearStatus();
-  const quoteItems = quoteItemsIncludingCurrent();
+  const quoteItems = state.cart;
   if (!quoteItems.length) {
-    readItemForm({ silent: false });
+    if (readItemForm({ silent: true })) {
+      setStatus("Add this item to the quote before reviewing the offer.", "error");
+    } else {
+      readItemForm({ silent: false });
+    }
     return;
   }
 
@@ -912,13 +906,7 @@ async function getQuote() {
   els.getQuote.textContent = "Pricing...";
 
   try {
-    const data = await apiPost("/api/quote", {
-      items: quoteItems.map(({ id, ...item }) => item),
-    });
-    state.quote = data;
-    renderQuote(data);
-    renderSummary();
-    updateDeliveryFields();
+    await fetchCartQuoteNow();
     setStep("quote");
   } catch (error) {
     setStatus(error.message || "Unable to get a quote right now.", "error");
@@ -928,39 +916,86 @@ async function getQuote() {
   }
 }
 
-function scheduleLiveQuote() {
+function scheduleCurrentOffer() {
   if (state.activeStep !== "gear") return;
-  clearTimeout(state.liveQuoteTimer);
-  state.liveQuoteTimer = setTimeout(updateLiveQuote, 350);
+  clearTimeout(state.currentQuoteTimer);
+  state.currentQuoteTimer = setTimeout(updateCurrentOffer, 350);
 }
 
-async function updateLiveQuote() {
-  const quoteItems = quoteItemsIncludingCurrent();
-  if (!quoteItems.length) {
-    renderCart();
-    renderSummary();
+function scheduleCartQuote() {
+  clearTimeout(state.cartQuoteTimer);
+  state.cartQuoteTimer = setTimeout(fetchCartQuoteNow, 250);
+}
+
+async function updateCurrentOffer() {
+  const item = readItemForm({ silent: true });
+  state.currentItem = item;
+  state.currentQuote = null;
+
+  if (!item) {
+    state.currentQuoteLoading = false;
+    renderCurrentOffer();
     return;
   }
 
-  const requestId = (state.liveQuoteRequest += 1);
+  const requestId = (state.currentQuoteRequest += 1);
+  state.currentQuoteLoading = true;
+  renderCurrentOffer();
+
+  try {
+    const { id, ...priceItem } = item;
+    const data = await apiPost("/api/quote", {
+      items: [priceItem],
+    });
+    if (requestId !== state.currentQuoteRequest) return;
+    state.currentQuote = data;
+    state.currentQuoteLoading = false;
+    renderCurrentOffer();
+  } catch (error) {
+    if (requestId !== state.currentQuoteRequest) return;
+    state.currentQuote = {
+      error: error.message || "Unable to price this item right now.",
+    };
+    state.currentQuoteLoading = false;
+    renderCurrentOffer();
+  }
+}
+
+async function fetchCartQuoteNow() {
+  if (!state.cart.length) {
+    state.cartQuoteLoading = false;
+    state.quote = null;
+    renderCart();
+    renderSummary();
+    updateDeliveryFields();
+    return null;
+  }
+
+  const requestId = (state.cartQuoteRequest += 1);
+  state.cartQuoteLoading = true;
   renderCart();
-  els.summaryCash.textContent = "Pricing...";
-  els.summarySubtitle.textContent = "Checking current quote rules.";
+  renderSummary();
 
   try {
     const data = await apiPost("/api/quote", {
-      items: quoteItems.map(({ id, ...item }) => item),
+      items: state.cart.map(({ id, ...item }) => item),
     });
-    if (requestId !== state.liveQuoteRequest) return;
+    if (requestId !== state.cartQuoteRequest) return null;
     state.quote = data;
+    state.cartQuoteLoading = false;
     renderQuote(data);
+    renderCart();
     renderSummary();
     updateDeliveryFields();
+    return data;
   } catch (error) {
-    if (requestId !== state.liveQuoteRequest) return;
+    if (requestId !== state.cartQuoteRequest) return null;
     state.quote = null;
+    state.cartQuoteLoading = false;
+    renderCart();
     renderSummary();
     setStatus(error.message || "Quote failed to fetch.", "error");
+    throw error;
   }
 }
 
@@ -1023,24 +1058,66 @@ async function apiPost(path, payload) {
   return data;
 }
 
-function renderCart() {
-  const displayItems = state.previewItem ? [...state.cart, { ...state.previewItem, isPreview: true }] : [...state.cart];
-  if (!displayItems.length) {
-    els.cartList.innerHTML = `<div class="cart-item"><span class="cart-meta">Choose gear to preview an offer.</span></div>`;
+function renderCurrentOffer() {
+  els.currentOfferCard.classList.toggle("is-loading", state.currentQuoteLoading);
+  els.currentOfferCard.classList.toggle("is-error", Boolean(state.currentQuote?.error));
+
+  if (!state.currentItem) {
+    els.currentOfferCash.textContent = "Choose gear";
+    els.currentOfferCredit.textContent = "Price appears here before the item is added.";
     return;
   }
 
-  els.cartList.innerHTML = displayItems
+  if (state.currentQuoteLoading) {
+    els.currentOfferCash.textContent = "Pricing...";
+    els.currentOfferCredit.textContent = "Checking the current item.";
+    return;
+  }
+
+  if (state.currentQuote?.error) {
+    els.currentOfferCash.textContent = "Review";
+    els.currentOfferCredit.textContent = state.currentQuote.error;
+    return;
+  }
+
+  const quoteItem = state.currentQuote?.items?.[0];
+  if (!quoteItem) {
+    els.currentOfferCash.textContent = "Price pending";
+    els.currentOfferCredit.textContent = `${state.currentItem.brand} ${state.currentItem.model}`;
+    return;
+  }
+
+  els.currentOfferCash.textContent = priceLabelForQuoteItem(quoteItem);
+  els.currentOfferCredit.textContent = quoteItem.storeCreditAmount
+    ? `${money.format(quoteItem.storeCreditAmount)} store credit`
+    : quoteItem.message || `${state.currentItem.brand} ${state.currentItem.model}`;
+}
+
+function renderCart() {
+  if (!state.cart.length) {
+    els.cartList.innerHTML = `<div class="cart-item"><span class="cart-meta">Add gear to build the quote summary.</span></div>`;
+    return;
+  }
+
+  els.cartList.innerHTML = state.cart
     .map(
-      (item) => `
+      (item, index) => {
+        const quoteItem = state.quote?.items?.[index];
+        const price = cartItemPriceLabel(quoteItem);
+        const storeCredit = quoteItem?.storeCreditAmount ? `${money.format(quoteItem.storeCreditAmount)} store credit` : "";
+        return `
         <article class="cart-item">
           <div class="cart-title">
-            <strong>${escapeHtml(item.brand)} ${escapeHtml(item.model)}${item.isPreview ? " (current)" : ""}</strong>
-            ${item.isPreview ? "" : `<button class="remove-item" type="button" aria-label="Remove item" data-remove-id="${escapeAttribute(item.id)}">x</button>`}
+            <strong>${escapeHtml(item.brand)} ${escapeHtml(item.model)}</strong>
+            <div class="cart-actions">
+              <span class="cart-price">${escapeHtml(price)}</span>
+              <button class="remove-item" type="button" aria-label="Remove item" data-remove-id="${escapeAttribute(item.id)}">x</button>
+            </div>
           </div>
-          <span class="cart-meta">${escapeHtml(item.category)} · ${escapeHtml(CONDITION_LABELS[item.condition] || item.condition)}</span>
+          <span class="cart-meta">${escapeHtml(item.category)} · ${escapeHtml(CONDITION_LABELS[item.condition] || item.condition)}${storeCredit ? `<br />${escapeHtml(storeCredit)}` : ""}</span>
         </article>
-      `,
+      `;
+      },
     )
     .join("");
 
@@ -1048,10 +1125,24 @@ function renderCart() {
     button.addEventListener("click", () => {
       state.cart = state.cart.filter((item) => item.id !== button.dataset.removeId);
       state.quote = null;
+      state.cartQuoteLoading = true;
       renderCart();
-      scheduleLiveQuote();
+      renderSummary();
+      scheduleCartQuote();
     });
   });
+}
+
+function cartItemPriceLabel(quoteItem) {
+  if (state.cartQuoteLoading) return "Pricing...";
+  return priceLabelForQuoteItem(quoteItem);
+}
+
+function priceLabelForQuoteItem(quoteItem) {
+  if (!quoteItem) return "Pending";
+  if (quoteItem.offerAmount) return money.format(quoteItem.offerAmount);
+  if (quoteItem.status === "declined") return "$0";
+  return "Review";
 }
 
 function renderQuote(quote) {
@@ -1088,6 +1179,18 @@ function renderQuoteItem(item) {
 }
 
 function renderSummary() {
+  if (state.cartQuoteLoading) {
+    els.quoteRef.textContent = "Draft";
+    els.summaryCash.textContent = "Pricing...";
+    els.summarySubtitle.textContent = "Pricing added items.";
+    els.summaryCredit.textContent = "-";
+    els.summaryCreditFeature.textContent = "-";
+    els.summaryCreditCard.hidden = true;
+    els.summaryRouting.textContent = "Updating quote";
+    els.summaryLabel.textContent = "Calculated after quote";
+    return;
+  }
+
   if (!state.quote) {
     els.quoteRef.textContent = "Draft";
     els.summaryCash.textContent = state.cart.length ? `${state.cart.length} item${state.cart.length === 1 ? "" : "s"}` : "Add gear";

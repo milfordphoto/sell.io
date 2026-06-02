@@ -209,6 +209,55 @@ h1 {
   line-height: 1.12;
 }
 
+.gear-heading {
+  align-items: start;
+  justify-content: space-between;
+}
+
+.gear-heading > div:first-child {
+  display: flex;
+  gap: 16px;
+  align-items: baseline;
+}
+
+.current-offer-card {
+  display: grid;
+  min-width: 178px;
+  max-width: 230px;
+  gap: 4px;
+  justify-items: end;
+  padding: 12px 14px;
+  border: 1px solid rgba(35, 77, 125, 0.18);
+  border-top: 4px solid var(--mp-red);
+  border-radius: var(--radius);
+  background: rgba(35, 77, 125, 0.04);
+  text-align: right;
+}
+
+.current-offer-card span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.current-offer-card strong {
+  color: var(--ink);
+  font-size: 1.35rem;
+  line-height: 1.05;
+}
+
+.current-offer-card small {
+  color: var(--muted);
+  line-height: 1.25;
+}
+
+.current-offer-card.is-error {
+  background: rgba(213, 33, 39, 0.06);
+  border-color: rgba(213, 33, 39, 0.28);
+}
+
 .field {
   display: grid;
   gap: 8px;
@@ -664,6 +713,18 @@ fieldset {
   line-height: 1.25;
 }
 
+.cart-actions {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.cart-price {
+  color: var(--ink);
+  font-weight: 850;
+  white-space: nowrap;
+}
+
 .staff-intake-quote-actions {
   display: inline-flex;
   gap: 8px;
@@ -949,12 +1010,23 @@ fieldset {
     gap: 7px;
   }
 
+  .gear-heading > div:first-child {
+    display: grid;
+    gap: 7px;
+  }
+
+  .current-offer-card {
+    max-width: none;
+    justify-items: start;
+    text-align: left;
+  }
+
   .work-panel {
     padding: 18px;
   }
 
   .form-actions {
-    flex-direction: column-reverse;
+    flex-direction: column;
   }
 
   .primary-action,
