@@ -1341,7 +1341,7 @@ function updateStaffIntakeMountField() {
 function renderStaffIntakeIncludedItems() {
   const container = document.getElementById("staff-intake-included-items");
   const category = document.getElementById("staff-intake-category")?.value || "";
-  const items = includedItemsForCategory(category);
+  const items = includedItemsForCategory(category).filter((item) => item.checked);
   if (!items.length) {
     container.innerHTML = `
       <div class="included-copy">
@@ -1361,7 +1361,7 @@ function renderStaffIntakeIncludedItems() {
         <label class="staff-accessory-item">
           <input type="checkbox" data-staff-intake-included="${escapeAttr(item.name)}" ${item.checked ? "checked" : ""} />
           <span>${escapeHtml(item.name)}</span>
-          <strong>${item.bonus ? "Bonus" : "Expected"}</strong>
+          <strong>Expected</strong>
         </label>
       `).join("")}
     </div>

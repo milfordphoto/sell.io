@@ -595,26 +595,19 @@ function renderIncludedItems() {
     return;
   }
   const assumed = items.filter((item) => item.checked);
-  const optional = items.filter((item) => !item.checked);
   els.includedItems.innerHTML = `
     <div class="included-copy">
       <strong>Price assumes standard manufacturer accessories.</strong>
       <span>Send what you have. Milford Photo will confirm everything after inspection and adjust the offer only if needed.</span>
     </div>
-    <div class="included-columns">
+    ${assumed.length ? `<div class="included-columns">
       <div>
         <h3>Included in this quote</h3>
         <ul>
           ${assumed.map((item) => `<li>${escapeHtml(item.name)}</li>`).join("")}
         </ul>
       </div>
-      <div>
-        <h3>Not included in this price</h3>
-        <ul>
-          ${optional.map((item) => `<li>${escapeHtml(item.name)}</li>`).join("") || "<li>Extra accessories can be mentioned in notes.</li>"}
-        </ul>
-      </div>
-    </div>
+    </div>` : ""}
   `;
 }
 
