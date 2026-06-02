@@ -7,6 +7,7 @@ const MANUAL_CATEGORY = "Manual Review / Vintage / Specialty";
 const SELECT_CATEGORY = "";
 const SELECT_BRAND = "";
 const SELECT_MODEL = "";
+const SEARCH_RESULT_LIMIT = 30;
 
 const FALLBACK_CATEGORIES = [
   "Digital Camera",
@@ -96,6 +97,7 @@ const els = {
   model: byId("model"),
   gearSearch: byId("gear-search"),
   gearSearchOptions: byId("gear-search-options"),
+  gearSearchResults: byId("gear-search-results"),
   mountField: byId("mount-field"),
   lensMount: byId("lens-mount"),
   includedItems: byId("included-items"),
@@ -170,9 +172,25 @@ function init() {
 
 function bindEvents() {
   els.gearSearch.addEventListener("change", applyGearSearch);
+  els.gearSearch.addEventListener("focus", renderGearSearchResults);
   els.gearSearch.addEventListener("input", () => {
-    const exactMatch = gearSearchOptions().find((option) => option.label.toLowerCase() === els.gearSearch.value.trim().toLowerCase());
+    renderGearSearchResults();
+    const exactMatch = gearSearchOptions().find((option) => isExactGearSearchMatch(option, els.gearSearch.value));
     if (exactMatch) applyGearSearch();
+  });
+  els.gearSearch.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") hideGearSearchResults();
+  });
+  els.gearSearchResults.addEventListener("pointerdown", (event) => {
+    const button = event.target.closest("[data-gear-search-key]");
+    if (!button) return;
+    event.preventDefault();
+    const match = gearSearchOptions().find((option) => gearSearchKey(option) === button.dataset.gearSearchKey);
+    if (match) applyGearSearchOption(match);
+  });
+  document.addEventListener("click", (event) => {
+    if (event.target === els.gearSearch || els.gearSearchResults.contains(event.target)) return;
+    hideGearSearchResults();
   });
   els.brand.addEventListener("change", () => {
     clearGearSearch();
@@ -280,6 +298,7 @@ function populateGearSearch() {
   els.gearSearchOptions.innerHTML = gearSearchOptions()
     .map((option) => `<option value="${escapeAttribute(option.label)}"></option>`)
     .join("");
+  renderGearSearchResults();
 }
 
 function gearSearchOptions() {
@@ -300,14 +319,85 @@ function gearSearchOptions() {
   return uniqueGearSearchOptions(options).sort((a, b) => naturalTextCompare(a.label, b.label));
 }
 
+function renderGearSearchResults() {
+  const query = els.gearSearch.value.trim();
+  const matches = matchingGearSearchOptions(query).slice(0, SEARCH_RESULT_LIMIT);
+  if (!query || !matches.length) {
+    hideGearSearchResults();
+    return;
+  }
+
+  els.gearSearchResults.innerHTML = matches
+    .map(
+      (option) => `
+        <button class="gear-search-result" type="button" data-gear-search-key="${escapeAttribute(gearSearchKey(option))}">
+          <span>${escapeHtml(option.brand)} ${escapeHtml(catalogDisplayName({ name: option.model }, option.category))}</span>
+          <small>${escapeHtml(option.category)}</small>
+        </button>
+      `,
+    )
+    .join("");
+  els.gearSearchResults.hidden = false;
+}
+
+function hideGearSearchResults() {
+  els.gearSearchResults.hidden = true;
+  els.gearSearchResults.innerHTML = "";
+}
+
+function matchingGearSearchOptions(query) {
+  const tokens = gearSearchTokens(query);
+  if (!tokens.length) return [];
+  return gearSearchOptions()
+    .filter((option) => tokens.every((token) => gearSearchHaystack(option).includes(token)))
+    .sort((a, b) => gearSearchScore(b, tokens) - gearSearchScore(a, tokens) || naturalTextCompare(a.label, b.label));
+}
+
+function isExactGearSearchMatch(option, query) {
+  return normalizeGearSearchText(option.label) === normalizeGearSearchText(query);
+}
+
+function gearSearchScore(option, tokens) {
+  const haystack = gearSearchHaystack(option);
+  const brand = normalizeGearSearchText(option.brand);
+  const model = normalizeGearSearchText(option.model);
+  return tokens.reduce((score, token) => score + (brand.includes(token) ? 4 : 0) + (model.includes(token) ? 2 : 0) + (haystack.startsWith(token) ? 1 : 0), 0);
+}
+
+function gearSearchHaystack(option) {
+  return normalizeGearSearchText(`${option.brand} ${option.model} ${option.label} ${option.category}`);
+}
+
+function gearSearchTokens(query) {
+  return normalizeGearSearchText(query).split(" ").filter(Boolean);
+}
+
+function normalizeGearSearchText(value = "") {
+  return ` ${String(value)
+    .toLowerCase()
+    .replace(/[–—]/g, "-")
+    .replace(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)\s*mm/g, "$1-$2mm $1mm $2mm $1 $2 mm")
+    .replace(/(\d+(?:\.\d+)?)\s*mm/g, "$1mm $1 mm")
+    .replace(/[^a-z0-9.]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()} `;
+}
+
+function gearSearchKey(option) {
+  return [option.brand, option.category, option.model].join("|").toLowerCase();
+}
+
 function applyGearSearch() {
-  const query = els.gearSearch.value.trim().toLowerCase();
+  const query = els.gearSearch.value.trim();
   if (!query) return;
-  const match =
-    gearSearchOptions().find((option) => option.label.toLowerCase() === query) ||
-    gearSearchOptions().find((option) => option.label.toLowerCase().includes(query));
+  const options = gearSearchOptions();
+  const match = options.find((option) => isExactGearSearchMatch(option, query)) || matchingGearSearchOptions(query)[0];
   if (!match) return;
 
+  applyGearSearchOption(match);
+}
+
+function applyGearSearchOption(match) {
   state.suppressCurrentPreview = false;
   els.category.value = match.category;
   populateBrands();
@@ -317,11 +407,14 @@ function applyGearSearch() {
   updateMountField();
   updateManualFields();
   renderIncludedItems();
+  els.gearSearch.value = match.label;
+  hideGearSearchResults();
   scheduleLiveQuote();
 }
 
 function clearGearSearch() {
   els.gearSearch.value = "";
+  hideGearSearchResults();
 }
 
 function updateManualFields() {

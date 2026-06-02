@@ -10,6 +10,7 @@ const MANUAL_CATEGORY = "Manual Review / Vintage / Specialty";
 const SELECT_CATEGORY = "";
 const SELECT_BRAND = "";
 const SELECT_MODEL = "";
+const SEARCH_RESULT_LIMIT = 30;
 
 const FALLBACK_CATEGORIES = [
   "Digital Camera",
@@ -919,8 +920,9 @@ function renderStaffIntake() {
 
           <label class="field gear-search-field">
             <span>Search gear</span>
-            <input id="staff-intake-gear-search" list="staff-intake-gear-search-options" autocomplete="off" placeholder="Search by model, category, or brand" />
+            <input id="staff-intake-gear-search" autocomplete="off" placeholder="Search by model, category, or brand" />
             <datalist id="staff-intake-gear-search-options"></datalist>
+            <div class="gear-search-results" id="staff-intake-gear-search-results" hidden></div>
           </label>
 
           <div class="three-col">
@@ -1066,10 +1068,24 @@ function bindStaffIntake() {
   renderStaffIntakeCurrentPreview();
 
   search.addEventListener("change", applyStaffIntakeGearSearch);
+  search.addEventListener("focus", renderStaffIntakeGearSearchResults);
   search.addEventListener("input", () => {
-    const exactMatch = staffIntakeGearSearchOptions().find((option) => option.label.toLowerCase() === search.value.trim().toLowerCase());
+    renderStaffIntakeGearSearchResults();
+    const exactMatch = staffIntakeGearSearchOptions().find((option) => isExactGearSearchMatch(option, search.value));
     if (exactMatch) applyStaffIntakeGearSearch();
   });
+  search.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") hideStaffIntakeGearSearchResults();
+  });
+  document.getElementById("staff-intake-gear-search-results").addEventListener("pointerdown", (event) => {
+    const button = event.target.closest("[data-gear-search-key]");
+    if (!button) return;
+    event.preventDefault();
+    const match = staffIntakeGearSearchOptions().find((option) => gearSearchKey(option) === button.dataset.gearSearchKey);
+    if (match) applyStaffIntakeGearSearchOption(match);
+  });
+  document.removeEventListener("click", handleStaffIntakeGearSearchDocumentClick);
+  document.addEventListener("click", handleStaffIntakeGearSearchDocumentClick);
   category.addEventListener("change", () => {
     clearStaffIntakeSearch();
     populateStaffIntakeBrands();
@@ -1111,11 +1127,20 @@ function bindStaffIntake() {
   form.addEventListener("submit", submitStaffIntakeQuote);
 }
 
+function handleStaffIntakeGearSearchDocumentClick(event) {
+  const search = document.getElementById("staff-intake-gear-search");
+  const results = document.getElementById("staff-intake-gear-search-results");
+  if (!search || !results) return;
+  if (event.target === search || results.contains(event.target)) return;
+  hideStaffIntakeGearSearchResults();
+}
+
 function populateStaffIntakeGearSearch() {
   const options = document.getElementById("staff-intake-gear-search-options");
   options.innerHTML = staffIntakeGearSearchOptions()
     .map((option) => `<option value="${escapeAttr(option.label)}"></option>`)
     .join("");
+  renderStaffIntakeGearSearchResults();
 }
 
 function staffIntakeGearSearchOptions() {
@@ -1136,19 +1161,94 @@ function staffIntakeGearSearchOptions() {
   return uniqueGearSearchOptions(options).sort((a, b) => naturalTextCompare(a.label, b.label));
 }
 
+function renderStaffIntakeGearSearchResults() {
+  const search = document.getElementById("staff-intake-gear-search");
+  const results = document.getElementById("staff-intake-gear-search-results");
+  const query = search.value.trim();
+  const matches = matchingGearSearchOptions(staffIntakeGearSearchOptions(), query).slice(0, SEARCH_RESULT_LIMIT);
+  if (!query || !matches.length) {
+    hideStaffIntakeGearSearchResults();
+    return;
+  }
+
+  results.innerHTML = matches
+    .map(
+      (option) => `
+        <button class="gear-search-result" type="button" data-gear-search-key="${escapeAttr(gearSearchKey(option))}">
+          <span>${escapeHtml(option.brand)} ${escapeHtml(catalogDisplayName({ name: option.model }, option.category))}</span>
+          <small>${escapeHtml(option.category)}</small>
+        </button>
+      `,
+    )
+    .join("");
+  results.hidden = false;
+}
+
+function hideStaffIntakeGearSearchResults() {
+  const results = document.getElementById("staff-intake-gear-search-results");
+  if (!results) return;
+  results.hidden = true;
+  results.innerHTML = "";
+}
+
+function matchingGearSearchOptions(options, query) {
+  const tokens = gearSearchTokens(query);
+  if (!tokens.length) return [];
+  return options
+    .filter((option) => tokens.every((token) => gearSearchHaystack(option).includes(token)))
+    .sort((a, b) => gearSearchScore(b, tokens) - gearSearchScore(a, tokens) || naturalTextCompare(a.label, b.label));
+}
+
+function isExactGearSearchMatch(option, query) {
+  return normalizeGearSearchText(option.label) === normalizeGearSearchText(query);
+}
+
+function gearSearchScore(option, tokens) {
+  const haystack = gearSearchHaystack(option);
+  const brand = normalizeGearSearchText(option.brand);
+  const model = normalizeGearSearchText(option.model);
+  return tokens.reduce((score, token) => score + (brand.includes(token) ? 4 : 0) + (model.includes(token) ? 2 : 0) + (haystack.startsWith(token) ? 1 : 0), 0);
+}
+
+function gearSearchHaystack(option) {
+  return normalizeGearSearchText(`${option.brand} ${option.model} ${option.label} ${option.category}`);
+}
+
+function gearSearchTokens(query) {
+  return normalizeGearSearchText(query).split(" ").filter(Boolean);
+}
+
+function normalizeGearSearchText(value = "") {
+  return ` ${String(value)
+    .toLowerCase()
+    .replace(/[–—]/g, "-")
+    .replace(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)\s*mm/g, "$1-$2mm $1mm $2mm $1 $2 mm")
+    .replace(/(\d+(?:\.\d+)?)\s*mm/g, "$1mm $1 mm")
+    .replace(/[^a-z0-9.]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()} `;
+}
+
+function gearSearchKey(option) {
+  return [option.brand, option.category, option.model].join("|").toLowerCase();
+}
+
 function applyStaffIntakeGearSearch() {
   const search = document.getElementById("staff-intake-gear-search");
-  const query = search.value.trim().toLowerCase();
+  const query = search.value.trim();
   if (!query) return;
   const options = staffIntakeGearSearchOptions();
-  const match =
-    options.find((option) => option.label.toLowerCase() === query) ||
-    options.find((option) => option.label.toLowerCase().includes(query));
+  const match = options.find((option) => isExactGearSearchMatch(option, query)) || matchingGearSearchOptions(options, query)[0];
   if (!match) return;
 
+  applyStaffIntakeGearSearchOption(match);
+}
+
+function applyStaffIntakeGearSearchOption(match) {
   const category = document.getElementById("staff-intake-category");
   const brand = document.getElementById("staff-intake-brand");
   const model = document.getElementById("staff-intake-model");
+  const search = document.getElementById("staff-intake-gear-search");
   category.value = match.category;
   populateStaffIntakeBrands();
   brand.value = match.brand;
@@ -1157,12 +1257,15 @@ function applyStaffIntakeGearSearch() {
   updateStaffIntakeMountField();
   updateStaffIntakeManualFields();
   renderStaffIntakeIncludedItems();
+  search.value = match.label;
+  hideStaffIntakeGearSearchResults();
   queueStaffIntakeCurrentPreview();
 }
 
 function clearStaffIntakeSearch() {
   const search = document.getElementById("staff-intake-gear-search");
   if (search) search.value = "";
+  hideStaffIntakeGearSearchResults();
 }
 
 function populateStaffIntakeCategories() {

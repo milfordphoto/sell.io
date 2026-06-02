@@ -277,6 +277,7 @@ textarea:focus {
 }
 
 .gear-search-field {
+  position: relative;
   margin-bottom: 14px;
 }
 
@@ -288,6 +289,67 @@ textarea:focus {
     #ffffff;
   font-size: 1.02rem;
   font-weight: 680;
+}
+
+.gear-search-results {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% - 1px);
+  right: 0;
+  left: 0;
+  display: grid;
+  max-height: 286px;
+  overflow: auto;
+  border: 1px solid rgba(35, 77, 125, 0.18);
+  border-radius: 0 0 var(--radius) var(--radius);
+  background: #ffffff;
+  box-shadow: 0 18px 36px rgba(18, 24, 35, 0.16);
+}
+
+.gear-search-results[hidden] {
+  display: none;
+}
+
+.gear-search-result {
+  display: flex;
+  width: 100%;
+  min-height: 46px;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: #ffffff;
+  color: var(--ink);
+  padding: 10px 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.gear-search-result:last-child {
+  border-bottom: 0;
+}
+
+.gear-search-result:hover,
+.gear-search-result:focus {
+  background: rgba(35, 77, 125, 0.06);
+  outline: none;
+}
+
+.gear-search-result span {
+  min-width: 0;
+  color: var(--ink);
+  font-size: 0.95rem;
+  font-weight: 820;
+  line-height: 1.25;
+}
+
+.gear-search-result small {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 760;
 }
 
 fieldset {
