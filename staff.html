@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Milford Photo Used Gear Intake Dashboard</title>
     <meta name="description" content="Milford Photo used equipment staff intake dashboard." />
-    <link rel="stylesheet" href="./styles.css" />
+    <meta name="robots" content="noindex,nofollow" />
+    <link rel="stylesheet" href="./styles.css?v=20260602-softlaunch" />
   </head>
   <body>
     <main class="mp-used-app staff-app">
@@ -15,18 +16,24 @@
             <p class="brand-line">Milford Photo Used Department</p>
             <h1 id="staff-title">Used gear intake dashboard</h1>
             <p class="intro">Receive gear, verify accessories and condition, adjust offers, and move each quote to payment or return.</p>
-            <p class="staff-header-links"><a class="secondary-action" href="./staff-testing-guide.html" target="_blank" rel="noreferrer">Open testing guide</a></p>
           </div>
+          <nav class="staff-header-actions" aria-label="Staff dashboard actions">
+            <span class="staff-current-user">Logged in as <strong>Employee</strong></span>
+            <span class="staff-header-buttons">
+              <button class="primary-action" type="button" id="start-staff-intake">Start new quote</button>
+              <a class="secondary-action" href="/api/staff/logout">Sign out</a>
+            </span>
+          </nav>
         </header>
 
         <section class="staff-login" id="staff-login">
-          <label for="staff-username">Staff login</label>
+          <label for="staff-username">Employee login</label>
           <div class="staff-login-row">
-            <input id="staff-username" autocomplete="username" placeholder="Staff name" />
+            <input id="staff-username" autocomplete="username" placeholder="Employee name" />
             <input id="staff-password" type="password" autocomplete="current-password" placeholder="Password" />
             <button class="primary-action" type="button" id="load-records">Open dashboard</button>
           </div>
-          <p>Test login: staff / password. Production should use real staff accounts.</p>
+          <p>Test login: employee / password. Production should use real staff accounts.</p>
         </section>
 
         <section class="staff-workspace" id="staff-workspace" hidden>
@@ -36,48 +43,14 @@
                 <strong id="record-count">No quotes loaded</strong>
                 <span id="staff-status"></span>
               </div>
-              <div class="staff-toolbar-actions">
-                <button class="primary-action staff-small-action" type="button" id="new-walkin-order">New in-store quote</button>
-                <button class="secondary-action" type="button" id="refresh-records">Refresh</button>
-              </div>
+              <button class="secondary-action" type="button" id="refresh-records">Refresh</button>
             </div>
-            <div class="staff-search-wrap">
-              <label for="staff-search">Search orders</label>
-              <input id="staff-search" type="search" placeholder="Customer, email, phone, order, tracking, or gear" autocomplete="off" />
+            <div class="staff-filter-row" role="tablist" aria-label="Queue filters">
+              <button class="staff-filter is-active" type="button" data-filter="active">Active</button>
+              <button class="staff-filter" type="button" data-filter="received">Received</button>
+              <button class="staff-filter" type="button" data-filter="done">Done</button>
             </div>
-            <div class="staff-filter-row">
-              <label for="staff-filter">Show orders at step</label>
-              <select id="staff-filter" aria-label="Show orders at workflow step">
-                <option value="initial">Initial Quote</option>
-                <option value="shipped">Shipped to Milford Photo</option>
-                <option value="received">Received</option>
-                <option value="evaluated">Evaluated</option>
-                <option value="final">Final Quote</option>
-                <option value="customer">Customer Decision</option>
-                <option value="payout">Payout</option>
-                <option value="return">Items Shipped to Customer</option>
-                <option value="all" selected>All Orders</option>
-              </select>
-            </div>
-            <div class="staff-filter-row">
-              <label for="staff-sort">Sort orders by</label>
-              <select id="staff-sort" aria-label="Sort orders">
-                <option value="first_received" selected>First received</option>
-                <option value="next_action">Next action</option>
-                <option value="newest">Newest first</option>
-                <option value="customer">Customer name</option>
-                <option value="value">Highest value</option>
-              </select>
-            </div>
-            <label class="staff-toggle-row" for="hide-test-orders">
-              <input id="hide-test-orders" type="checkbox" checked />
-              <span>Hide test/demo orders</span>
-            </label>
-            <label class="staff-toggle-row" for="show-test-orders-only">
-              <input id="show-test-orders-only" type="checkbox" />
-              <span>Show only test/demo orders</span>
-            </label>
-            <button class="secondary-action staff-small-action" type="button" id="clear-local-demo-orders">Clear local demo orders</button>
+            <button class="secondary-action staff-small-action" type="button" id="open-pricing-review">Open pricing review</button>
             <div class="staff-record-list" id="records-list" aria-live="polite"></div>
           </aside>
 
@@ -92,6 +65,13 @@
       </section>
     </main>
 
-    <script src="./staff.js?v=20260522-custom-offer"></script>
+    <script src="./catalog-canon.js?v=20260602-softlaunch"></script>
+    <script src="./catalog-nikon.js?v=20260602-softlaunch"></script>
+    <script src="./catalog-sony-fuji-oly.js?v=20260602-softlaunch"></script>
+    <script src="./catalog-panasonic-pentax-third-party.js?v=20260602-softlaunch"></script>
+    <script src="./catalog-leica-hasselblad.js?v=20260602-softlaunch"></script>
+    <script src="./catalog-modern-supplement.js?v=20260602-softlaunch"></script>
+    <script src="./catalog.js?v=20260602-softlaunch"></script>
+    <script src="./staff.js?v=20260602-softlaunch"></script>
   </body>
 </html>

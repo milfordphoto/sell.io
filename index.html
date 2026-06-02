@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Milford Photo Used Gear Quote</title>
     <meta name="description" content="Milford Photo used equipment quote widget." />
-    <link rel="stylesheet" href="./styles.css" />
+    <meta name="robots" content="noindex,nofollow" />
+    <link rel="stylesheet" href="./styles.css?v=20260602-softlaunch" />
   </head>
   <body>
     <main class="mp-used-app" id="app">
@@ -15,7 +16,7 @@
             <p class="brand-line">Milford Photo Used Department</p>
             <h1 id="app-title">Get an offer for your used camera gear</h1>
             <p class="intro">
-              Start with the gear and condition. Instant offers can be accepted online, and Milford Photo verifies every final payout after the item arrives or is dropped off in-store.
+              Start with the gear and condition. Milford Photo verifies every offer after the item arrives or is dropped off in-store.
             </p>
           </div>
         </header>
@@ -96,12 +97,17 @@
                 <label class="choice-card">
                   <input type="radio" name="condition" value="well_used" />
                   <strong>Well Used</strong>
-                  <span>Heavy wear or missing parts; still usable.</span>
+                  <span>Heavy wear, missing parts, or rough condition.</span>
                 </label>
                 <label class="choice-card">
                   <input type="radio" name="condition" value="heavily_used" />
                   <strong>Heavily Used</strong>
                   <span>Damaged, incomplete, or uncertain operation.</span>
+                </label>
+                <label class="choice-card">
+                  <input type="radio" name="condition" value="not_working" />
+                  <strong>Not Working</strong>
+                  <span>Will not power on or has known functional problems.</span>
                 </label>
               </fieldset>
 
@@ -165,13 +171,11 @@
                 <h3 id="payout-details-title">Payout preference</h3>
                 <label class="field">
                   <span>Preferred payout</span>
-                  <small>How would you like to be paid for your gear?</small>
                   <select id="payment-preference">
                     <option value="check">Check</option>
                     <option value="paypal">PayPal</option>
                     <option value="store_credit">Store credit</option>
                   </select>
-                  <small id="payout-helper">We'll mail payment to the address you enter below after your gear is inspected and verified.</small>
                 </label>
               </section>
 
@@ -180,7 +184,7 @@
                 <label class="choice-card">
                   <input type="radio" name="delivery" value="ship" checked />
                   <strong>Mail it in</strong>
-                  <span id="mail-option-copy">Use a prepaid shipping label when the quote qualifies.</span>
+                  <span id="mail-option-copy">Use a prepaid label when the quote qualifies.</span>
                 </label>
                 <label class="choice-card">
                   <input type="radio" name="delivery" value="dropoff" />
@@ -191,9 +195,6 @@
 
               <div class="address-fields" id="address-fields">
                 <h3>Address</h3>
-                <div class="field-note" id="address-helper">
-                  Use the address where you want return shipments and check payments sent. If you choose check payment, this should match the address where Milford Photo should mail your check.
-                </div>
                 <label class="field">
                   <span>Street address</span>
                   <input id="street" autocomplete="street-address" />
@@ -237,7 +238,7 @@
 
               <label class="consent">
                 <input id="terms" type="checkbox" required />
-                <span>I understand final payment is pending Milford Photo inspection and may be adjusted after verification.</span>
+                <span>I understand the offer is pending Milford Photo inspection and may be adjusted after verification.</span>
               </label>
 
               <div class="form-actions">
@@ -279,12 +280,12 @@
                 <dt>Store credit</dt>
                 <dd id="summary-credit">-</dd>
               </div>
-              <div hidden>
+              <div>
                 <dt>Routing</dt>
                 <dd id="summary-routing">Awaiting gear</dd>
               </div>
               <div>
-                <dt>Free shipping</dt>
+                <dt>Free label</dt>
                 <dd id="summary-label">Calculated after quote</dd>
               </div>
             </dl>
@@ -295,11 +296,13 @@
       </section>
     </main>
 
-    <script src="./catalog-canon.js"></script>
-    <script src="./catalog-nikon.js"></script>
-    <script src="./catalog-sony-fuji-oly.js"></script>
-    <script src="./catalog-panasonic-pentax-third-party.js"></script>
-    <script src="./catalog.js"></script>
-    <script src="./app.js?v=20260520-payout-address-copy"></script>
+    <script src="./catalog-canon.js?v=20260602-softlaunch"></script>
+    <script src="./catalog-nikon.js?v=20260602-softlaunch"></script>
+    <script src="./catalog-sony-fuji-oly.js?v=20260602-softlaunch"></script>
+    <script src="./catalog-panasonic-pentax-third-party.js?v=20260602-softlaunch"></script>
+    <script src="./catalog-leica-hasselblad.js?v=20260602-softlaunch"></script>
+    <script src="./catalog-modern-supplement.js?v=20260602-softlaunch"></script>
+    <script src="./catalog.js?v=20260602-softlaunch"></script>
+    <script src="./app.js?v=20260602-softlaunch"></script>
   </body>
 </html>

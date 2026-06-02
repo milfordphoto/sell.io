@@ -1,9 +1,51 @@
 const CONFIG = window.MP_USED_GEAR_CONFIG || {};
 const API_BASE = resolveApiBase();
-const TEST_STAFF_USERS = ["staff", "employee"];
+const TEST_EMPLOYEE = "employee";
 const TEST_PASSWORD = "password";
-const DEMO_QUEUE_KEY = "mpUsedGearStaffQueue";
-const SECURE_STAFF_MODE = CONFIG.staffAuthMode === "cookie";
+const STAFF_SECRET = CONFIG.staffSecret || TEST_PASSWORD;
+const SHOW_DEMO_ORDERS = new URLSearchParams(window.location.search).get("showDemo") === "1";
+const MANUAL_BRAND = "__manual_brand";
+const MANUAL_MODEL = "__manual_model";
+const MANUAL_CATEGORY = "Manual Review / Vintage / Specialty";
+const SELECT_CATEGORY = "";
+const SELECT_BRAND = "";
+const SELECT_MODEL = "";
+
+const FALLBACK_CATEGORIES = [
+  "Digital Camera",
+  "Film Camera",
+  "Lens",
+  "Flash / Lighting",
+  "Tripod / Support",
+  "Bags & Cases",
+  "Filters",
+  "Video / Cinema Gear",
+  MANUAL_CATEGORY,
+];
+
+const SIMPLE_CATEGORIES = [
+  "Digital Camera",
+  "Film Camera",
+  "Lens",
+  "Flash / Lighting",
+  "Tripod / Support",
+  "Bags & Cases",
+  "Filters",
+  "Video / Cinema Gear",
+  MANUAL_CATEGORY,
+];
+
+const DEMO_ORDER_PATTERNS = [
+  "codex",
+  "test",
+  "smoke",
+  "browser flow",
+  "safe label",
+  "may 19",
+  "red raven",
+  "redravenuas",
+  "mikewilson.filmmaker",
+];
 
 const CONDITION_MULTIPLIERS = {
   "Like New": 0.7,
@@ -11,6 +53,7 @@ const CONDITION_MULTIPLIERS = {
   Good: 0.5,
   "Well Used": 0.4,
   "Heavily Used": 0.25,
+  "Not Working": 0,
 };
 
 const CONDITION_COPY = {
@@ -19,7 +62,55 @@ const CONDITION_COPY = {
   Good: "Visible wear, fully usable, no major defects.",
   "Well Used": "Heavy wear or missing parts; still usable.",
   "Heavily Used": "Damaged, incomplete, or uncertain operation.",
+  "Not Working": "Will not power on or has known functional problems.",
 };
+
+const STAFF_INTAKE_CONDITIONS = [
+  { value: "like_new", label: "Like New", copy: CONDITION_COPY["Like New"] },
+  { value: "excellent", label: "Excellent", copy: CONDITION_COPY.Excellent },
+  { value: "good", label: "Good", copy: CONDITION_COPY.Good },
+  { value: "well_used", label: "Well Used", copy: CONDITION_COPY["Well Used"] },
+  { value: "heavily_used", label: "Heavily Used", copy: CONDITION_COPY["Heavily Used"] },
+  { value: "not_working", label: "Not Working", copy: CONDITION_COPY["Not Working"] },
+];
+
+const STATUS_LABELS = {
+  quoted: "Instant offer",
+  high_value_review: "Staff approval",
+  manual_review: "Manual review",
+  declined: "Declined",
+};
+
+const INCLUDED_ITEMS = {
+  camera: [
+    { name: "USB connection cable", value: 15, checked: true },
+    { name: "Rechargeable battery", value: 60, checked: true },
+    { name: "Charger", value: 50, checked: true },
+    { name: "Body cap", value: 10, checked: true },
+    { name: "Strap", value: 20, checked: true },
+    { name: "Original box", value: 10, checked: false, bonus: true },
+  ],
+  filmCamera: [
+    { name: "Body cap", value: 10, checked: true },
+    { name: "Strap", value: 20, checked: true },
+    { name: "Original box", value: 10, checked: false, bonus: true },
+  ],
+  lens: [
+    { name: "Rear cap", value: 10, checked: true },
+    { name: "Lens cap", value: 15, checked: true },
+    { name: "Lens hood", value: 35, checked: true },
+    { name: "Original box", value: 10, checked: false, bonus: true },
+  ],
+  default: [
+    { name: "Original box", value: 10, checked: false, bonus: true },
+  ],
+};
+
+const money = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  maximumFractionDigits: 0,
+});
 
 const WORKFLOW_STEPS = [
   { key: "initial", label: "Initial Quote" },
@@ -32,46 +123,51 @@ const WORKFLOW_STEPS = [
   { key: "return", label: "Items Shipped to Customer" },
 ];
 
-const QUEUE_FILTERS = {
-  initial: { label: "Initial Quote", empty: "No orders are currently at Initial Quote." },
-  shipped: { label: "Shipped to Milford Photo", empty: "No orders are currently waiting to arrive." },
-  received: { label: "Received", empty: "No orders are currently at Received." },
-  evaluated: { label: "Evaluated", empty: "No orders are currently at Evaluated." },
-  final: { label: "Final Quote", empty: "No orders are currently ready for final quote." },
-  customer: { label: "Customer Decision", empty: "No orders are currently waiting on a customer decision." },
-  payout: { label: "Payout", empty: "No orders are currently at Payout." },
-  return: { label: "Items Shipped to Customer", empty: "No orders are currently waiting on return shipment." },
-  all: { label: "All Orders", empty: "No orders found." },
-};
-
 const usernameInput = document.getElementById("staff-username");
 const passwordInput = document.getElementById("staff-password");
 const loadButton = document.getElementById("load-records");
 const refreshButton = document.getElementById("refresh-records");
-const searchInput = document.getElementById("staff-search");
-const filterSelect = document.getElementById("staff-filter");
-const sortSelect = document.getElementById("staff-sort");
-const hideTestOrdersInput = document.getElementById("hide-test-orders");
-const testOnlyInput = document.getElementById("show-test-orders-only");
-const newWalkInOrderButton = document.getElementById("new-walkin-order");
-const clearLocalDemoButton = document.getElementById("clear-local-demo-orders");
+const pricingReviewButton = document.getElementById("open-pricing-review");
+const startStaffIntakeButton = document.getElementById("start-staff-intake");
+const staffSearchInput = document.getElementById("staff-search");
+const staffFilterSelect = document.getElementById("staff-filter");
+const staffSortSelect = document.getElementById("staff-sort");
 const loginEl = document.getElementById("staff-login");
 const statusEl = document.getElementById("staff-status");
 const countEl = document.getElementById("record-count");
 const workspaceEl = document.getElementById("staff-workspace");
 const listEl = document.getElementById("records-list");
 const detailEl = document.getElementById("staff-detail");
+const filterButtons = Array.from(document.querySelectorAll(".staff-filter"));
 
 let records = [];
 let orders = [];
 let selectedOrderId = null;
 let selectedItemId = null;
-let activeFilter = "all";
-let activeSort = "first_received";
-let searchQuery = "";
-let hideTestOrders = true;
-let showTestOrdersOnly = false;
-const historyByQuote = new Map();
+let activeFilter = staffFilterSelect?.value || "active";
+let activeSearch = "";
+let activeSort = staffSortSelect?.value || "newest";
+let pricingReviewRows = [];
+let staffIntakeState = createStaffIntakeState();
+let staffIntakePreviewTimer = null;
+let staffIntakePreviewRequestId = 0;
+let staffIntakeCartQuoteRequestId = 0;
+
+const STAFF_INTAKE_PREVIEW_DELAY_MS = 300;
+
+function createStaffIntakeState() {
+  return {
+    cart: [],
+    currentQuote: null,
+    currentQuoteSignature: "",
+    currentQuoteLoading: false,
+    currentQuoteError: "",
+    cartQuote: null,
+    cartQuoteSignature: "",
+    cartQuoteLoading: false,
+    cartQuoteError: "",
+  };
+}
 
 function resolveApiBase() {
   if (CONFIG.apiBase) return CONFIG.apiBase.replace(/\/$/, "");
@@ -82,11 +178,13 @@ function resolveApiBase() {
   return "https://milford-used-gear-system-mvp.milfordphoto.workers.dev";
 }
 
-async function loadRecords() {
+async function loadRecords(options = {}) {
   const username = usernameInput.value.trim().toLowerCase();
   const password = passwordInput.value;
-  if (!SECURE_STAFF_MODE && (!TEST_STAFF_USERS.includes(username) || password !== TEST_PASSWORD)) {
-    setStatus("Use staff / password for this local test.", true);
+  const cookieAuthMode = CONFIG.staffAuthMode === "cookie";
+  const secretAuthMode = CONFIG.staffAuthMode === "secret";
+  if (!cookieAuthMode && !secretAuthMode && (username !== TEST_EMPLOYEE || password !== TEST_PASSWORD)) {
+    setStatus("Use employee / password for this local test.", true);
     return;
   }
 
@@ -96,36 +194,26 @@ async function loadRecords() {
 
   try {
     const response = await fetch(`${API_BASE}/api/staff/list`, {
-      credentials: "include",
-      headers: staffHeaders(),
+      headers: staffAuthHeaders(),
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.error || `Request failed with ${response.status}`);
 
-    records = (data.records || []).sort(sortNewestFirst);
+    const allRecords = (data.records || []).sort(sortNewestFirst);
+    const demoRecords = allRecords.filter(isDemoRecord);
+    records = SHOW_DEMO_ORDERS ? allRecords : allRecords.filter((record) => !isDemoRecord(record));
     orders = buildOrders(records);
-    if (!selectedOrderId && orders.length) selectedOrderId = orders[0].id;
-    syncSelectedOrderToQueue();
+    if (options.selectQuoteRef) {
+      selectedOrderId = orderIdForQuoteRef(options.selectQuoteRef) || selectedOrderId;
+    }
+    if (!orders.some((order) => order.id === selectedOrderId)) selectedOrderId = visibleOrders()[0]?.id || orders[0]?.id || null;
     syncSelectedItem();
     loginEl.hidden = true;
     workspaceEl.hidden = false;
     renderQueue();
     renderDetail();
-    setStatus("Orders loaded.");
+    setStatus(demoRecords.length && !SHOW_DEMO_ORDERS ? `Orders loaded. ${demoRecords.length} demo order${demoRecords.length === 1 ? "" : "s"} hidden.` : "Orders loaded.");
   } catch (error) {
-    if (demoModeAllowed()) {
-      records = demoRecords().sort(sortNewestFirst);
-      orders = buildOrders(records);
-      selectedOrderId = orders[0]?.id || null;
-      syncSelectedOrderToQueue();
-      syncSelectedItem();
-      loginEl.hidden = true;
-      workspaceEl.hidden = false;
-      renderQueue();
-      renderDetail();
-      setStatus("Demo orders loaded. Real staff data requires protected hosting.");
-      return;
-    }
     records = [];
     orders = [];
     selectedOrderId = null;
@@ -139,186 +227,30 @@ async function loadRecords() {
   }
 }
 
-function demoRecords() {
-  const submitted = new Date().toISOString();
-  return [
-    ...storedDemoRecords(),
-    {
-      id: "demo-r5",
-      fields: {
-        "Quote Reference": "MP-DEMO-1042",
-        "Seller Name": "Michael Wilson",
-        "Seller Email": "mikewilson.filmmaker@gmail.com",
-        "Seller Phone": "310-863-2826",
-        "Seller Street": "3603 W Hidden Lane Unit 204",
-        "Seller City": "Rolling Hills Estates",
-        "Seller State": "CA",
-        "Seller ZIP": "90274",
-        "Item Brand": "Canon",
-        "Item Model": "EOS R5",
-        Category: "Camera Body - Mirrorless",
-        Condition: "Excellent",
-        "Seller Notes": "Included items: USB connection cable, Rechargeable battery, Charger, Body cap, Strap\nQuote total cash: $1,379\nQuote total store credit: $1,516",
-        "Serial Number": "",
-        "eBay Median Price": 2299,
-        "Condition Multiplier": 60,
-        "Milford Offer": 1379,
-        "Final Offer": 1379,
-        "Quote Submitted": submitted,
-        "Quote Expires": new Date(Date.now() + 7 * 86400000).toISOString(),
-        Status: "Label Generated",
-        Source: "Online",
-        "Tracking Number": "1Z-DEMO-1042",
-      },
-    },
-    {
-      id: "demo-sigma",
-      fields: {
-        "Quote Reference": "MP-DEMO-1042",
-        "Seller Name": "Michael Wilson",
-        "Seller Email": "mikewilson.filmmaker@gmail.com",
-        "Seller Phone": "310-863-2826",
-        "Seller Street": "3603 W Hidden Lane Unit 204",
-        "Seller City": "Rolling Hills Estates",
-        "Seller State": "CA",
-        "Seller ZIP": "90274",
-        "Item Brand": "Sigma",
-        "Item Model": "Art 24-70mm f/2.8 DG DN - Sony E",
-        Category: "Lens - Mirrorless",
-        Condition: "Excellent",
-        "Seller Notes": "Lens mount: Sony E\nIncluded items: Rear cap, Lens cap, Lens hood\nQuote total cash: $555\nQuote total store credit: $611",
-        "Serial Number": "DEMO-SIGMA-2470",
-        "eBay Median Price": 925,
-        "Condition Multiplier": 60,
-        "Milford Offer": 555,
-        "Final Offer": 555,
-        "Quote Submitted": submitted,
-        "Quote Expires": new Date(Date.now() + 7 * 86400000).toISOString(),
-        Status: "Received",
-        Source: "Online",
-      },
-    },
-    {
-      id: "demo-sony",
-      fields: {
-        "Quote Reference": "MP-DEMO-2098",
-        "Seller Name": "John Doe",
-        "Seller Email": "john@example.com",
-        "Seller Phone": "203-555-0100",
-        "Seller Street": "22 River Street",
-        "Seller City": "Milford",
-        "Seller State": "CT",
-        "Seller ZIP": "06460",
-        "Item Brand": "Sony",
-        "Item Model": "A7 IV",
-        Category: "Camera Body - Mirrorless",
-        Condition: "Good",
-        "Seller Notes": "Missing charger. Customer prefers store credit.",
-        "Serial Number": "",
-        "eBay Median Price": 1380,
-        "Condition Multiplier": 50,
-        "Milford Offer": 690,
-        "Final Offer": 640,
-        "Quote Submitted": new Date(Date.now() - 86400000).toISOString(),
-        "Quote Expires": new Date(Date.now() + 6 * 86400000).toISOString(),
-        Status: "Accepted by Seller",
-        Source: "Online",
-      },
-    },
-    {
-      id: "demo-nikon-final",
-      fields: {
-        "Quote Reference": "MP-DEMO-3144",
-        "Seller Name": "Anna Roberts",
-        "Seller Email": "anna@example.com",
-        "Seller Phone": "203-555-0188",
-        "Seller Street": "18 Broad Street",
-        "Seller City": "Stratford",
-        "Seller State": "CT",
-        "Seller ZIP": "06615",
-        "Item Brand": "Nikon",
-        "Item Model": "Zf",
-        Category: "Camera Body - Mirrorless",
-        Condition: "Excellent",
-        "Seller Notes": "Included items: Rechargeable battery, Charger, Body cap, Strap",
-        "Serial Number": "DEMO-NIKON-ZF",
-        "Staff Notes": "INTAKE REVIEW\nReceived: Yes\nSerial number: DEMO-NIKON-ZF\nVerified condition: Excellent\nAll recommended accessories included: Yes\nAccessory check:\n- USB connection cable: missing\n- Rechargeable battery: received\n- Charger: received\n- Body cap: received\n- Strap: received\nCustomer decision: pending\nFinal offer: $1,113\nLast staff action: adjusted\nReason / notes: Missing USB cable only.",
-        "eBay Median Price": 1855,
-        "Condition Multiplier": 60,
-        "Milford Offer": 1113,
-        "Final Offer": 1113,
-        "Quote Submitted": new Date(Date.now() - 2 * 86400000).toISOString(),
-        "Quote Expires": new Date(Date.now() + 5 * 86400000).toISOString(),
-        Status: "Evaluated",
-        Source: "Online",
-      },
-    },
-    {
-      id: "demo-payout",
-      fields: {
-        "Quote Reference": "MP-DEMO-4091",
-        "Seller Name": "Chris Lee",
-        "Seller Email": "chris@example.com",
-        "Seller Phone": "860-555-0140",
-        "Seller Street": "5 Main Street",
-        "Seller City": "Milford",
-        "Seller State": "CT",
-        "Seller ZIP": "06460",
-        "Item Brand": "Canon",
-        "Item Model": "RF 24-70mm f/2.8L IS USM",
-        Category: "Lens - RF",
-        Condition: "Excellent",
-        "Seller Notes": "Included items: Rear cap, Lens cap, Lens hood",
-        "Serial Number": "DEMO-CANON-RF2470",
-        "Staff Notes": "INTAKE REVIEW\nReceived: Yes\nSerial number: DEMO-CANON-RF2470\nVerified condition: Excellent\nAll recommended accessories included: Yes\nAccessory check:\n- Rear cap: received\n- Lens cap: received\n- Lens hood: received\nCustomer decision: accept\nFinal offer: $1,050\nLast staff action: accepted\nReason / notes: Customer accepted final quote.",
-        "eBay Median Price": 1750,
-        "Condition Multiplier": 60,
-        "Milford Offer": 1050,
-        "Final Offer": 1050,
-        "Quote Submitted": new Date(Date.now() - 3 * 86400000).toISOString(),
-        "Quote Expires": new Date(Date.now() + 4 * 86400000).toISOString(),
-        Status: "Customer Accepted Item",
-        Source: "Online",
-      },
-    },
-    {
-      id: "demo-complete",
-      fields: {
-        "Quote Reference": "MP-DEMO-5128",
-        "Seller Name": "Sam Patel",
-        "Seller Email": "sam@example.com",
-        "Seller Phone": "203-555-0199",
-        "Seller Street": "91 Greenfield Avenue",
-        "Seller City": "New Haven",
-        "Seller State": "CT",
-        "Seller ZIP": "06511",
-        "Item Brand": "Sony",
-        "Item Model": "FE 20mm f/1.8 G",
-        Category: "Lens - Sony FE / E-Mount",
-        Condition: "Like New",
-        "Seller Notes": "Included items: Rear cap, Lens cap, Lens hood",
-        "Serial Number": "DEMO-SONY-20G",
-        "Staff Notes": "INTAKE REVIEW\nReceived: Yes\nSerial number: DEMO-SONY-20G\nVerified condition: Like New\nAll recommended accessories included: Yes\nAccessory check:\n- Rear cap: received\n- Lens cap: received\n- Lens hood: received\nCustomer decision: accept\nFinal offer: $520\nLast staff action: payment\nReason / notes: Paid by check.",
-        "eBay Median Price": 743,
-        "Condition Multiplier": 70,
-        "Milford Offer": 520,
-        "Final Offer": 520,
-        "Quote Submitted": new Date(Date.now() - 7 * 86400000).toISOString(),
-        "Quote Expires": new Date(Date.now() + 1 * 86400000).toISOString(),
-        Status: "Payment Sent",
-        Source: "Online",
-      },
-    },
-  ];
+function staffAuthHeaders() {
+  return CONFIG.staffAuthMode === "cookie" ? {} : { "X-Staff-Secret": STAFF_SECRET };
 }
 
-function storedDemoRecords() {
-  try {
-    const records = JSON.parse(localStorage.getItem(DEMO_QUEUE_KEY) || "[]");
-    return Array.isArray(records) ? records : [];
-  } catch {
-    return [];
-  }
+function isDemoRecord(record) {
+  const fields = record.fields || {};
+  const hasSeller = Boolean(String(fields["Seller Name"] || fields["Seller Email"] || "").trim());
+  const hasGear = Boolean(String(fields.Brand || fields.Model || fields.Category || "").trim());
+  if (!hasSeller && !hasGear) return true;
+
+  const searchable = [
+    fields["Seller Name"],
+    fields["Seller Email"],
+    fields["Seller Phone"],
+    fields["Quote Reference"],
+    fields.Brand,
+    fields.Model,
+    fields.Notes,
+    fields["Staff Notes"],
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  return DEMO_ORDER_PATTERNS.some((pattern) => searchable.includes(pattern));
 }
 
 function buildOrders(items) {
@@ -361,25 +293,11 @@ function buildOrders(items) {
 }
 
 function renderQueue() {
-  const filtered = filterOrders(orders, activeFilter);
-  const visibleTestCount = orders.filter((order) => isTestOrder(order) && orderMatchesCurrentFilterSearch(order, activeFilter)).length;
-  const filterLabel = QUEUE_FILTERS[activeFilter]?.label || activeFilter;
-  const searched = searchQuery ? ` matching "${searchQuery}"` : "";
-  const countLabel = showTestOrdersOnly
-    ? `${filtered.length} test/demo order${filtered.length === 1 ? "" : "s"}`
-    : activeFilter === "all"
-      ? `${filtered.length} order${filtered.length === 1 ? "" : "s"}`
-      : `${filtered.length} ${filterLabel.toLowerCase()} order${filtered.length === 1 ? "" : "s"}`;
-  const hiddenLabel = hideTestOrders && !showTestOrdersOnly && visibleTestCount ? ` · ${visibleTestCount} test/demo hidden` : "";
-  countEl.textContent = `${countLabel}${searched}${hiddenLabel}`;
+  const filtered = visibleOrders();
+  countEl.textContent = `${filtered.length} ${activeFilterLabel(activeFilter)} order${filtered.length === 1 ? "" : "s"}`;
 
   if (!filtered.length) {
-    const emptyCopy = showTestOrdersOnly
-      ? "No test/demo orders match this view."
-      : hideTestOrders && visibleTestCount
-      ? "Only test/demo orders match this view. Turn off Hide test/demo orders to see them."
-      : QUEUE_FILTERS[activeFilter]?.empty || "No orders in this view.";
-    listEl.innerHTML = `<div class="staff-empty-card">${escapeHtml(emptyCopy)}</div>`;
+    listEl.innerHTML = `<div class="staff-empty-card">No orders in this view.</div>`;
     return;
   }
 
@@ -395,28 +313,28 @@ function renderQueue() {
 }
 
 function renderOrderCard(order) {
-  const status = order.workflow.isComplete ? "Complete" : `Current: ${order.workflow.current.label}`;
+  const status = orderStatusLabel(order);
   const itemLabel = `${order.items.length} item${order.items.length === 1 ? "" : "s"}`;
   const total = order.totals.final || order.totals.original;
   const groupingNote = order.synthetic && order.items.length > 1 ? "Test grouped order" : "Order";
-  const testOrder = isTestOrder(order);
-  const actionSummary = orderActionSummary(order);
 
   return `
-    <button class="staff-record-card ${order.id === selectedOrderId ? "is-selected" : ""} ${testOrder ? "is-test-order" : ""}" type="button" data-order-id="${escapeAttr(order.id)}">
+    <button class="staff-record-card ${order.id === selectedOrderId ? "is-selected" : ""}" type="button" data-order-id="${escapeAttr(order.id)}">
       <span class="staff-card-top">
         <strong>${escapeHtml(order.customer)}</strong>
-        <span class="staff-card-badges">
-          ${testOrder ? `<span class="staff-demo-pill">Test/demo</span>` : ""}
-          <span class="staff-status-pill">${escapeHtml(status)}</span>
-        </span>
+        <span class="staff-status-pill">${escapeHtml(status)}</span>
       </span>
       <span class="staff-card-title">${escapeHtml(order.quote)}</span>
-      <span class="staff-card-gear">${escapeHtml(order.items.map((item) => shortGearTitle(item.fields || {})).join(", "))}</span>
       <span class="staff-card-meta">${escapeHtml(groupingNote)} - ${escapeHtml(itemLabel)} - $${formatMoney(total)}</span>
-      <span class="staff-card-action">${escapeHtml(actionSummary)}</span>
     </button>
   `;
+}
+
+function orderStatusLabel(order) {
+  if (order.workflow.isComplete) return "Complete";
+  const needsManualReview = order.items.some((item) => staffWorkflowText(item.fields).includes("manual review"));
+  if (needsManualReview && order.workflow.current.key === "shipped") return "Next: Manual review";
+  return `Next: ${order.workflow.current.label}`;
 }
 
 function renderDetail() {
@@ -436,8 +354,6 @@ function renderDetail() {
   const fields = record.fields || {};
   const accessories = accessoryListFor(fields);
   const parsed = parseStaffNotes(fields["Staff Notes"]);
-  const sectionState = reviewSectionState(record, fields, parsed, accessories);
-  const pricingDetails = staffPricingDetails(fields);
   const baseOffer = numberOrNull(fields["Milford Offer"]) ?? 0;
   const finalOffer = numberOrNull(fields["Final Offer"]) ?? calculateOffer(fields, parsed, accessories, baseOffer);
 
@@ -456,7 +372,7 @@ function renderDetail() {
         <div class="staff-offer-box">
           <span>Item quote</span>
           <strong>$${formatMoney(finalOffer)}</strong>
-          <small>${escapeHtml(recordStatusText(record) || "New")}</small>
+          <small>${escapeHtml(fields.Status || "New")}</small>
         </div>
       </header>
 
@@ -472,22 +388,23 @@ function renderDetail() {
           <h3>Original quote</h3>
           <p>Item cash offer: <strong>$${formatMoney(baseOffer)}</strong></p>
           <p>Order total: <strong>$${formatMoney(order.totals.original)}</strong></p>
-          <p>Market median: ${moneyOrDash(fields["eBay Median Price"])}</p>
-          ${pricingDetails.map((line) => `<p>${escapeHtml(line)}</p>`).join("")}
+          <p>Market estimate: ${moneyOrDash(fields["eBay Median Price"])}</p>
+          <p>Quote source: ${escapeHtml(quoteSourceLabel(fields))}</p>
+          <p>Pricing basis: ${escapeHtml(staffNoteValue(fields, "Pricing basis") || "-")}</p>
+          <p>Price last reviewed: ${escapeHtml(staffNoteValue(fields, "Price last reviewed") || "-")}</p>
+          <p><a href="${escapeAttr(ebaySoldListingsUrl(fields))}" target="_blank" rel="noreferrer">Search eBay sold listings</a></p>
           <p>Expires: ${formatDate(fields["Quote Expires"]) || "-"}</p>
         </section>
         <section>
           <h3>Shipping</h3>
           <p>Tracking: ${escapeHtml(fields["Tracking Number"] || "-")}</p>
-          <p>${shippingLabelCopy(fields)}</p>
+          <p>${fields["Shippo Label URL"] ? `<a href="${escapeAttr(fields["Shippo Label URL"])}" target="_blank" rel="noreferrer">Open label</a>` : "No label link"}</p>
           <p>Payment method: ${escapeHtml(fields["Payment Method"] || "-")}</p>
         </section>
       </div>
 
-      ${renderOrderHistoryPanel(order)}
-
       <form class="staff-review-form" id="staff-review-form">
-        <section class="staff-review-section ${sectionState.received ? "is-complete" : ""}">
+        <section class="staff-review-section">
           <div class="staff-section-title">
             <span>1</span>
             <div>
@@ -496,16 +413,12 @@ function renderDetail() {
             </div>
           </div>
           <label class="staff-check-row">
-            <input type="checkbox" id="received-check" ${parsed.received || hasReceivedStatus(record) ? "checked" : ""} />
+            <input type="checkbox" id="received-check" ${parsed.received || staffRecordLooksReceived(fields) ? "checked" : ""} />
             This item has been received
-          </label>
-          <label class="field staff-serial-field">
-            <span>Serial number</span>
-            <input id="serial-number" type="text" value="${escapeAttr(parsed.serialNumber || fields["Serial Number"] || "")}" placeholder="Enter serial number during intake" autocomplete="off" />
           </label>
         </section>
 
-        <section class="staff-review-section ${sectionState.accessories ? "is-complete" : ""}">
+        <section class="staff-review-section">
           <div class="staff-section-title">
             <span>2</span>
             <div>
@@ -517,12 +430,12 @@ function renderDetail() {
             ${accessories.map((item) => renderAccessory(item, parsed)).join("")}
           </div>
           <label class="staff-check-row">
-            <input type="checkbox" id="all-accessories-check" ${allAccessoriesChecked(accessories, parsed) ? "checked" : ""} />
+            <input type="checkbox" id="all-accessories-check" ${parsed.allAccessories || accessories.every((item) => parsed.accessories[item.name] !== false) ? "checked" : ""} />
             All recommended accessories included
           </label>
         </section>
 
-        <section class="staff-review-section ${sectionState.condition ? "is-complete" : ""}">
+        <section class="staff-review-section">
           <div class="staff-section-title">
             <span>3</span>
             <div>
@@ -535,12 +448,12 @@ function renderDetail() {
           </div>
         </section>
 
-        <section class="staff-review-section ${sectionState.quote ? "is-complete" : ""}">
+        <section class="staff-review-section">
           <div class="staff-section-title">
             <span>4</span>
             <div>
               <h3>Final item quote</h3>
-              <p>Set the inspected final offer for this item. The customer will accept or return items after the final quote email is sent.</p>
+              <p>Set the final item offer and choose what happens if the customer declines this item.</p>
             </div>
           </div>
           <div class="staff-adjust-grid">
@@ -552,6 +465,28 @@ function renderDetail() {
               <span>Custom final offer</span>
               <input id="custom-offer" type="number" min="0" step="1" value="${finalOffer}" />
             </label>
+            <label class="field">
+              <span>Payout method</span>
+              <select id="payment-method">
+                <option value="check" ${String(fields["Payment Method"] || "").toLowerCase().includes("check") ? "selected" : ""}>Check</option>
+                <option value="paypal" ${String(fields["Payment Method"] || "").toLowerCase().includes("paypal") || String(fields["Payment Method"] || "").toLowerCase().includes("bank") ? "selected" : ""}>PayPal</option>
+                <option value="store_credit" ${String(fields["Payment Method"] || "").toLowerCase().includes("store credit") ? "selected" : ""}>Store credit</option>
+              </select>
+            </label>
+          </div>
+          <div class="staff-decision-grid">
+            <label class="staff-decision-card">
+              <input type="radio" name="item-decision" value="pending" ${parsed.decision === "pending" ? "checked" : ""} />
+              <span>Await customer decision</span>
+            </label>
+            <label class="staff-decision-card">
+              <input type="radio" name="item-decision" value="accept" ${parsed.decision === "accept" ? "checked" : ""} />
+              <span>Customer accepts this item</span>
+            </label>
+            <label class="staff-decision-card">
+              <input type="radio" name="item-decision" value="return" ${parsed.decision === "return" ? "checked" : ""} />
+              <span>Customer wants this item returned</span>
+            </label>
           </div>
           <label class="field">
             <span>Adjustment reason / inspection notes</span>
@@ -559,27 +494,30 @@ function renderDetail() {
           </label>
         </section>
 
-        ${renderStaffActions(record, parsed)}
-        ${renderOrderDecisionPanel(order)}
-        ${renderCustomerDecisionSection(record, parsed)}
+        <section class="staff-actions-panel">
+          <button class="secondary-action" type="button" data-action="received">Mark item received</button>
+          <button class="secondary-action" type="button" data-action="save">Save item intake</button>
+          <button class="primary-action" type="button" data-action="adjusted">Finish item evaluation</button>
+          <button class="secondary-action" type="button" data-action="accepted">Mark item accepted</button>
+          <button class="secondary-action" type="button" data-action="payment">Payment sent</button>
+          <button class="secondary-action danger-action" type="button" data-action="return">Return item</button>
+        </section>
       </form>
-      ${renderStaffFeedbackPanel(order, record)}
+
+      ${renderOrderDecisionPanel(order)}
     </article>
   `;
 
   bindDetail(record, accessories);
-  loadOrderHistory(order);
 }
 
 function renderOrderHeader(order) {
-  const testOrder = isTestOrder(order);
   return `
     <section class="staff-order-header">
       <div>
         <p class="brand-line">Order ${escapeHtml(order.quote)}</p>
-        <h2>${escapeHtml(order.customer)}${testOrder ? ` <span class="staff-demo-pill staff-demo-pill-inline">Test/demo</span>` : ""}</h2>
+        <h2>${escapeHtml(order.customer)}</h2>
         <p>${escapeHtml(order.items.length)} item${order.items.length === 1 ? "" : "s"} in this order${order.synthetic && order.items.length > 1 ? " - grouped for testing from same customer/address/time window" : ""}</p>
-        <p class="staff-next-action-line">Next action: ${escapeHtml(orderActionSummary(order))}</p>
       </div>
       <div class="staff-order-total">
         <span>Final order total</span>
@@ -588,75 +526,6 @@ function renderOrderHeader(order) {
       </div>
     </section>
   `;
-}
-
-function renderCustomerDecisionSection(record, parsed) {
-  if (!shouldShowCustomerDecision(record)) return "";
-  return `
-    <section class="staff-review-section customer-decision-section">
-      <div class="staff-section-title">
-        <span>5</span>
-        <div>
-          <h3>Customer decision</h3>
-          <p>Use this after the final quote email is sent, or to manually record a phone/in-store decision.</p>
-        </div>
-      </div>
-      <div class="staff-decision-grid">
-        <label class="staff-decision-card">
-          <input type="radio" name="item-decision" value="pending" ${parsed.decision === "pending" ? "checked" : ""} />
-          <span>Awaiting customer response</span>
-        </label>
-        <label class="staff-decision-card">
-          <input type="radio" name="item-decision" value="accept" ${parsed.decision === "accept" ? "checked" : ""} />
-          <span>Customer accepted this item</span>
-        </label>
-        <label class="staff-decision-card">
-          <input type="radio" name="item-decision" value="return" ${parsed.decision === "return" ? "checked" : ""} />
-          <span>Customer requested return</span>
-        </label>
-      </div>
-    </section>
-  `;
-}
-
-function shouldShowCustomerDecision(record) {
-  const status = recordStatusText(record).toLowerCase();
-  return status.includes("final")
-    || status.includes("payment info")
-    || status.includes("accepted item")
-    || status.includes("customer accepted")
-    || status.includes("payment")
-    || status.includes("return")
-    || status.includes("items shipped to customer")
-    || status.includes("returned to seller");
-}
-
-function hasReceivedStatus(record) {
-  const status = recordStatusText(record).toLowerCase();
-  return status.includes("received")
-    || status.includes("inspection")
-    || status.includes("evaluated")
-    || status.includes("final")
-    || status.includes("accepted")
-    || status.includes("payment")
-    || status.includes("return");
-}
-
-function allAccessoriesChecked(accessories, parsed) {
-  if (parsed.allAccessories) return true;
-  return accessories.every((item) => parsed.accessories[item.name] !== false);
-}
-
-function reviewSectionState(record, fields, parsed, accessories) {
-  const serial = parsed.serialNumber || fields["Serial Number"] || "";
-  const received = (parsed.received || hasReceivedStatus(record)) && Boolean(String(serial).trim());
-  const evaluatedOrBeyond = itemStatusClass(record) === "is-evaluated" || itemStatusClass(record) === "is-return";
-  return {
-    received,
-    accessories: evaluatedOrBeyond || Boolean(parsed.allAccessories) || (hasReceivedStatus(record) && allAccessoriesChecked(accessories, parsed)),
-    condition: evaluatedOrBeyond || Boolean(parsed.verifiedCondition),
-    quote: evaluatedOrBeyond,
-  };
 }
 
 function renderWorkflow(order) {
@@ -692,760 +561,18 @@ function renderItemTabs(order) {
   `;
 }
 
-function renderWalkInQuoteBuilder() {
-  detailEl.innerHTML = `
-    <article class="staff-intake">
-      <header class="staff-order-header">
-        <div>
-          <p class="brand-line">In-store quote</p>
-          <h2>Build a walk-in quote</h2>
-          <p>Create a customer order without using the public form. Values update as condition and accessories change.</p>
-        </div>
-        <div class="staff-order-total walkin-total">
-          <span>Estimated offer</span>
-          <strong id="walkin-offer-total">$0</strong>
-          <small id="walkin-store-credit-total">$0 store credit</small>
-        </div>
-      </header>
-
-      <form class="staff-review-form walkin-form" id="walkin-form">
-        <section class="staff-review-section">
-          <div class="staff-section-title">
-            <span>1</span>
-            <div>
-              <h3>Customer</h3>
-              <p>Add the seller information staff needs to find this order later.</p>
-            </div>
-          </div>
-          <div class="three-col">
-            <label class="field">
-              <span>Name</span>
-              <input id="walkin-name" required placeholder="Customer name" />
-            </label>
-            <label class="field">
-              <span>Email</span>
-              <input id="walkin-email" type="email" placeholder="Customer email" />
-            </label>
-            <label class="field">
-              <span>Phone</span>
-              <input id="walkin-phone" placeholder="Customer phone" />
-            </label>
-          </div>
-        </section>
-
-        <section class="staff-review-section">
-          <div class="staff-section-title">
-            <span>2</span>
-            <div>
-              <h3>Gear</h3>
-              <p>Use market value until final sold-listing pricing is approved for staff-created quotes.</p>
-            </div>
-          </div>
-          <div class="three-col">
-            <label class="field">
-              <span>Category</span>
-              <select id="walkin-category">
-                <option>Digital Camera</option>
-                <option>Film Camera</option>
-                <option>Lens</option>
-                <option>Video / Cinema Gear</option>
-                <option>Flash / Lighting</option>
-                <option>Tripod / Support</option>
-                <option>Bags & Cases</option>
-                <option>Filters</option>
-                <option>Specialty / Other</option>
-              </select>
-            </label>
-            <label class="field">
-              <span>Brand</span>
-              <input id="walkin-brand" required placeholder="Canon, Nikon, Sony..." />
-            </label>
-            <label class="field">
-              <span>Model</span>
-              <input id="walkin-model" required placeholder="EOS R5, 24-70mm..." />
-            </label>
-          </div>
-          <div class="two-col">
-            <label class="field">
-              <span>Estimated market value</span>
-              <input id="walkin-market" type="number" min="0" step="1" value="0" />
-            </label>
-            <label class="field">
-              <span>Serial number</span>
-              <input id="walkin-serial" placeholder="Record now or during intake" />
-            </label>
-          </div>
-        </section>
-
-        <section class="staff-review-section compact-condition-section">
-          <div class="staff-section-title">
-            <span>3</span>
-            <div>
-              <h3>Condition</h3>
-              <p>The selected grade sets the Milford Photo offer multiplier.</p>
-            </div>
-          </div>
-          <div class="staff-condition-grid walkin-condition-grid">
-            ${Object.keys(CONDITION_MULTIPLIERS).map((condition) => renderCondition(condition, condition === "Excellent" ? "Excellent" : "")).join("")}
-          </div>
-        </section>
-
-        <section class="staff-review-section">
-          <div class="staff-section-title">
-            <span>4</span>
-            <div>
-              <h3>Included accessories</h3>
-              <p>Uncheck missing items to show the customer how each accessory changes the offer.</p>
-            </div>
-          </div>
-          <div class="staff-accessory-grid" id="walkin-accessories"></div>
-        </section>
-
-        <section class="staff-actions-panel walkin-actions-panel">
-          <div class="staff-actions-copy">
-            <strong>Ready to intake</strong>
-            <span>This creates an in-store quote in the staff queue for same-day trade-in workflow testing.</span>
-          </div>
-          <div class="staff-actions-buttons">
-            <button class="secondary-action" type="button" id="walkin-reset">Clear form</button>
-            <button class="primary-action" type="submit">Create in-store quote</button>
-          </div>
-        </section>
-      </form>
-    </article>
-  `;
-  bindWalkInQuoteBuilder();
-}
-
-function bindWalkInQuoteBuilder() {
-  const form = document.getElementById("walkin-form");
-  const category = document.getElementById("walkin-category");
-  const resetButton = document.getElementById("walkin-reset");
-
-  const refreshAccessories = () => {
-    const accessoryWrap = document.getElementById("walkin-accessories");
-    accessoryWrap.innerHTML = walkInAccessoryListForCategory(category.value)
-      .map((item) => renderWalkInAccessory(item))
-      .join("");
-    accessoryWrap.querySelectorAll("[data-walkin-accessory]").forEach((input) => {
-      input.addEventListener("change", updateWalkInOffer);
-    });
-    updateWalkInOffer();
-  };
-
-  form.querySelectorAll("input, select").forEach((input) => {
-    input.addEventListener("input", updateWalkInOffer);
-    input.addEventListener("change", updateWalkInOffer);
-  });
-
-  form.querySelectorAll("input[name='verified-condition']").forEach((input) => {
-    input.name = "walkin-condition";
-    input.addEventListener("change", () => {
-      form.querySelectorAll(".walkin-condition-grid .staff-condition-option").forEach((option) => option.classList.remove("is-selected"));
-      input.closest(".staff-condition-option").classList.add("is-selected");
-      updateWalkInOffer();
-    });
-  });
-
-  category.addEventListener("change", refreshAccessories);
-  resetButton.addEventListener("click", renderWalkInQuoteBuilder);
-  form.addEventListener("submit", (event) => {
-    event.preventDefault();
-    createWalkInOrder();
-  });
-
-  refreshAccessories();
-}
-
-function renderWalkInAccessory(item) {
-  return `
-    <label class="staff-accessory-item">
-      <input type="checkbox" data-walkin-accessory="${escapeAttr(item.name)}" data-deduction="${item.deduction}" checked />
-      <span>${escapeHtml(item.name)}</span>
-      <strong>${formatAccessoryValue(item.deduction)}</strong>
-    </label>
-  `;
-}
-
-function walkInAccessoryListForCategory(category) {
-  return accessoryListFor({ Category: category });
-}
-
-function updateWalkInOffer() {
-  const offer = calculateWalkInOffer();
-  const totalEl = document.getElementById("walkin-offer-total");
-  const creditEl = document.getElementById("walkin-store-credit-total");
-  if (totalEl) totalEl.textContent = `$${formatMoney(offer)}`;
-  if (creditEl) creditEl.textContent = `$${formatMoney(Math.floor(offer * 1.1))} store credit`;
-}
-
-function calculateWalkInOffer() {
-  const market = numberOrNull(document.getElementById("walkin-market")?.value) ?? 0;
-  const condition = document.querySelector("input[name='walkin-condition']:checked")?.value || "Excellent";
-  const base = Math.floor(market * (CONDITION_MULTIPLIERS[condition] || CONDITION_MULTIPLIERS.Excellent));
-  const missing = Array.from(document.querySelectorAll("[data-walkin-accessory]")).reduce((total, input) => {
-    return input.checked ? total : total + (Number(input.dataset.deduction) || 0);
-  }, 0);
-  return Math.max(0, base - missing);
-}
-
-function createWalkInOrder() {
-  const name = document.getElementById("walkin-name").value.trim();
-  const brand = document.getElementById("walkin-brand").value.trim();
-  const model = document.getElementById("walkin-model").value.trim();
-  if (!name || !brand || !model) {
-    setStatus("Name, brand, and model are required for an in-store quote.", true);
-    return;
-  }
-
-  const condition = document.querySelector("input[name='walkin-condition']:checked")?.value || "Excellent";
-  const category = document.getElementById("walkin-category").value;
-  const market = numberOrNull(document.getElementById("walkin-market").value) ?? 0;
-  const offer = calculateWalkInOffer();
-  const quoteRef = `MP-INSTORE-${crypto.randomUUID().slice(0, 4).toUpperCase()}`;
-  const included = Array.from(document.querySelectorAll("[data-walkin-accessory]:checked")).map((input) => input.dataset.walkinAccessory);
-  const missing = Array.from(document.querySelectorAll("[data-walkin-accessory]:not(:checked)")).map((input) => input.dataset.walkinAccessory);
-
-  const record = {
-    id: `demo-live-instore-${crypto.randomUUID()}`,
-    fields: {
-      "Quote Reference": quoteRef,
-      "Seller Name": name,
-      "Seller Email": document.getElementById("walkin-email").value.trim(),
-      "Seller Phone": document.getElementById("walkin-phone").value.trim(),
-      "Item Brand": brand,
-      "Item Model": model,
-      Category: category,
-      Condition: condition,
-      "Seller Notes": [
-        "Created by staff from in-store quote builder.",
-        `Included items: ${included.join(", ") || "None marked"}`,
-        missing.length ? `Missing items: ${missing.join(", ")}` : "",
-        `Quote total cash: $${formatMoney(offer)}`,
-        `Quote total store credit: $${formatMoney(Math.floor(offer * 1.1))}`,
-      ].filter(Boolean).join("\n"),
-      "Serial Number": document.getElementById("walkin-serial").value.trim(),
-      "Staff Notes": [
-        "INTAKE REVIEW",
-        "Received: Yes",
-        `Serial number: ${document.getElementById("walkin-serial").value.trim() || "Not entered"}`,
-        `Verified condition: ${condition}`,
-        `All recommended accessories included: ${missing.length ? "No" : "Yes"}`,
-        "Accessory check:",
-        ...walkInAccessoryListForCategory(category).map((item) => `- ${item.name}: ${included.includes(item.name) ? "received" : "missing"}`),
-        "Customer decision: pending",
-        `Final offer: $${offer}`,
-        "Last staff action: created_in_store",
-        "Reason / notes: None",
-        `Updated: ${new Date().toLocaleString()}`,
-      ].join("\n"),
-      "eBay Median Price": market,
-      "Condition Multiplier": Math.round((CONDITION_MULTIPLIERS[condition] || 0.6) * 100),
-      "Milford Offer": offer,
-      "Final Offer": offer,
-      "Quote Submitted": new Date().toISOString(),
-      "Quote Expires": new Date(Date.now() + 7 * 86400000).toISOString(),
-      Status: "Received",
-      "Workflow Step": "Received",
-      Source: "In Store",
-    },
-  };
-
-  persistDemoRecord(record);
-  records = [record, ...records.filter((item) => item.id !== record.id)];
-  orders = buildOrders(records);
-  selectedOrderId = orders.find((order) => order.items.some((item) => item.id === record.id))?.id || `quote:${quoteRef}`;
-  selectedItemId = record.id;
-  hideTestOrders = false;
-  showTestOrdersOnly = false;
-  if (hideTestOrdersInput) hideTestOrdersInput.checked = false;
-  if (testOnlyInput) testOnlyInput.checked = false;
-  renderQueue();
-  renderDetail();
-  setStatus(`Created in-store quote ${quoteRef}.`);
-}
-
 function renderOrderDecisionPanel(order) {
   const evaluated = order.items.filter((item) => itemStatusClass(item) === "is-evaluated").length;
   const ready = evaluated === order.items.length;
-  const emailState = orderEmailState(order, ready, evaluated);
   return `
     <section class="staff-order-decision">
       <div>
-        <h3>${escapeHtml(emailState.title)}</h3>
-        <p>${escapeHtml(emailState.copy)}</p>
+        <h3>Final quote email</h3>
+        <p>${ready ? "All items are evaluated. Staff can send the item-by-item final quote for the customer to accept or return each item." : `${evaluated} of ${order.items.length} items evaluated. Finish every item before sending the final quote email.`}</p>
       </div>
-      <button class="${escapeAttr(emailState.className)}" type="button" id="send-final-quote" data-order-status="${escapeAttr(emailState.status)}" data-order-action="${escapeAttr(emailState.action)}" ${emailState.disabled ? "disabled" : ""}>${escapeHtml(emailState.label)}</button>
+      <button class="primary-action" type="button" id="send-final-quote" ${ready ? "" : "disabled"}>Send final quote email</button>
     </section>
   `;
-}
-
-function orderEmailState(order, ready, evaluated) {
-  const statuses = order.items.map((item) => recordStatusText(item).toLowerCase());
-  const sent = statuses.some((status) =>
-    status.includes("final quote sent") ||
-    status.includes("payment info requested") ||
-    status.includes("customer accepted item") ||
-    status.includes("payment sent")
-  );
-  const unchanged = orderQuoteUnchanged(order);
-  const paymentMethod = orderPaymentMethod(order);
-
-  if (!ready) {
-    return {
-      title: "Final quote email",
-      copy: `${evaluated} of ${order.items.length} items evaluated. Finish every item before sending the customer email.`,
-      label: "Send final quote email",
-      status: "",
-      action: "",
-      className: "primary-action",
-      disabled: true,
-    };
-  }
-
-  if (sent) {
-    return {
-      title: unchanged ? "Payment info email" : "Final quote email",
-      copy: "Email sent. The customer can now respond with the next step.",
-      label: "Email sent",
-      status: "",
-      action: "",
-      className: "secondary-action is-sent",
-      disabled: true,
-    };
-  }
-
-  if (unchanged) {
-    if (paymentMethod === "paypal") {
-      return {
-        title: "PayPal payout email",
-        copy: "All items are evaluated and the quote is unchanged. Send confirmation that PayPal payout will be processed, then move accepted items to payout.",
-        label: "Send PayPal payout instructions",
-        status: "Payment Info Requested",
-        action: "payment_info_requested",
-        className: "primary-action",
-        disabled: false,
-      };
-    }
-
-    return {
-      title: "Verified quote email",
-      copy: paymentMethod === "store_credit"
-        ? "All items are evaluated and the quote is unchanged. Send confirmation that store credit will be issued, then move accepted items to payout."
-        : "All items are evaluated and the quote is unchanged. Send confirmation that check payment will be issued, then move accepted items to payout.",
-      label: "Send verified quote email",
-      status: "Customer Accepted Item",
-      action: "payment_info_requested",
-      className: "primary-action",
-      disabled: false,
-    };
-  }
-
-  return {
-    title: "Final quote email",
-    copy: "All items are evaluated. Staff can send the item-by-item final quote for the customer to accept or return each item.",
-    label: "Send final quote email",
-    status: "Final Quote Sent",
-    action: "final_quote_sent",
-    className: "primary-action",
-    disabled: false,
-  };
-}
-
-function orderQuoteUnchanged(order) {
-  return order.items.every((item) => {
-    const fields = item.fields || {};
-    const original = numberOrNull(fields["Milford Offer"]) ?? 0;
-    const final = numberOrNull(fields["Final Offer"]) ?? original;
-    return final === original;
-  });
-}
-
-function orderPaymentMethod(order) {
-  const value = order.items
-    .map((item) => item.fields?.["Payment Method"] || "")
-    .find(Boolean) || "";
-  return normalizePaymentMethod(value);
-}
-
-function normalizePaymentMethod(value = "") {
-  const method = String(value || "").toLowerCase();
-  if (method.includes("paypal") || method.includes("bank") || method.includes("ach")) return "paypal";
-  if (method.includes("store")) return "store_credit";
-  return "check";
-}
-
-function paymentMethodLabel(value = "") {
-  const method = normalizePaymentMethod(value);
-  if (method === "paypal") return "PayPal";
-  if (method === "store_credit") return "Store credit";
-  return "Check";
-}
-
-function shippingLabelCopy(fields = {}) {
-  const labelUrl = fields["Shippo Label URL"];
-  if (labelUrl) {
-    return `<a href="${escapeAttr(labelUrl)}" target="_blank" rel="noreferrer">Open label</a>`;
-  }
-
-  const labelContext = [
-    fields["Staff Notes"],
-    fields.Status,
-    fields["Workflow Step"],
-    fields["Tracking Number"],
-  ].join(" ").toLowerCase();
-
-  if (labelContext.includes("dry run") || labelContext.includes("dry-run")) {
-    return `<span class="staff-muted">Label dry-run only. Real Shippo labels are disabled for testing.</span>`;
-  }
-
-  return "No label link";
-}
-
-function renderStaffActions(record, parsed) {
-  const actions = staffActionsFor(record, parsed);
-  return `
-    <section class="staff-actions-panel ${escapeAttr(actions.stateClass || "")}">
-      <div class="staff-actions-copy">
-        <strong>${escapeHtml(actions.title)}</strong>
-        <span>${escapeHtml(actions.copy)}</span>
-      </div>
-      <div class="staff-actions-buttons">
-        ${actions.buttons.map((button) => `
-          <button class="${escapeAttr(button.className)}" type="button" data-action="${escapeAttr(button.action)}">${escapeHtml(button.label)}</button>
-        `).join("")}
-      </div>
-    </section>
-  `;
-}
-
-function renderStaffFeedbackPanel(order, record) {
-  return `
-    <details class="staff-feedback-panel staff-feedback-drawer">
-      <summary>Report testing feedback</summary>
-      <div class="staff-feedback-drawer-body">
-        <div>
-          <h3>Report testing feedback</h3>
-          <p>Use this during store testing for confusing steps, bugs, pricing issues, missing gear details, or customer-copy notes.</p>
-        </div>
-        <a class="secondary-action staff-feedback-guide-link" href="./staff-testing-guide.html" target="_blank" rel="noreferrer">Open testing guide</a>
-        <form id="staff-feedback-form" class="staff-feedback-form">
-          <label class="field">
-            <span>Feedback type</span>
-            <select id="staff-feedback-category">
-              <option value="Usability issue">Usability issue</option>
-              <option value="Bug">Bug</option>
-              <option value="Pricing issue">Pricing issue</option>
-              <option value="Missing gear/model">Missing gear/model</option>
-              <option value="Customer copy">Customer copy</option>
-              <option value="Workflow question">Workflow question</option>
-            </select>
-          </label>
-          <label class="field">
-            <span>What should we fix or review?</span>
-            <textarea id="staff-feedback-text" rows="4" placeholder="Example: This order is ready for payout, but I was not sure which button to press."></textarea>
-          </label>
-          <button class="secondary-action" type="submit" id="staff-feedback-submit">Send feedback</button>
-          <p class="staff-feedback-note">Attached to ${escapeHtml(record.fields?.["Quote Reference"] || order.quote)}.</p>
-        </form>
-      </div>
-    </details>
-  `;
-}
-
-function renderOrderHistoryPanel(order) {
-  const history = historyByQuote.get(order.quote);
-  return `
-    <details class="staff-history-panel" id="staff-history-panel">
-      <summary class="staff-history-summary">
-        <div>
-          <strong>Order history</strong>
-          <span>Recent emails, staff updates, shipping details, and inspection notes.</span>
-        </div>
-        <span class="staff-history-toggle-text">Show history</span>
-      </summary>
-      <div class="staff-history-body">
-        <div class="staff-history-header">
-          <p>Recent emails, staff updates, shipping details, and inspection notes for this order.</p>
-        <button class="secondary-action" type="button" id="refresh-history">Refresh history</button>
-      </div>
-      <div class="staff-history-list" id="staff-history-list">
-        ${history ? renderHistoryItems(order, history) : `<p class="staff-history-empty">Loading history...</p>`}
-      </div>
-      </div>
-    </details>
-  `;
-}
-
-async function loadOrderHistory(order) {
-  const panel = document.getElementById("staff-history-list");
-  const refreshButton = document.getElementById("refresh-history");
-  if (!order || !panel) return;
-
-  refreshButton?.addEventListener("click", async () => {
-    historyByQuote.delete(order.quote);
-    panel.innerHTML = `<p class="staff-history-empty">Refreshing history...</p>`;
-    await loadOrderHistory(order);
-  }, { once: true });
-
-  if (historyByQuote.has(order.quote)) {
-    panel.innerHTML = renderHistoryItems(order, historyByQuote.get(order.quote));
-    return;
-  }
-
-  if (demoModeAllowed() && !SECURE_STAFF_MODE && !CONFIG.staffSecret) {
-    const demoHistory = demoHistoryForOrder(order);
-    historyByQuote.set(order.quote, demoHistory);
-    panel.innerHTML = renderHistoryItems(order, demoHistory);
-    return;
-  }
-
-  try {
-    const quoteRef = order.quoteRefs?.[0] || order.quote;
-    const response = await fetch(`${API_BASE}/api/staff/history?quoteRef=${encodeURIComponent(quoteRef)}`, {
-      credentials: "include",
-      headers: staffHeaders(),
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.error || `Request failed with ${response.status}`);
-    historyByQuote.set(order.quote, data);
-    panel.innerHTML = renderHistoryItems(order, data);
-  } catch (error) {
-    panel.innerHTML = `
-      <p class="staff-history-empty">History could not be loaded here. Staff can still use the item notes, email status, and order status above.</p>
-      <p class="staff-history-error">${escapeHtml(error.message || "Unable to load history.")}</p>
-    `;
-  }
-}
-
-function renderHistoryItems(order, history = {}) {
-  const items = [
-    ...orderDerivedHistory(order),
-    ...(history.emailEvents || []).map(emailHistoryItem),
-    ...(history.staffActions || []).map(staffActionHistoryItem),
-  ]
-    .filter(Boolean)
-    .sort((a, b) => new Date(b.at || 0).getTime() - new Date(a.at || 0).getTime())
-    .slice(0, 12);
-
-  if (!items.length) return `<p class="staff-history-empty">No history events have been recorded for this order yet.</p>`;
-
-  return items.map((item) => `
-    <article class="staff-history-item">
-      <span class="staff-history-type">${escapeHtml(item.type)}</span>
-      <div>
-        <strong>${escapeHtml(item.title)}</strong>
-        <p>${escapeHtml(item.copy)}</p>
-        <small>${escapeHtml(formatDateTime(item.at) || "Time not recorded")}</small>
-      </div>
-    </article>
-  `).join("");
-}
-
-function orderDerivedHistory(order) {
-  const events = [];
-  if (order.submitted) {
-    events.push({
-      type: "Order",
-      title: "Quote submitted",
-      copy: `${order.items.length} item${order.items.length === 1 ? "" : "s"} submitted by ${order.customer}.`,
-      at: order.submitted,
-    });
-  }
-
-  order.items.forEach((record) => {
-    const fields = record.fields || {};
-    const status = recordStatusText(record);
-    const staffNotes = parseStaffNotes(fields["Staff Notes"] || "");
-    const eventTime = fields["Last Modified"] || fields["Quote Submitted"] || order.submitted;
-
-    if (fields["Tracking Number"] || fields["Shippo Label URL"]) {
-      events.push({
-        type: "Shipping",
-        title: "Inbound label/tracking recorded",
-        copy: `${gearTitle(fields)} · ${fields["Tracking Number"] || "Label available"}`,
-        at: eventTime,
-      });
-    }
-    if (staffNotes.serialNumber || fields["Serial Number"]) {
-      events.push({
-        type: "Intake",
-        title: "Serial number recorded",
-        copy: `${gearTitle(fields)} · ${staffNotes.serialNumber || fields["Serial Number"]}`,
-        at: eventTime,
-      });
-    }
-    if (status) {
-      events.push({
-        type: "Status",
-        title: status,
-        copy: `${gearTitle(fields)} is currently marked ${status}.`,
-        at: eventTime,
-      });
-    }
-    if (staffNotes.reason) {
-      events.push({
-        type: "Note",
-        title: "Inspection note",
-        copy: `${gearTitle(fields)} · ${staffNotes.reason}`,
-        at: eventTime,
-      });
-    }
-  });
-
-  return events;
-}
-
-function emailHistoryItem(record) {
-  const fields = record.fields || {};
-  return {
-    type: fields.Sent ? "Email sent" : "Email issue",
-    title: fields.Template || "Email event",
-    copy: `${fields.Recipient || "Recipient not recorded"}${fields.Subject ? ` · ${fields.Subject}` : ""}`,
-    at: fields["Sent At"] || fields.Created || "",
-  };
-}
-
-function staffActionHistoryItem(record) {
-  const fields = record.fields || {};
-  return {
-    type: "Staff",
-    title: fields.Action || fields["New Status"] || "Staff update",
-    copy: [fields["Staff User"], fields["New Status"], fields.Notes].filter(Boolean).join(" · "),
-    at: fields.Timestamp || fields.Created || "",
-  };
-}
-
-function demoHistoryForOrder(order) {
-  return {
-    emailEvents: [
-      {
-        id: "demo-email",
-        fields: {
-          Template: order.workflow.completed.has("shipped") ? "label_ready" : "quote_received",
-          Recipient: order.email,
-          Subject: `Milford Photo used gear update - ${order.quote}`,
-          Sent: true,
-          "Sent At": order.submitted || new Date().toISOString(),
-        },
-      },
-    ],
-    staffActions: [],
-  };
-}
-
-function staffActionsFor(record, parsed) {
-  const status = recordStatusText(record).toLowerCase();
-  const decision = parsed.decision || "pending";
-  const hasMovedBeyondArrival = status.includes("received")
-    || status.includes("inspection")
-    || status.includes("evaluated")
-    || status.includes("final")
-    || status.includes("accepted item")
-    || status.includes("customer accepted")
-    || status.includes("payment")
-    || status.includes("return")
-    || status.includes("items shipped to customer")
-    || status.includes("returned to seller");
-  if (!parsed.received && !hasMovedBeyondArrival) {
-    return {
-      title: "Next step: receive this item",
-      copy: "Confirm this item arrived, enter the serial number, then continue intake.",
-      buttons: [
-        { action: "save", label: "Save intake progress", className: "secondary-action" },
-        { action: "received", label: "Mark item received", className: "primary-action" },
-      ],
-    };
-  }
-  if (!status.includes("evaluated") && !status.includes("final") && !status.includes("accepted item") && !status.includes("customer accepted") && !status.includes("payment") && !status.includes("return") && !status.includes("items shipped to customer") && !status.includes("returned to seller")) {
-    return {
-      title: "Next step: finish evaluation",
-      copy: "Verify accessories, condition, serial number, and final item offer.",
-      buttons: [
-        { action: "save", label: "Save intake progress", className: "secondary-action" },
-        { action: "adjusted", label: "Finish item evaluation", className: "primary-action" },
-      ],
-    };
-  }
-  if (status.includes("payment sent")) {
-    return {
-      title: "Payment recorded",
-      copy: "Payment has been marked as sent for this item.",
-      stateClass: "is-complete",
-      buttons: [
-        { action: "save", label: "Save note", className: "secondary-action" },
-      ],
-    };
-  }
-  if (status.includes("accepted item") || status.includes("customer accepted") || status.includes("verified quote")) {
-    return {
-      title: "Next step: payout",
-      copy: "Issue the payout manually for now. PayPal payout automation stays in dry-run until Milford approves live payouts.",
-      buttons: [
-        { action: "save", label: "Save note", className: "secondary-action" },
-        { action: "payment", label: "Record payment sent", className: "primary-action" },
-      ],
-    };
-  }
-  if (status.includes("items shipped to customer") || status.includes("returned to seller")) {
-    return {
-      title: "Return shipment recorded",
-      copy: "This item has been marked as shipped back to the customer.",
-      stateClass: "is-complete",
-      buttons: [
-        { action: "save", label: "Save note", className: "secondary-action" },
-      ],
-    };
-  }
-  if (status.includes("return")) {
-    return {
-      title: "Next step: ship return item",
-      copy: "Use this after the item has been packed and shipped back to the customer.",
-      buttons: [
-        { action: "save", label: "Save note", className: "secondary-action" },
-        { action: "return_shipped", label: "Mark return shipped", className: "secondary-action danger-action" },
-      ],
-    };
-  }
-  if (status.includes("payment info")) {
-    return {
-      title: "Next step: payout",
-      copy: "Use this after the customer provides payout information and payment has been sent manually. PayPal automation remains in dry-run.",
-      buttons: [
-        { action: "save", label: "Save note", className: "secondary-action" },
-        { action: "payment", label: "Record payment sent", className: "primary-action" },
-      ],
-    };
-  }
-  if (status.includes("final")) {
-    return {
-      title: "Next step: wait for customer decision",
-      copy: "After the final quote is sent, the customer can accept this item or request that it be returned.",
-      buttons: [
-        { action: "save", label: "Save decision note", className: "secondary-action" },
-        { action: "accepted", label: "Record item accepted", className: "secondary-action" },
-        { action: "return", label: "Record return request", className: "secondary-action danger-action" },
-      ],
-    };
-  }
-  if (status.includes("evaluated")) {
-    return {
-      title: "Item evaluated",
-      copy: "Move to the next item. When every item is evaluated, use the final quote email panel below.",
-      stateClass: "is-complete",
-      buttons: [
-        { action: "save", label: "Save changes", className: "secondary-action" },
-        { action: "adjusted", label: "Re-save evaluation", className: "secondary-action success-action" },
-      ],
-    };
-  }
-  return {
-    title: "Next step: wait for customer decision",
-    copy: "After the final quote is sent, the customer can accept this item or request that it be returned.",
-    buttons: [
-      { action: "save", label: "Save decision note", className: "secondary-action" },
-    ],
-  };
 }
 
 function renderAccessory(item, parsed) {
@@ -1462,7 +589,7 @@ function renderAccessory(item, parsed) {
 function renderCondition(condition, selectedCondition) {
   const checked = condition === selectedCondition;
   return `
-    <label class="condition-option staff-condition-option ${checked ? "is-selected" : ""}">
+    <label class="choice-card staff-condition-option ${checked ? "is-selected" : ""}">
       <input type="radio" name="verified-condition" value="${escapeAttr(condition)}" ${checked ? "checked" : ""} />
       <strong>${escapeHtml(condition)}</strong>
       <span>${escapeHtml(CONDITION_COPY[condition])}</span>
@@ -1521,18 +648,7 @@ function bindDetail(record, accessories) {
   });
 
   sendFinalQuoteButton.addEventListener("click", async () => {
-    await handleOrderAction(
-      selectedOrder(),
-      sendFinalQuoteButton.dataset.orderStatus || "Final Quote Sent",
-      sendFinalQuoteButton.dataset.orderAction || "final_quote_sent",
-      sendFinalQuoteButton,
-    );
-  });
-
-  const feedbackForm = document.getElementById("staff-feedback-form");
-  feedbackForm?.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    await handleStaffFeedback(selectedOrder(), record);
+    await handleOrderAction(selectedOrder(), "Final Quote Sent");
   });
 }
 
@@ -1566,16 +682,13 @@ async function handleStaffAction(record, accessories, action, buttons) {
     accepted: "Customer Accepted Item",
     payment: "Payment Sent",
     return: "Return Item",
-    return_shipped: "Items Shipped to Customer",
   };
 
   const body = {
     recordId: record.id,
     status: statusByAction[action],
     finalOffer,
-    serialNumber: review.serialNumber,
     staffNotes: buildStaffNotes(review, action, finalOffer),
-    notifyCustomer: action === "payment" || action === "return" || action === "return_shipped",
   };
 
   if (action === "payment") {
@@ -1585,10 +698,6 @@ async function handleStaffAction(record, accessories, action, buttons) {
   if (action === "return") {
     body.declineReason = review.reason || "Customer wants this item returned.";
   }
-  if (action === "return_shipped") {
-    body.action = "return_shipped";
-    body.declineReason = review.reason || "Return shipment sent to customer.";
-  }
 
   setDetailBusy(buttons, true);
   setStatus("Saving item update...");
@@ -1597,11 +706,10 @@ async function handleStaffAction(record, accessories, action, buttons) {
     const updated = await updateRecord(body);
     records = records.map((item) => (item.id === record.id ? updated : item));
     orders = buildOrders(records);
+    selectedItemId = updated.id;
     selectedOrderId = selectedOrder()?.id || selectedOrderId;
-    selectedItemId = action === "adjusted" ? nextItemAfterEvaluation(updated.id) : updated.id;
     renderQueue();
     renderDetail();
-    if (action === "adjusted") scrollDetailToTop();
     setStatus(`Saved: ${statusByAction[action]}.`);
   } catch (error) {
     setStatus(error.message || "Unable to save item update.", true);
@@ -1610,51 +718,15 @@ async function handleStaffAction(record, accessories, action, buttons) {
   }
 }
 
-function nextItemAfterEvaluation(currentItemId) {
-  const order = selectedOrder();
-  if (!order) return currentItemId;
-  const currentIndex = order.items.findIndex((item) => item.id === currentItemId);
-  const nextItems = [
-    ...order.items.slice(currentIndex + 1),
-    ...order.items.slice(0, Math.max(currentIndex, 0)),
-  ];
-  return nextItems.find((item) => itemStatusClass(item) !== "is-evaluated" && itemStatusClass(item) !== "is-return")?.id || currentItemId;
-}
-
-function scrollDetailToTop() {
-  detailEl.scrollIntoView({ behavior: "smooth", block: "start" });
-}
-
-async function handleOrderAction(order, status, action = "", triggerButton = null) {
+async function handleOrderAction(order, status) {
   if (!order) return;
-  if (!status) return;
   setStatus("Saving order update...");
-  if (triggerButton) {
-    triggerButton.disabled = true;
-    triggerButton.textContent = "Sending...";
-  }
   try {
-    const updatedRecords = [];
-    for (const record of order.items) {
-      updatedRecords.push(await updateRecord({
-        recordId: record.id,
-        status,
-        action,
-        paymentMethod: orderPaymentMethod(order),
-        staffNotes: appendOrderNote(record.fields?.["Staff Notes"], status),
-        notifyCustomer: false,
-      }));
-    }
-    if (updatedRecords[0]) {
-      updatedRecords[0] = await updateRecord({
-        recordId: updatedRecords[0].id,
-        status,
-        action,
-        paymentMethod: orderPaymentMethod(order),
-        staffNotes: appendOrderNote(updatedRecords[0].fields?.["Staff Notes"], status),
-        notifyCustomer: true,
-      });
-    }
+    const updatedRecords = await Promise.all(order.items.map((record) => updateRecord({
+      recordId: record.id,
+      status,
+      staffNotes: appendOrderNote(record.fields?.["Staff Notes"], status),
+    })));
     const updatedMap = new Map(updatedRecords.map((record) => [record.id, record]));
     records = records.map((record) => updatedMap.get(record.id) || record);
     orders = buildOrders(records);
@@ -1663,33 +735,15 @@ async function handleOrderAction(order, status, action = "", triggerButton = nul
     setStatus(`${status} saved for ${order.quote}.`);
   } catch (error) {
     setStatus(error.message || "Unable to save order update.", true);
-  } finally {
-    if (triggerButton) triggerButton.disabled = false;
   }
 }
 
 async function updateRecord(body) {
-  if (demoModeAllowed() && String(body.recordId || "").startsWith("demo")) {
-    const current = records.find((record) => record.id === body.recordId) || { id: body.recordId, fields: {} };
-    const fields = { ...current.fields };
-    if (body.status) fields.Status = body.status;
-    if (body.finalOffer !== undefined && body.finalOffer !== null && body.finalOffer !== "") fields["Final Offer"] = Number(body.finalOffer);
-    if (body.serialNumber !== undefined) fields["Serial Number"] = body.serialNumber;
-    if (body.paymentMethod) fields["Payment Method"] = paymentMethodLabel(body.paymentMethod);
-    if (body.staffNotes) fields["Staff Notes"] = body.staffNotes;
-    if (body.declineReason) fields["Decline Reason"] = body.declineReason;
-    if (body.action === "payment_sent") fields["Payment Date"] = new Date().toISOString().slice(0, 10);
-    const updated = { ...current, fields };
-    persistDemoRecord(updated);
-    return updated;
-  }
-
   const response = await fetch(`${API_BASE}/api/staff/update`, {
     method: "POST",
-    credentials: "include",
     headers: {
       "Content-Type": "application/json",
-      ...staffHeaders(),
+      ...staffAuthHeaders(),
     },
     body: JSON.stringify(body),
   });
@@ -1698,84 +752,976 @@ async function updateRecord(body) {
   return data.record || { id: body.recordId, fields: body };
 }
 
-async function handleStaffFeedback(order, record) {
-  const feedbackInput = document.getElementById("staff-feedback-text");
-  const categoryInput = document.getElementById("staff-feedback-category");
-  const button = document.getElementById("staff-feedback-submit");
-  const feedback = feedbackInput?.value.trim() || "";
-  if (!feedback) {
-    setStatus("Add a feedback note before sending.", true);
-    feedbackInput?.focus();
+async function openPricingReview() {
+  setStatus("Loading pricing review...");
+  detailEl.innerHTML = `
+    <div class="empty-detail">
+      <p class="brand-line">Pricing review</p>
+      <h2>Loading Milford price table</h2>
+      <p>Preparing review rows by value, source, and last-reviewed date.</p>
+    </div>
+  `;
+
+  try {
+    if (!pricingReviewRows.length) {
+      const response = await fetch(`${API_BASE}/api/staff/pricing-review`, {
+        headers: staffAuthHeaders(),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || `Request failed with ${response.status}`);
+      pricingReviewRows = data.rows || [];
+    }
+    renderPricingReview();
+    setStatus(`${pricingReviewRows.length} pricing rows loaded.`);
+  } catch (error) {
+    setStatus(error.message || "Unable to load pricing review.", true);
+  }
+}
+
+function renderPricingReview() {
+  const categories = ["All", "Digital Camera", "Film Camera", "Lens", "Flash / Lighting"];
+  detailEl.innerHTML = `
+    <article class="staff-pricing-review">
+      <header class="staff-order-header">
+        <div>
+          <p class="brand-line">Pricing review</p>
+          <h2>Milford price table</h2>
+          <p>Sort and spot-check quote values, review dates, and research links.</p>
+        </div>
+        <div class="staff-order-total">
+          <span>Rows</span>
+          <strong>${pricingReviewRows.length}</strong>
+          <small>${pricingReviewRows.filter((row) => row.priority !== "Normal").length} flagged</small>
+        </div>
+      </header>
+      <div class="pricing-review-controls">
+        <label>
+          <span>Search</span>
+          <input id="pricing-review-search" type="search" placeholder="Brand or model" />
+        </label>
+        <label>
+          <span>Category</span>
+          <select id="pricing-review-category">
+            ${categories.map((category) => `<option value="${escapeAttr(category)}">${escapeHtml(category)}</option>`).join("")}
+          </select>
+        </label>
+        <label>
+          <span>Sort</span>
+          <select id="pricing-review-sort">
+            <option value="highest_cash">Highest cash offer</option>
+            <option value="oldest_review">Oldest reviewed</option>
+            <option value="flagged">Flagged first</option>
+            <option value="brand">Brand / model</option>
+          </select>
+        </label>
+      </div>
+      <div class="pricing-review-table-wrap">
+        <table class="pricing-review-table">
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Category</th>
+              <th>Cash</th>
+              <th>Resale</th>
+              <th>Basis</th>
+              <th>Reviewed</th>
+              <th>Research</th>
+            </tr>
+          </thead>
+          <tbody id="pricing-review-body"></tbody>
+        </table>
+      </div>
+    </article>
+  `;
+  const redraw = () => renderPricingReviewRows();
+  document.getElementById("pricing-review-search")?.addEventListener("input", redraw);
+  document.getElementById("pricing-review-category")?.addEventListener("change", redraw);
+  document.getElementById("pricing-review-sort")?.addEventListener("change", redraw);
+  renderPricingReviewRows();
+}
+
+function renderPricingReviewRows() {
+  const body = document.getElementById("pricing-review-body");
+  if (!body) return;
+  const search = document.getElementById("pricing-review-search")?.value.trim().toLowerCase() || "";
+  const category = document.getElementById("pricing-review-category")?.value || "All";
+  const sort = document.getElementById("pricing-review-sort")?.value || "highest_cash";
+  const filtered = pricingReviewRows
+    .filter((row) => category === "All" || row.category === category)
+    .filter((row) => !search || `${row.brand} ${row.model}`.toLowerCase().includes(search))
+    .sort(pricingReviewSort(sort))
+    .slice(0, 250);
+
+  body.innerHTML = filtered.map((row) => `
+    <tr class="${row.priority !== "Normal" ? "is-flagged" : ""}">
+      <td>
+        <strong>${escapeHtml(row.brand)} ${escapeHtml(row.model)}</strong>
+        <span>${escapeHtml(row.priority || "Normal")}${row.year ? ` - ${escapeHtml(row.year)}` : ""}</span>
+      </td>
+      <td>${escapeHtml(row.category)}</td>
+      <td>$${formatMoney(row.cashOffer)}</td>
+      <td>${row.targetResalePrice ? `$${formatMoney(row.targetResalePrice)}` : "-"}</td>
+      <td>${escapeHtml(row.pricingBasis || row.source || "-")}</td>
+      <td>${escapeHtml(row.priceLastReviewed || "-")}</td>
+      <td>
+        <a href="${escapeAttr(row.links?.mpb || "#")}">MPB</a>
+        <a href="${escapeAttr(row.links?.ebaySold || "#")}">eBay sold</a>
+        <a href="${escapeAttr(row.links?.keh || "#")}">KEH</a>
+        <a href="${escapeAttr(row.links?.bhUsed || "#")}">B&H</a>
+      </td>
+    </tr>
+  `).join("") || `<tr><td colspan="7">No matching pricing rows.</td></tr>`;
+}
+
+function pricingReviewSort(sort) {
+  const priorityRank = (row) => row.priority === "Normal" ? 1 : 0;
+  if (sort === "oldest_review") return (a, b) => String(a.priceLastReviewed || "0000").localeCompare(String(b.priceLastReviewed || "0000"));
+  if (sort === "flagged") return (a, b) => priorityRank(a) - priorityRank(b) || b.cashOffer - a.cashOffer;
+  if (sort === "brand") return (a, b) => `${a.brand} ${a.model}`.localeCompare(`${b.brand} ${b.model}`);
+  return (a, b) => b.cashOffer - a.cashOffer;
+}
+
+function startStaffIntake() {
+  selectedOrderId = null;
+  selectedItemId = null;
+  resetStaffIntakePricingRequests();
+  staffIntakeState = createStaffIntakeState();
+  renderQueue();
+  renderStaffIntake();
+  setStatus("New in-store quote started.");
+}
+
+function renderStaffIntake() {
+  detailEl.innerHTML = `
+    <article class="staff-intake staff-new-quote">
+      <header class="staff-order-header">
+        <div>
+          <p class="brand-line">In-store intake</p>
+          <h2>Start a new quote</h2>
+          <p>Build the quote while the customer is at the counter, then open it in the staff intake workflow.</p>
+        </div>
+        <div class="staff-order-total">
+          <span>Current offer</span>
+          <strong id="staff-intake-total">Draft</strong>
+          <small id="staff-intake-routing">Add gear to price this quote.</small>
+        </div>
+      </header>
+
+      <form class="staff-review-form" id="staff-intake-form">
+        <section class="staff-review-section">
+          <div class="staff-section-title">
+            <span>1</span>
+            <div>
+              <h3>Gear at the counter</h3>
+              <p>Select catalog gear or route specialty items into manual review.</p>
+            </div>
+          </div>
+
+          <label class="field gear-search-field">
+            <span>Search gear</span>
+            <input id="staff-intake-gear-search" list="staff-intake-gear-search-options" autocomplete="off" placeholder="Search by model, category, or brand" />
+            <datalist id="staff-intake-gear-search-options"></datalist>
+          </label>
+
+          <div class="three-col">
+            <label class="field">
+              <span>Category</span>
+              <select id="staff-intake-category"></select>
+            </label>
+            <label class="field">
+              <span>Brand</span>
+              <select id="staff-intake-brand"></select>
+            </label>
+            <label class="field">
+              <span>Model</span>
+              <select id="staff-intake-model"></select>
+            </label>
+          </div>
+
+          <div class="manual-fields" id="staff-intake-manual-fields" hidden>
+            <div class="two-col">
+              <label class="field">
+                <span>Brand name</span>
+                <input id="staff-intake-manual-brand" autocomplete="off" placeholder="Example: Leica" />
+              </label>
+              <label class="field">
+                <span>Model name</span>
+                <input id="staff-intake-manual-model" autocomplete="off" placeholder="Example: M6 body" />
+              </label>
+            </div>
+          </div>
+
+          <label class="field" id="staff-intake-mount-field" hidden>
+            <span>Lens mount</span>
+            <select id="staff-intake-lens-mount">
+              <option value="">Select mount</option>
+            </select>
+          </label>
+
+          <fieldset class="condition-grid staff-intake-condition-grid">
+            <legend>Customer-stated condition</legend>
+            ${STAFF_INTAKE_CONDITIONS.map((condition) => `
+              <label class="choice-card">
+                <input type="radio" name="staff-intake-condition" value="${escapeAttr(condition.value)}" ${condition.value === "excellent" ? "checked" : ""} />
+                <strong>${escapeHtml(condition.label)}</strong>
+                <span>${escapeHtml(condition.copy)}</span>
+              </label>
+            `).join("")}
+          </fieldset>
+
+          <fieldset class="check-grid" id="staff-intake-included-fieldset">
+            <legend>Included items</legend>
+            <div id="staff-intake-included-items"></div>
+          </fieldset>
+
+          <div class="staff-intake-current-price" id="staff-intake-current-price"></div>
+
+          <label class="field">
+            <span>Counter notes</span>
+            <textarea id="staff-intake-item-notes" rows="4" placeholder="Mention mount, kit details, shutter count, missing parts, known issues, or accessories."></textarea>
+          </label>
+
+          <div class="form-actions staff-intake-actions">
+            <button class="secondary-action" type="button" id="staff-intake-add-item">Add item to quote</button>
+          </div>
+        </section>
+
+        <section class="staff-review-section">
+          <div class="staff-section-title">
+            <span>2</span>
+            <div>
+              <h3>Offer preview</h3>
+              <p>Review pricing for the gear in this in-store quote.</p>
+            </div>
+          </div>
+          <div class="staff-intake-cart" id="staff-intake-cart"></div>
+          <div class="quote-message" id="staff-intake-quote-message"></div>
+        </section>
+
+        <section class="staff-review-section">
+          <div class="staff-section-title">
+            <span>3</span>
+            <div>
+              <h3>Customer details</h3>
+              <p>This creates the quote as an in-store dropoff and opens it in the staff intake queue.</p>
+            </div>
+          </div>
+          <div class="two-col">
+            <label class="field">
+              <span>Name</span>
+              <input id="staff-intake-seller-name" autocomplete="name" required />
+            </label>
+            <label class="field">
+              <span>Email</span>
+              <input id="staff-intake-seller-email" type="email" autocomplete="email" required />
+            </label>
+          </div>
+          <div class="two-col">
+            <label class="field">
+              <span>Phone</span>
+              <input id="staff-intake-seller-phone" type="tel" autocomplete="tel" />
+            </label>
+            <label class="field">
+              <span>Preferred payout</span>
+              <select id="staff-intake-payment-preference">
+                <option value="check">Check</option>
+                <option value="paypal">PayPal</option>
+                <option value="store_credit">Store credit</option>
+              </select>
+            </label>
+          </div>
+          <label class="consent staff-intake-consent">
+            <input id="staff-intake-terms" type="checkbox" required />
+            <span>Customer understands the quote is pending Milford Photo inspection and may be adjusted after verification.</span>
+          </label>
+          <div class="form-actions staff-intake-actions">
+            <button class="secondary-action" type="button" id="staff-intake-cancel">Back to queue</button>
+            <button class="primary-action" type="submit" id="staff-intake-submit">Create quote and open intake</button>
+          </div>
+        </section>
+      </form>
+    </article>
+  `;
+
+  bindStaffIntake();
+}
+
+function bindStaffIntake() {
+  const form = document.getElementById("staff-intake-form");
+  const category = document.getElementById("staff-intake-category");
+  const brand = document.getElementById("staff-intake-brand");
+  const model = document.getElementById("staff-intake-model");
+  const search = document.getElementById("staff-intake-gear-search");
+  const lensMount = document.getElementById("staff-intake-lens-mount");
+  const notes = document.getElementById("staff-intake-item-notes");
+  const manualBrand = document.getElementById("staff-intake-manual-brand");
+  const manualModel = document.getElementById("staff-intake-manual-model");
+
+  populateStaffIntakeGearSearch();
+  populateStaffIntakeCategories();
+  populateStaffIntakeBrands();
+  renderStaffIntakeIncludedItems();
+  renderStaffIntakeCart();
+  renderStaffIntakeQuote();
+  renderStaffIntakeCurrentPreview();
+
+  search.addEventListener("change", applyStaffIntakeGearSearch);
+  search.addEventListener("input", () => {
+    const exactMatch = staffIntakeGearSearchOptions().find((option) => option.label.toLowerCase() === search.value.trim().toLowerCase());
+    if (exactMatch) applyStaffIntakeGearSearch();
+  });
+  category.addEventListener("change", () => {
+    clearStaffIntakeSearch();
+    populateStaffIntakeBrands();
+    populateStaffIntakeModels();
+    updateStaffIntakeMountField();
+    updateStaffIntakeManualFields();
+    renderStaffIntakeIncludedItems();
+    queueStaffIntakeCurrentPreview();
+  });
+  brand.addEventListener("change", () => {
+    clearStaffIntakeSearch();
+    populateStaffIntakeModels();
+    updateStaffIntakeMountField();
+    updateStaffIntakeManualFields();
+    renderStaffIntakeIncludedItems();
+    queueStaffIntakeCurrentPreview();
+  });
+  model.addEventListener("change", () => {
+    clearStaffIntakeSearch();
+    updateStaffIntakeMountField();
+    updateStaffIntakeManualFields();
+    queueStaffIntakeCurrentPreview();
+  });
+  lensMount.addEventListener("change", queueStaffIntakeCurrentPreview);
+  manualBrand.addEventListener("input", queueStaffIntakeCurrentPreview);
+  manualModel.addEventListener("input", queueStaffIntakeCurrentPreview);
+  notes.addEventListener("input", queueStaffIntakeCurrentPreview);
+  form.querySelectorAll('input[name="staff-intake-condition"]').forEach((input) => {
+    input.addEventListener("change", queueStaffIntakeCurrentPreview);
+  });
+  document.getElementById("staff-intake-add-item").addEventListener("click", addStaffIntakeItem);
+  document.getElementById("staff-intake-cancel").addEventListener("click", () => {
+    selectedOrderId = visibleOrders()[0]?.id || orders[0]?.id || null;
+    syncSelectedItem();
+    renderQueue();
+    renderDetail();
+    setStatus("Back to the queue.");
+  });
+  form.addEventListener("submit", submitStaffIntakeQuote);
+}
+
+function populateStaffIntakeGearSearch() {
+  const options = document.getElementById("staff-intake-gear-search-options");
+  options.innerHTML = staffIntakeGearSearchOptions()
+    .map((option) => `<option value="${escapeAttr(option.label)}"></option>`)
+    .join("");
+}
+
+function staffIntakeGearSearchOptions() {
+  const options = safeCatalogBrands()
+    .flatMap((brand) =>
+      safeCatalogCategories(brand).flatMap((catalogCategory) => {
+        const category = displayCategoryForCatalog(catalogCategory);
+        const catalogItems = typeof getCatalogItems === "function" ? getCatalogItems(brand, catalogCategory) : [];
+        return sortCatalogItemsForDisplay(catalogItems, category).map((item) => ({
+          brand,
+          category,
+          model: item.name,
+          label: `${brand} ${catalogDisplayName(item, category)} - ${category}`,
+        }));
+      }),
+    );
+
+  return uniqueGearSearchOptions(options).sort((a, b) => naturalTextCompare(a.label, b.label));
+}
+
+function applyStaffIntakeGearSearch() {
+  const search = document.getElementById("staff-intake-gear-search");
+  const query = search.value.trim().toLowerCase();
+  if (!query) return;
+  const options = staffIntakeGearSearchOptions();
+  const match =
+    options.find((option) => option.label.toLowerCase() === query) ||
+    options.find((option) => option.label.toLowerCase().includes(query));
+  if (!match) return;
+
+  const category = document.getElementById("staff-intake-category");
+  const brand = document.getElementById("staff-intake-brand");
+  const model = document.getElementById("staff-intake-model");
+  category.value = match.category;
+  populateStaffIntakeBrands();
+  brand.value = match.brand;
+  populateStaffIntakeModels();
+  model.value = match.model;
+  updateStaffIntakeMountField();
+  updateStaffIntakeManualFields();
+  renderStaffIntakeIncludedItems();
+  queueStaffIntakeCurrentPreview();
+}
+
+function clearStaffIntakeSearch() {
+  const search = document.getElementById("staff-intake-gear-search");
+  if (search) search.value = "";
+}
+
+function populateStaffIntakeCategories() {
+  const category = document.getElementById("staff-intake-category");
+  const previous = category.value;
+  const categories = safeCatalogAllCategories();
+  category.innerHTML = [
+    `<option value="${SELECT_CATEGORY}">Select category</option>`,
+    ...categories.map((name) => `<option value="${escapeAttr(name)}">${escapeHtml(name)}</option>`),
+  ].join("");
+  if (categories.includes(previous)) category.value = previous;
+}
+
+function populateStaffIntakeBrands() {
+  const brand = document.getElementById("staff-intake-brand");
+  const category = document.getElementById("staff-intake-category").value;
+  const previous = brand.value;
+  if (!category) {
+    brand.innerHTML = `<option value="${SELECT_BRAND}">Select brand</option>`;
+    populateStaffIntakeModels();
     return;
   }
+  const brands = safeCatalogBrandsForCategory(category);
+  brand.innerHTML = [
+    `<option value="${SELECT_BRAND}">Select brand</option>`,
+    ...brands.map((name) => `<option value="${escapeAttr(name)}">${escapeHtml(name)}</option>`),
+    `<option value="${MANUAL_BRAND}">Other / not listed</option>`,
+  ].join("");
+  brand.value = brands.includes(previous) || previous === MANUAL_BRAND ? previous : SELECT_BRAND;
+  populateStaffIntakeModels();
+}
 
-  const body = {
-    category: categoryInput?.value || "Usability issue",
-    feedback,
-    quoteRef: record.fields?.["Quote Reference"] || order?.quote || "",
-    orderId: order?.id || "",
-    recordId: record.id || "",
-    itemId: record.id || "",
-    pageUrl: window.location.href,
-  };
+function populateStaffIntakeModels() {
+  const brand = document.getElementById("staff-intake-brand").value;
+  const category = document.getElementById("staff-intake-category").value;
+  const model = document.getElementById("staff-intake-model");
+  if (!category || !brand) {
+    model.innerHTML = `<option value="${SELECT_MODEL}">Select model</option>`;
+    return;
+  }
+  const items = brand === MANUAL_BRAND ? [] : sortCatalogItemsForDisplay(uniqueCatalogItems(safeCatalogItems(brand, category)), category);
+  model.innerHTML = [
+    `<option value="${SELECT_MODEL}">Select model</option>`,
+    ...items.map((item) => `<option value="${escapeAttr(item.name)}">${escapeHtml(catalogDisplayName(item, category))}</option>`),
+    `<option value="${MANUAL_MODEL}">Other / not listed</option>`,
+  ].join("");
+}
 
+function updateStaffIntakeManualFields() {
+  const brand = document.getElementById("staff-intake-brand").value;
+  const model = document.getElementById("staff-intake-model").value;
+  const manualFields = document.getElementById("staff-intake-manual-fields");
+  const manualBrand = document.getElementById("staff-intake-manual-brand");
+  const manualModel = document.getElementById("staff-intake-manual-model");
+  const needsManualText = brand === MANUAL_BRAND || model === MANUAL_MODEL;
+  manualFields.hidden = !needsManualText;
+  manualBrand.required = brand === MANUAL_BRAND;
+  manualModel.required = needsManualText;
+}
+
+function updateStaffIntakeMountField() {
+  const mountField = document.getElementById("staff-intake-mount-field");
+  const lensMount = document.getElementById("staff-intake-lens-mount");
+  const selectedMount = lensMount.value;
+  const mounts = staffIntakeMountOptions();
+  lensMount.innerHTML = [
+    `<option value="">Select mount</option>`,
+    ...mounts.map((mount) => `<option value="${escapeAttr(mount)}">${escapeHtml(mount)}</option>`),
+  ].join("");
+  lensMount.value = mounts.includes(selectedMount) ? selectedMount : "";
+  const required = mounts.length > 1;
+  mountField.hidden = !required;
+  lensMount.required = required;
+}
+
+function renderStaffIntakeIncludedItems() {
+  const container = document.getElementById("staff-intake-included-items");
+  const category = document.getElementById("staff-intake-category")?.value || "";
+  const items = includedItemsForCategory(category);
+  if (!items.length) {
+    container.innerHTML = `
+      <div class="included-copy">
+        <strong>Choose a category to see assumed accessories.</strong>
+        <span>Staff can adjust the final offer after physical inspection.</span>
+      </div>
+    `;
+    return;
+  }
+  container.innerHTML = `
+    <div class="included-copy">
+      <strong>Check what the customer has with them now.</strong>
+      <span>These selections travel into the quote notes for staff inspection.</span>
+    </div>
+    <div class="staff-intake-included-list">
+      ${items.map((item) => `
+        <label class="staff-accessory-item">
+          <input type="checkbox" data-staff-intake-included="${escapeAttr(item.name)}" ${item.checked ? "checked" : ""} />
+          <span>${escapeHtml(item.name)}</span>
+          <strong>${item.bonus ? "Bonus" : "Expected"}</strong>
+        </label>
+      `).join("")}
+    </div>
+  `;
+  container.querySelectorAll("[data-staff-intake-included]").forEach((input) => input.addEventListener("change", queueStaffIntakeCurrentPreview));
+}
+
+async function addStaffIntakeItem() {
+  const item = readStaffIntakeItem();
+  if (!item) return;
+  const button = document.getElementById("staff-intake-add-item");
   button.disabled = true;
-  setStatus("Sending staff feedback...");
-  try {
-    if (demoModeAllowed() && !SECURE_STAFF_MODE && !CONFIG.staffSecret) {
-      persistDemoFeedback(body);
-      feedbackInput.value = "";
-      setStatus("Feedback saved locally for this demo session.");
-      return;
-    }
+  staffIntakeState.cart.push(item);
+  clearStaffIntakeItemForm();
+  resetStaffIntakeCurrentPreview();
+  renderStaffIntakeCurrentPreview();
+  renderStaffIntakeQuote();
+  setStatus(`${item.brand} ${item.model} added to the in-store quote. Updating offer...`);
 
-    const response = await fetch(`${API_BASE}/api/staff/feedback`, {
-      method: "POST",
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-        ...staffHeaders(),
-      },
-      body: JSON.stringify(body),
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.error || `Request failed with ${response.status}`);
-    feedbackInput.value = "";
-    setStatus("Feedback sent.");
-  } catch (error) {
-    setStatus(error.message || "Unable to send feedback.", true);
+  try {
+    await priceStaffIntakeCart();
   } finally {
     button.disabled = false;
   }
 }
 
-function persistDemoFeedback(feedback) {
-  const key = "mpUsedGearStaffFeedback";
-  let items = [];
-  try {
-    items = JSON.parse(localStorage.getItem(key) || "[]");
-    if (!Array.isArray(items)) items = [];
-  } catch {
-    items = [];
+function readStaffIntakeItem(options = {}) {
+  const category = document.getElementById("staff-intake-category").value;
+  const selectedBrand = document.getElementById("staff-intake-brand").value;
+  const selectedModel = document.getElementById("staff-intake-model").value;
+  const catalogItem =
+    selectedBrand !== MANUAL_BRAND && selectedModel !== MANUAL_MODEL
+      ? safeCatalogItem(selectedBrand, category, selectedModel)
+      : null;
+  const brand = selectedBrand === MANUAL_BRAND ? document.getElementById("staff-intake-manual-brand").value.trim() : selectedBrand;
+  const model = selectedModel === MANUAL_MODEL
+    ? document.getElementById("staff-intake-manual-model").value.trim()
+    : catalogQuoteModel(catalogItem, selectedModel, category);
+  const condition = document.querySelector('input[name="staff-intake-condition"]:checked')?.value || "excellent";
+  const includedItems = Array.from(document.querySelectorAll("[data-staff-intake-included]:checked")).map((input) => input.dataset.staffIntakeIncluded);
+  const validMounts = staffIntakeMountOptions();
+  const requiresMount = validMounts.length > 1;
+  const mount = requiresMount ? document.getElementById("staff-intake-lens-mount").value.trim() : validMounts[0] || "";
+  const notes = [
+    document.getElementById("staff-intake-item-notes").value.trim(),
+    mount ? `Lens mount: ${mount}` : "",
+    includedItems.length ? `Standard accessories with customer: ${includedItems.join(", ")}` : "",
+  ].filter(Boolean).join("\n");
+
+  if (!category || !selectedBrand || !selectedModel || !brand || !model || model === MANUAL_MODEL || (requiresMount && (!mount || !validMounts.includes(mount)))) {
+    if (!options.silent) {
+      const message = !category
+        ? "Select a category for the in-store item."
+        : !selectedBrand
+          ? "Select a brand for the in-store item."
+          : !selectedModel
+            ? "Select a model for the in-store item."
+            : requiresMount && (!mount || !validMounts.includes(mount))
+              ? "Select a valid lens mount for this lens."
+              : "Enter the brand and model for the in-store item.";
+      setStatus(message, true);
+    }
+    return null;
   }
-  items.unshift({ ...feedback, submittedAt: new Date().toISOString() });
-  localStorage.setItem(key, JSON.stringify(items.slice(0, 50)));
+
+  return {
+    id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
+    brand,
+    category,
+    catalogCategory: catalogItem ? catalogCategoryForItem(brand, category, catalogItem.name) : "",
+    model,
+    year: catalogItem?.year || "",
+    condition,
+    notes,
+    includedItems,
+    mount,
+    pricingKey: catalogItem?.pricingKey || "",
+    productFamily: catalogItem?.productFamily || "",
+    generation: catalogItem?.generation || "",
+    ebayQuery: buildEbayQueryForCatalogItem({ brand, model, mount, catalogItem }),
+    isManual: category === MANUAL_CATEGORY,
+    manualReviewRequested: Boolean(catalogItem?.manualReview),
+  };
 }
 
-function persistDemoRecord(updated) {
-  const stored = storedDemoRecords();
-  const next = stored.map((record) => (record.id === updated.id ? updated : record));
-  if (!next.some((record) => record.id === updated.id) && String(updated.id).startsWith("demo-live")) next.unshift(updated);
-  localStorage.setItem(DEMO_QUEUE_KEY, JSON.stringify(next.slice(0, 40)));
+function staffIntakeCartItems() {
+  return [...staffIntakeState.cart];
 }
 
-function staffHeaders() {
-  return CONFIG.staffSecret ? { "X-Staff-Secret": CONFIG.staffSecret } : {};
+function quoteItemStableKey(item) {
+  return [item.brand, item.category, item.model, item.mount, item.condition, item.notes].join("|").toLowerCase();
 }
 
-function demoModeAllowed() {
-  const params = new URLSearchParams(window.location.search);
-  return window.location.hostname === "milfordphoto.github.io" || params.get("demo") === "1" || params.get("staffTest") === "1";
+function quoteItemsSignature(items) {
+  return items.map((item) => quoteItemStableKey(item)).join("||");
+}
+
+function quoteItemPayload(item) {
+  const { id, ...payload } = item;
+  return payload;
+}
+
+async function requestStaffIntakeQuote(items) {
+  return staffPost("/api/quote", {
+    items: items.map(quoteItemPayload),
+  });
+}
+
+function resetStaffIntakePricingRequests() {
+  if (staffIntakePreviewTimer) clearTimeout(staffIntakePreviewTimer);
+  staffIntakePreviewTimer = null;
+  staffIntakePreviewRequestId += 1;
+  staffIntakeCartQuoteRequestId += 1;
+}
+
+function resetStaffIntakeCurrentPreview() {
+  if (staffIntakePreviewTimer) clearTimeout(staffIntakePreviewTimer);
+  staffIntakePreviewTimer = null;
+  staffIntakePreviewRequestId += 1;
+  staffIntakeState.currentQuote = null;
+  staffIntakeState.currentQuoteSignature = "";
+  staffIntakeState.currentQuoteLoading = false;
+  staffIntakeState.currentQuoteError = "";
+}
+
+function queueStaffIntakeCurrentPreview() {
+  resetStaffIntakeCurrentPreview();
+  renderStaffIntakeCurrentPreview();
+  staffIntakePreviewTimer = setTimeout(priceStaffIntakeCurrentPreview, STAFF_INTAKE_PREVIEW_DELAY_MS);
+}
+
+async function priceStaffIntakeCurrentPreview() {
+  const item = readStaffIntakeItem({ silent: true });
+  if (!item) {
+    resetStaffIntakeCurrentPreview();
+    renderStaffIntakeCurrentPreview();
+    return null;
+  }
+
+  const signature = quoteItemStableKey(item);
+  const requestId = ++staffIntakePreviewRequestId;
+  staffIntakeState.currentQuote = null;
+  staffIntakeState.currentQuoteSignature = signature;
+  staffIntakeState.currentQuoteLoading = true;
+  staffIntakeState.currentQuoteError = "";
+  renderStaffIntakeCurrentPreview();
+
+  try {
+    const quote = await requestStaffIntakeQuote([item]);
+    if (requestId !== staffIntakePreviewRequestId) return null;
+    staffIntakeState.currentQuote = quote;
+    staffIntakeState.currentQuoteSignature = signature;
+    return quote;
+  } catch (error) {
+    if (requestId === staffIntakePreviewRequestId) {
+      staffIntakeState.currentQuoteError = error.message || "Unable to preview this item.";
+    }
+    return null;
+  } finally {
+    if (requestId === staffIntakePreviewRequestId) {
+      staffIntakeState.currentQuoteLoading = false;
+      renderStaffIntakeCurrentPreview();
+    }
+  }
+}
+
+async function priceStaffIntakeCart(options = {}) {
+  const items = staffIntakeCartItems();
+  const signature = quoteItemsSignature(items);
+  if (!items.length) {
+    staffIntakeState.cartQuote = null;
+    staffIntakeState.cartQuoteSignature = "";
+    staffIntakeState.cartQuoteLoading = false;
+    staffIntakeState.cartQuoteError = "";
+    renderStaffIntakeQuote();
+    return null;
+  }
+
+  const requestId = ++staffIntakeCartQuoteRequestId;
+  staffIntakeState.cartQuoteLoading = true;
+  staffIntakeState.cartQuoteError = "";
+  renderStaffIntakeQuote();
+
+  try {
+    const quote = await requestStaffIntakeQuote(items);
+    if (requestId !== staffIntakeCartQuoteRequestId) return null;
+    staffIntakeState.cartQuote = quote;
+    staffIntakeState.cartQuoteSignature = signature;
+    staffIntakeState.cartQuoteError = "";
+    renderStaffIntakeQuote();
+    if (options.announce !== false) setStatus(`Quote ${quote.quoteId} priced.`);
+    return quote;
+  } catch (error) {
+    if (requestId === staffIntakeCartQuoteRequestId) {
+      staffIntakeState.cartQuote = null;
+      staffIntakeState.cartQuoteSignature = "";
+      staffIntakeState.cartQuoteError = error.message || "Unable to price this in-store quote.";
+      renderStaffIntakeQuote();
+      setStatus(staffIntakeState.cartQuoteError, true);
+    }
+    if (options.throwOnError) throw error;
+    return null;
+  } finally {
+    if (requestId === staffIntakeCartQuoteRequestId) {
+      staffIntakeState.cartQuoteLoading = false;
+      renderStaffIntakeQuote();
+    }
+  }
+}
+
+async function submitStaffIntakeQuote(event) {
+  event.preventDefault();
+  const items = staffIntakeCartItems();
+  if (!items.length) {
+    setStatus("Add at least one item to the quote before creating it.", true);
+    return;
+  }
+  const signature = quoteItemsSignature(items);
+  const submitButton = document.getElementById("staff-intake-submit");
+  const sellerName = document.getElementById("staff-intake-seller-name").value.trim();
+  const sellerEmail = document.getElementById("staff-intake-seller-email").value.trim();
+  const sellerPhone = document.getElementById("staff-intake-seller-phone").value.trim();
+  const terms = document.getElementById("staff-intake-terms");
+
+  if (!sellerName || !sellerEmail) {
+    setStatus("Customer name and email are required before creating the quote.", true);
+    return;
+  }
+  if (!terms.checked) {
+    setStatus("Confirm that the customer understands the inspection terms.", true);
+    return;
+  }
+
+  submitButton.disabled = true;
+  submitButton.textContent = "Creating...";
+  setStatus("Creating in-store quote...");
+
+  try {
+    let quote = staffIntakeState.cartQuote;
+    if (!quote?.quoteToken || staffIntakeState.cartQuoteSignature !== signature) {
+      quote = await priceStaffIntakeCart({ announce: false, throwOnError: true });
+    }
+    if (!quote?.quoteToken) {
+      throw new Error("Unable to price this in-store quote.");
+    }
+    const result = await staffPost("/api/submit", {
+      quoteToken: quote.quoteToken,
+      source: "staff_dashboard",
+      seller: {
+        name: sellerName,
+        email: sellerEmail,
+        phone: sellerPhone,
+      },
+      delivery: "dropoff",
+      paymentPreference: document.getElementById("staff-intake-payment-preference").value,
+    }, { staff: true });
+    await loadRecords({ selectQuoteRef: result.quoteRef });
+    setStatus(`In-store quote ${result.quoteRef} created and opened.`);
+  } catch (error) {
+    setStatus(error.message || "Unable to create the in-store quote.", true);
+  } finally {
+    submitButton.disabled = false;
+    submitButton.textContent = "Create quote and open intake";
+  }
+}
+
+function renderStaffIntakeCart() {
+  const cart = document.getElementById("staff-intake-cart");
+  if (!cart) return;
+  if (!staffIntakeState.cart.length) {
+    cart.innerHTML = `<div class="staff-empty-card">No added items yet. Add the current item to include it in the offer.</div>`;
+    return;
+  }
+  cart.innerHTML = staffIntakeState.cart.map((item) => `
+    <article class="cart-item staff-intake-cart-item">
+      <div class="cart-title">
+        <strong>${escapeHtml(item.brand)} ${escapeHtml(item.model)}</strong>
+        <button class="remove-item" type="button" aria-label="Remove item" data-staff-intake-remove="${escapeAttr(item.id)}">x</button>
+      </div>
+      <span class="cart-meta">${escapeHtml(item.category)} - ${escapeHtml(conditionLabel(item.condition))}${item.mount ? ` - ${escapeHtml(item.mount)}` : ""}</span>
+    </article>
+  `).join("");
+  wireStaffIntakeRemoveButtons(cart);
+}
+
+function renderStaffIntakeCurrentPreview() {
+  const container = document.getElementById("staff-intake-current-price");
+  if (!container) return;
+
+  const item = readStaffIntakeItem({ silent: true });
+  if (!item) {
+    container.innerHTML = `
+      <article class="staff-intake-price-panel is-empty">
+        <div>
+          <span>Item offer</span>
+          <strong>Choose gear</strong>
+        </div>
+        <small>Price appears here before the item is added.</small>
+      </article>
+    `;
+    return;
+  }
+
+  if (staffIntakeState.currentQuoteLoading) {
+    container.innerHTML = `
+      <article class="staff-intake-price-panel is-loading">
+        <div>
+          <span>Item offer</span>
+          <strong>Pricing ${escapeHtml(item.brand)} ${escapeHtml(item.model)}...</strong>
+        </div>
+      </article>
+    `;
+    return;
+  }
+
+  if (staffIntakeState.currentQuoteError) {
+    container.innerHTML = `
+      <article class="staff-intake-price-panel is-error">
+        <div>
+          <span>Item offer</span>
+          <strong>Preview unavailable</strong>
+        </div>
+        <small>${escapeHtml(staffIntakeState.currentQuoteError)}</small>
+      </article>
+    `;
+    return;
+  }
+
+  const quotedItem = staffIntakeState.currentQuote?.items?.[0];
+  if (!quotedItem) {
+    container.innerHTML = `
+      <article class="staff-intake-price-panel">
+        <div>
+          <span>Item offer</span>
+          <strong>${escapeHtml(item.brand)} ${escapeHtml(item.model)}</strong>
+        </div>
+        <small>Pricing will update automatically.</small>
+      </article>
+    `;
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="staff-intake-preview-heading">
+      <span>Item offer</span>
+      <small>Not added to quote yet</small>
+    </div>
+    ${renderStaffIntakeQuoteItem(quotedItem, null, { preview: true })}
+  `;
+}
+
+function renderStaffIntakeQuote() {
+  const quote = staffIntakeState.cartQuote;
+  const total = document.getElementById("staff-intake-total");
+  const routing = document.getElementById("staff-intake-routing");
+  const list = document.getElementById("staff-intake-cart");
+  const message = document.getElementById("staff-intake-quote-message");
+  if (!total || !routing || !list || !message) return;
+
+  if (!staffIntakeState.cart.length) {
+    total.textContent = "Draft";
+    routing.textContent = "Add gear to price this quote.";
+    renderStaffIntakeCart();
+    message.textContent = "";
+    return;
+  }
+
+  if (staffIntakeState.cartQuoteLoading) {
+    total.textContent = "Pricing";
+    routing.textContent = "Calculating added items.";
+    renderStaffIntakeCart();
+    message.textContent = "";
+    return;
+  }
+
+  if (!quote) {
+    total.textContent = staffIntakeState.cart.length ? `${staffIntakeState.cart.length} item${staffIntakeState.cart.length === 1 ? "" : "s"}` : "Draft";
+    routing.textContent = staffIntakeState.cartQuoteError || "Pricing updates when items are added.";
+    renderStaffIntakeCart();
+    message.textContent = staffIntakeState.cartQuoteError;
+    return;
+  }
+
+  total.textContent = quote.routing?.declinedOnly ? "Declined" : quote.totals.cash ? money.format(quote.totals.cash) : "Review";
+  routing.textContent = quote.totals.storeCredit ? `${money.format(quote.totals.storeCredit)} store credit` : quote.routing.message;
+  const sourceItems = staffIntakeCartItems();
+  list.innerHTML = quote.items.map((item, index) => renderStaffIntakeQuoteItem(item, sourceItems[index])).join("");
+  wireStaffIntakeRemoveButtons(list);
+  message.textContent = quote.routing.message;
+}
+
+function renderStaffIntakeQuoteItem(item, sourceItem, options = {}) {
+  const statusClass = item.status === "quoted" ? "quoted" : item.status === "declined" ? "declined" : "review";
+  const price = item.offerAmount ? money.format(item.offerAmount) : item.status === "declined" ? "$0" : "Review";
+  const credit = item.storeCreditAmount ? `${money.format(item.storeCreditAmount)} store credit` : item.message || "Staff follow-up needed";
+  const marketCopy = item.marketPrice ? `Market estimate: ${money.format(item.marketPrice)}` : item.message || "";
+  const canRemove = sourceItem?.id && staffIntakeState.cart.some((cartItem) => cartItem.id === sourceItem.id);
+  return `
+    <article class="quote-item${options.preview ? " staff-intake-preview-item" : ""}">
+      <div>
+        <div class="quote-title">
+          <strong>${escapeHtml(item.brand)} ${escapeHtml(item.model)}</strong>
+          <span class="staff-intake-quote-actions">
+            <span class="status-pill ${statusClass}">${escapeHtml(STATUS_LABELS[item.status] || item.status)}</span>
+            ${canRemove ? `<button class="remove-item" type="button" aria-label="Remove item" data-staff-intake-remove="${escapeAttr(sourceItem.id)}">x</button>` : ""}
+          </span>
+        </div>
+        <div class="quote-meta">
+          ${escapeHtml(conditionLabel(item.condition))} - ${escapeHtml(item.category)}
+          ${marketCopy ? `<br />${escapeHtml(marketCopy)}` : ""}
+        </div>
+      </div>
+      <div class="quote-price">
+        <strong>${escapeHtml(price)}</strong>
+        <span>${escapeHtml(credit)}</span>
+      </div>
+    </article>
+  `;
+}
+
+function wireStaffIntakeRemoveButtons(container) {
+  container.querySelectorAll("[data-staff-intake-remove]").forEach((button) => {
+    button.addEventListener("click", () => {
+      staffIntakeState.cart = staffIntakeState.cart.filter((item) => item.id !== button.dataset.staffIntakeRemove);
+      staffIntakeState.cartQuote = null;
+      staffIntakeState.cartQuoteSignature = "";
+      staffIntakeState.cartQuoteError = "";
+      renderStaffIntakeQuote();
+      priceStaffIntakeCart({ announce: false });
+    });
+  });
+}
+
+function clearStaffIntakeItemForm() {
+  document.getElementById("staff-intake-gear-search").value = "";
+  document.getElementById("staff-intake-category").value = "";
+  populateStaffIntakeBrands();
+  populateStaffIntakeModels();
+  document.getElementById("staff-intake-manual-brand").value = "";
+  document.getElementById("staff-intake-manual-model").value = "";
+  document.getElementById("staff-intake-item-notes").value = "";
+  const excellent = document.querySelector('input[name="staff-intake-condition"][value="excellent"]');
+  if (excellent) excellent.checked = true;
+  updateStaffIntakeManualFields();
+  updateStaffIntakeMountField();
+  renderStaffIntakeIncludedItems();
+}
+
+async function staffPost(path, payload, options = {}) {
+  const response = await fetch(`${API_BASE}${path}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.staff ? staffAuthHeaders() : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || data.detail || `Request failed with ${response.status}`);
+  return data;
 }
 
 function collectReviewState(accessories) {
@@ -1792,7 +1738,6 @@ function collectReviewState(accessories) {
     received: Boolean(document.getElementById("received-check")?.checked),
     allAccessories: Boolean(document.getElementById("all-accessories-check")?.checked),
     verifiedCondition,
-    serialNumber: document.getElementById("serial-number")?.value.trim() || "",
     accessories: accessoryState,
     decision: document.querySelector("input[name='item-decision']:checked")?.value || "pending",
     reason: document.getElementById("inspection-notes")?.value.trim() || "",
@@ -1802,11 +1747,56 @@ function collectReviewState(accessories) {
 function calculateOffer(fields, review, accessories, fallbackOffer) {
   const market = numberOrNull(fields["eBay Median Price"]);
   const condition = review.verifiedCondition || fields.Condition || "Excellent";
-  const conditionOffer = market ? Math.floor(market * (CONDITION_MULTIPLIERS[condition] || 0.6)) : fallbackOffer;
+  const conditionMultiplier = condition in CONDITION_MULTIPLIERS ? CONDITION_MULTIPLIERS[condition] : 0.6;
   const missingTotal = accessories.reduce((total, item) => {
     return review.accessories?.[item.name] === false ? total + item.deduction : total;
   }, 0);
+  const originalCondition = String(fields.Condition || "").trim() || "Excellent";
+  const conditionOffer = condition === originalCondition
+    ? fallbackOffer
+    : market
+      ? Math.floor(market * conditionMultiplier)
+      : fallbackOffer;
   return Math.max(0, Math.floor(conditionOffer - missingTotal));
+}
+
+function staffNoteValue(fields = {}, label = "") {
+  const prefix = `${label}:`;
+  return String(fields["Seller Notes"] || "")
+    .split(/\r?\n/)
+    .find((line) => line.trim().toLowerCase().startsWith(prefix.toLowerCase()))
+    ?.slice(prefix.length)
+    .trim() || "";
+}
+
+function quoteSourceLabel(fields = {}) {
+  const source = staffNoteValue(fields, "Pricing source");
+  const basis = staffNoteValue(fields, "Pricing basis");
+  if (basis === "competitive_retail_review") return "Milford reviewed price table";
+  if (basis === "store_estimated_catalog_review") return "Milford catalog-reviewed price";
+  if (basis === "seeded_price_table") return "Milford exact price table";
+  if (source === "milford_catalog_heuristic") return "Catalog heuristic";
+  if (source.includes("ebay_browse")) return "eBay active-listing fallback";
+  if (source.includes("manual")) return "Manual review";
+  return source || "Unknown";
+}
+
+function staffRecordLooksReceived(fields = {}) {
+  return staffWorkflowText(fields).includes("received");
+}
+
+function staffWorkflowText(fields = {}) {
+  return `${fields.Status || ""} ${fields["Workflow Step"] || ""}`.toLowerCase();
+}
+
+function ebaySoldListingsUrl(fields = {}) {
+  const query = [fields["Item Brand"], fields["Item Model"]].filter(Boolean).join(" ").trim();
+  const url = new URL("https://www.ebay.com/sch/i.html");
+  url.searchParams.set("_nkw", query || "camera gear");
+  url.searchParams.set("_sacat", "625");
+  url.searchParams.set("LH_Complete", "1");
+  url.searchParams.set("LH_Sold", "1");
+  return url.toString();
 }
 
 function buildStaffNotes(review, action, finalOffer) {
@@ -1817,7 +1807,6 @@ function buildStaffNotes(review, action, finalOffer) {
   return [
     "INTAKE REVIEW",
     `Received: ${review.received ? "Yes" : "No"}`,
-    `Serial number: ${review.serialNumber || "Not entered"}`,
     `Verified condition: ${review.verifiedCondition}`,
     `All recommended accessories included: ${review.allAccessories ? "Yes" : "No"}`,
     "Accessory check:",
@@ -1843,7 +1832,6 @@ function appendOrderNote(notes = "", status) {
 function parseStaffNotes(notes = "") {
   const parsed = {
     received: false,
-    serialNumber: "",
     allAccessories: false,
     verifiedCondition: "",
     accessories: {},
@@ -1854,7 +1842,6 @@ function parseStaffNotes(notes = "") {
   notes.split("\n").forEach((line) => {
     const clean = line.trim();
     if (clean.startsWith("Received:")) parsed.received = clean.includes("Yes");
-    if (clean.startsWith("Serial number:")) parsed.serialNumber = clean.replace("Serial number:", "").trim();
     if (clean.startsWith("All recommended accessories included:")) parsed.allAccessories = clean.includes("Yes");
     if (clean.startsWith("Verified condition:")) parsed.verifiedCondition = clean.replace("Verified condition:", "").trim();
     if (clean.startsWith("Customer decision:")) parsed.decision = clean.replace("Customer decision:", "").trim() || "pending";
@@ -1868,86 +1855,19 @@ function parseStaffNotes(notes = "") {
   return parsed;
 }
 
-function staffPricingDetails(fields) {
-  const notes = fields["Seller Notes"] || "";
-  const source = sellerNoteValue(notes, "Pricing source");
-  const confidence = sellerNoteValue(notes, "Pricing confidence");
-  const sampleSize = sellerNoteValue(notes, "Sample size");
-  const lookback = sellerNoteValue(notes, "Pricing lookback") || sellerNoteValue(notes, "Lookback") || "last 3 months";
-  const lines = [];
-  if (confidence) lines.push(`Pricing confidence: ${staffConfidenceLabel(confidence)}`);
-  if (source) lines.push(`Pricing source: ${staffPricingSourceLabel(source, sampleSize, lookback)}`);
-  return lines;
-}
-
-function sellerNoteValue(notes, label) {
-  const prefix = `${label}:`;
-  return String(notes || "")
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .find((line) => line.toLowerCase().startsWith(prefix.toLowerCase()))
-    ?.slice(prefix.length)
-    .trim() || "";
-}
-
-function staffConfidenceLabel(confidence) {
-  const normalized = normalizeGroupValue(confidence);
-  if (normalized === "high") return "High";
-  if (normalized === "medium") return "Medium";
-  if (normalized === "low" || normalized === "limited") return "Low";
-  if (normalized === "stub") return "Demo estimate";
-  if (normalized === "manual") return "Manual review";
-  if (normalized === "unavailable") return "Unavailable";
-  return confidence;
-}
-
-function staffPricingSourceLabel(source, sampleSize, lookback = "last 3 months") {
-  const normalized = normalizeGroupValue(source);
-  const samples = Number(sampleSize);
-  const sampleCopy = Number.isFinite(samples) && samples > 0
-    ? `${samples} eBay ${samples === 1 ? "listing" : "listings"}`
-    : "eBay listings";
-  if (normalized.includes("completed") || normalized.includes("sold")) {
-    const soldCopy = Number.isFinite(samples) && samples > 0
-      ? `${samples} eBay sold ${samples === 1 ? "listing" : "listings"}`
-      : "eBay sold listings";
-    return `${soldCopy} in ${lookback}`;
-  }
-  if (normalized.includes("browse") || normalized.includes("active")) return `${sampleCopy} currently listed - fallback until sold-listing access is approved`;
-  if (normalized.includes("stub")) return "Demo pricing fallback";
-  if (normalized.includes("manual")) return "Manual review";
-  if (normalized.includes("missing") || normalized.includes("unavailable")) return "Pricing unavailable";
-  return source;
-}
-
 function workflowState(order) {
-  const statuses = order.items.map((item) => recordStatusText(item).toLowerCase());
+  const statuses = order.items.map((item) => staffWorkflowText(item.fields));
   const completed = new Set(["initial"]);
-  if (statuses.some((status) => status.includes("label") || status.includes("accepted") || status.includes("shipped"))) completed.add("shipped");
-  if (statuses.some((status) => status.includes("received") || status.includes("inspection") || status.includes("evaluated"))) completed.add("received");
+  if (statuses.some((status) => status.includes("label") || status.includes("accepted") || status.includes("shipped") || status.includes("received") || status.includes("inspection") || status.includes("evaluated") || status.includes("final") || status.includes("payment") || status.includes("return"))) completed.add("shipped");
+  if (statuses.some((status) => status.includes("received") || status.includes("inspection") || status.includes("evaluated") || status.includes("final") || status.includes("accepted item") || status.includes("customer accepted") || status.includes("payment") || status.includes("return"))) completed.add("received");
   if (statuses.every((status) => status.includes("evaluated") || status.includes("final") || status.includes("accepted") || status.includes("payment") || status.includes("return") || status.includes("declined"))) completed.add("evaluated");
-  if (statuses.some((status) => status.includes("final quote"))) completed.add("final");
-  if (statuses.some((status) => status.includes("accepted item") || status.includes("return item") || status.includes("customer accepted") || status.includes("payment info requested"))) completed.add("customer");
-  if (statuses.some((status) => status.includes("payment sent"))) completed.add("payout");
-  const hasPendingReturn = statuses.some((status) => status.includes("return item") && !status.includes("items shipped to customer") && !status.includes("returned to seller"));
-  if (
-    statuses.some((status) => status.includes("items shipped to customer") || status.includes("returned to seller")) ||
-    (statuses.some((status) => status.includes("payment sent")) && !hasPendingReturn)
-  ) {
-    completed.add("return");
-  }
-
-  completePriorWorkflowSteps(completed);
+  if (statuses.some((status) => status.includes("final quote") || status.includes("accepted item") || status.includes("customer accepted") || status.includes("payment") || status.includes("return"))) completed.add("final");
+  if (statuses.some((status) => status.includes("accepted item") || status.includes("return item") || status.includes("customer accepted") || status.includes("payment"))) completed.add("customer");
+  if (statuses.some((status) => status.includes("payment"))) completed.add("payout");
+  if (statuses.some((status) => status.includes("return") || status.includes("payment"))) completed.add("return");
 
   const current = WORKFLOW_STEPS.find((step) => !completed.has(step.key)) || WORKFLOW_STEPS[WORKFLOW_STEPS.length - 1];
   return { completed, current, isComplete: completed.size >= WORKFLOW_STEPS.length };
-}
-
-function completePriorWorkflowSteps(completed) {
-  const deepestIndex = WORKFLOW_STEPS.reduce((index, step, currentIndex) => {
-    return completed.has(step.key) ? Math.max(index, currentIndex) : index;
-  }, 0);
-  WORKFLOW_STEPS.slice(0, deepestIndex + 1).forEach((step) => completed.add(step.key));
 }
 
 function quoteReferenceCounts(items) {
@@ -1986,8 +1906,8 @@ function normalizeGroupValue(value) {
 }
 
 function itemStatusClass(record) {
-  const status = recordStatusText(record).toLowerCase();
-  if (status.includes("return") || status.includes("items shipped to customer") || status.includes("returned to seller") || status.includes("declined")) return "is-return";
+  const status = staffWorkflowText(record.fields);
+  if (status.includes("return") || status.includes("declined")) return "is-return";
   if (status.includes("evaluated") || status.includes("final") || status.includes("accepted item") || status.includes("payment")) return "is-evaluated";
   if (status.includes("received") || status.includes("inspection")) return "is-progress";
   return "is-new";
@@ -2032,125 +1952,398 @@ function accessoryListFor(fields) {
   ];
 }
 
+function visibleOrders() {
+  return sortOrdersForQueue(filterOrders(orders, activeFilter).filter(orderMatchesSearch));
+}
+
 function filterOrders(items, filter) {
-  return sortOrders(items.filter((order) => {
-    const matchesFilter = orderMatchesCurrentFilterSearch(order, filter);
-    const testOrder = isTestOrder(order);
-    const matchesTestVisibility = showTestOrdersOnly ? testOrder : (!hideTestOrders || !testOrder);
-    return matchesFilter && matchesTestVisibility;
-  }), activeSort);
+  return items.filter((order) => {
+    const statuses = order.items.map((record) => staffWorkflowText(record.fields));
+    if (filter === "all") return true;
+    if (filter === "received") return statuses.some((status) => status.includes("received") || status.includes("inspection") || status.includes("evaluated"));
+    if (filter === "done") return statuses.every((status) => status.includes("payment") || status.includes("declined") || status.includes("return"));
+    if (filter === "active") return !statuses.every((status) => status.includes("payment") || status.includes("declined") || status.includes("return"));
+    return order.workflow.current.key === filter || order.workflow.completed.has(filter);
+  });
 }
 
-function orderMatchesCurrentFilterSearch(order, filter) {
-  const matchesFilter = filter === "all" || order.workflow.current.key === filter;
-  return matchesFilter && orderMatchesSearch(order, searchQuery);
-}
-
-function sortOrders(items, sortKey) {
-  const sorted = [...items];
-  if (sortKey === "newest") return sorted.sort((a, b) => dateValue(b.submitted, -Infinity) - dateValue(a.submitted, -Infinity));
-  if (sortKey === "first_received") return sorted.sort((a, b) => dateValue(a.submitted, Infinity) - dateValue(b.submitted, Infinity));
-  if (sortKey === "customer") return sorted.sort((a, b) => a.customer.localeCompare(b.customer));
-  if (sortKey === "value") return sorted.sort((a, b) => (b.totals.final || b.totals.original) - (a.totals.final || a.totals.original));
-  return sorted.sort(sortByNextAction);
-}
-
-function sortByNextAction(a, b) {
-  const stepDelta = workflowStepIndex(a.workflow.current.key) - workflowStepIndex(b.workflow.current.key);
-  if (stepDelta !== 0) return stepDelta;
-  const submittedDelta = dateValue(a.submitted, Infinity) - dateValue(b.submitted, Infinity);
-  if (submittedDelta !== 0) return submittedDelta;
-  return a.customer.localeCompare(b.customer);
-}
-
-function dateValue(value, fallback) {
-  const timestamp = new Date(value || "").getTime();
-  return Number.isFinite(timestamp) ? timestamp : fallback;
-}
-
-function workflowStepIndex(key) {
-  const index = WORKFLOW_STEPS.findIndex((step) => step.key === key);
-  return index === -1 ? WORKFLOW_STEPS.length : index;
-}
-
-function orderMatchesSearch(order, query) {
-  const normalized = normalizeGroupValue(query);
-  if (!normalized) return true;
-  const haystack = [
-    order.quote,
-    ...order.quoteRefs,
+function orderMatchesSearch(order) {
+  const query = activeSearch.trim().toLowerCase();
+  if (!query) return true;
+  const searchable = [
     order.customer,
     order.email,
     order.phone,
-    order.address,
-    ...order.items.flatMap((record) => {
-      const fields = record.fields || {};
+    order.quote,
+    order.quoteRefs?.join(" "),
+    order.items.map((item) => {
+      const fields = item.fields || {};
       return [
-        record.id,
-        fields["Quote Reference"],
-        fields["Seller Name"],
-        fields["Seller Email"],
-        fields["Seller Phone"],
-        fields["Tracking Number"],
-        fields["Serial Number"],
         fields["Item Brand"],
         fields["Item Model"],
         fields.Category,
-        fields.Condition,
+        fields["Tracking Number"],
         fields.Status,
         fields["Workflow Step"],
-      ];
-    }),
-  ].map((value) => normalizeGroupValue(value)).join(" ");
-  return haystack.includes(normalized);
+      ].filter(Boolean).join(" ");
+    }).join(" "),
+  ].filter(Boolean).join(" ").toLowerCase();
+  return searchable.includes(query);
 }
 
-function isTestOrder(order) {
-  if (order.synthetic && order.items.length > 1) return true;
-  const haystack = [
-    order.id,
-    order.quote,
-    ...order.quoteRefs,
-    order.customer,
-    order.email,
-    order.phone,
-    order.address,
-    ...order.items.flatMap((record) => {
-      const fields = record.fields || {};
-      return [
-        record.id,
-        fields.Source,
-        fields["Quote Reference"],
-        fields["Seller Name"],
-        fields["Seller Email"],
-        fields["Seller Phone"],
-        fields["Seller Notes"],
-        fields["Staff Notes"],
-        fields["Tracking Number"],
-      ];
-    }),
-  ].map((value) => normalizeGroupValue(value)).join(" ");
-
-  return /\b(codex|demo|test|prototype|please ignore|fake)\b/.test(haystack) || haystack.includes("+codex");
+function sortOrdersForQueue(items) {
+  const sorted = [...items];
+  if (activeSort === "customer") return sorted.sort((a, b) => a.customer.localeCompare(b.customer));
+  if (activeSort === "value") return sorted.sort((a, b) => (b.totals.final || b.totals.original) - (a.totals.final || a.totals.original));
+  if (activeSort === "next_action" || activeSort === "first_received") {
+    return sorted.sort((a, b) => workflowRank(a.workflow.current.key) - workflowRank(b.workflow.current.key) || newestOrderTime(b) - newestOrderTime(a));
+  }
+  return sorted.sort((a, b) => newestOrderTime(b) - newestOrderTime(a));
 }
 
-function orderActionSummary(order) {
-  if (order.workflow.isComplete) return "No action needed - order complete.";
-  const step = order.workflow.current.key;
-  if (step === "initial") return "Review quote routing before shipment or dropoff.";
-  if (step === "shipped") return "Wait for package/dropoff, then receive each item.";
-  if (step === "received") return "Inspect gear, verify accessories, enter serial numbers, and finish evaluation.";
-  if (step === "evaluated") return "Review final amounts and send the customer their final quote or payment instructions.";
-  if (step === "final") return "Send final quote email, then wait for customer decision.";
-  if (step === "customer") return "Waiting for customer to accept items or request returns.";
-  if (step === "payout") return "Issue payment or store credit for accepted items.";
-  if (step === "return") return "Ship return items back to the customer and mark complete.";
-  return "Review this order and choose the next staff action.";
+function newestOrderTime(order) {
+  return Math.max(...order.items.map((item) => new Date(item.fields?.["Quote Submitted"] || 0).getTime()), 0);
 }
 
-function recordStatusText(record) {
-  const fields = record.fields || {};
-  return String(fields["Workflow Step"] || fields.Status || "");
+function workflowRank(key) {
+  const index = WORKFLOW_STEPS.findIndex((step) => step.key === key);
+  return index === -1 ? 99 : index;
+}
+
+function activeFilterLabel(filter) {
+  if (filter === "all") return "visible";
+  if (filter === "active") return "active";
+  if (filter === "done") return "done";
+  return (WORKFLOW_STEPS.find((step) => step.key === filter)?.label || filter).toLowerCase();
+}
+
+function orderIdForQuoteRef(quoteRef) {
+  const wanted = String(quoteRef || "").trim();
+  if (!wanted) return "";
+  return orders.find((order) => order.quote === wanted || order.quoteRefs?.includes(wanted))?.id || "";
+}
+
+function conditionLabel(value = "") {
+  return STAFF_INTAKE_CONDITIONS.find((condition) => condition.value === value)?.label || value;
+}
+
+function includedItemsForCategory(category = "") {
+  const text = category.toLowerCase();
+  if (!text) return [];
+  if (text.includes("film")) return INCLUDED_ITEMS.filmCamera;
+  if (text.includes("lens")) return INCLUDED_ITEMS.lens;
+  if (text.includes("camera") || text.includes("body") || text.includes("dslr") || text.includes("mirrorless")) return INCLUDED_ITEMS.camera;
+  return INCLUDED_ITEMS.default;
+}
+
+function safeCatalogBrands() {
+  if (typeof getCatalogBrands === "function") return getCatalogBrands();
+  return ["Canon", "Nikon", "Sony", "Fujifilm", "Olympus", "Panasonic", "Pentax", "Sigma", "Tamron"];
+}
+
+function safeCatalogAllCategories() {
+  const catalogCategories = safeCatalogBrands().flatMap((brand) => safeCatalogCategories(brand));
+  return catalogCategories.length ? SIMPLE_CATEGORIES : FALLBACK_CATEGORIES;
+}
+
+function safeCatalogBrandsForCategory(category) {
+  if (!category || category === MANUAL_CATEGORY) return safeCatalogBrands();
+  const matches = safeCatalogBrands().filter((brand) =>
+    safeCatalogCategories(brand).some((catalogCategory) => categoryMatchesDisplay(catalogCategory, category)),
+  );
+  return matches.length ? matches : safeCatalogBrands();
+}
+
+function safeCatalogCategories(brand) {
+  if (typeof getCatalogCategories === "function") return getCatalogCategories(brand);
+  return FALLBACK_CATEGORIES;
+}
+
+function safeCatalogItems(brand, category) {
+  if (typeof getCatalogItems === "function") {
+    return catalogCategoriesForDisplay(brand, category).flatMap((catalogCategory) => getCatalogItems(brand, catalogCategory));
+  }
+  return [];
+}
+
+function uniqueCatalogItems(items) {
+  const seen = new Set();
+  return items.filter((item) => {
+    const key = String(item.name || "").toLowerCase();
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function uniqueGearSearchOptions(options) {
+  const seen = new Set();
+  return options.filter((option) => {
+    const key = [option.brand, option.category, option.model].join("|").toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function sortCatalogItemsForDisplay(items, category = "") {
+  const sorted = [...items];
+  if (category.toLowerCase().includes("lens")) {
+    return sorted.sort((a, b) => compareLensModels(a.name, b.name));
+  }
+  return sorted.sort((a, b) => naturalTextCompare(a.name, b.name));
+}
+
+function displayModelName(name = "", category = "") {
+  if (!category.toLowerCase().includes("lens")) return name;
+  return String(name)
+    .replace(/\s*\((?:sony\s+fe|sony\s+e|e-mount|canon\s+ef|canon\s+rf|nikon\s+f|nikon\s+z|fujifilm\s+x|x-mount|micro\s+four\s+thirds|mft|l-mount|pentax\s+k|dslr|mirrorless)\)\s*$/i, "")
+    .trim();
+}
+
+function catalogDisplayName(item, category = "") {
+  if (!item) return "";
+  return item.displayName || displayModelName(item.name, category);
+}
+
+function catalogQuoteModel(item, fallbackModel, category = "") {
+  if (!item) return displayModelName(fallbackModel, category);
+  return item.quoteModel || item.displayName || displayModelName(item.name, category);
+}
+
+function safeCatalogItem(brand, category, model) {
+  if (typeof getCatalogItem === "function") {
+    for (const catalogCategory of catalogCategoriesForDisplay(brand, category)) {
+      const item = getCatalogItem(brand, catalogCategory, model);
+      if (item) return item;
+    }
+  }
+  return null;
+}
+
+function catalogCategoriesForDisplay(brand, displayCategory) {
+  const catalogCategories = safeCatalogCategories(brand);
+  if (!displayCategory || displayCategory === MANUAL_CATEGORY) return catalogCategories;
+  const matches = catalogCategories.filter((catalogCategory) => categoryMatchesDisplay(catalogCategory, displayCategory));
+  return matches.length ? matches : catalogCategories.filter((catalogCategory) => catalogCategory === displayCategory);
+}
+
+function displayCategoryForCatalog(catalogCategory = "") {
+  return SIMPLE_CATEGORIES.find((displayCategory) => categoryMatchesDisplay(catalogCategory, displayCategory)) || catalogCategory;
+}
+
+function categoryMatchesDisplay(catalogCategory = "", displayCategory = "") {
+  const catalog = catalogCategory.toLowerCase();
+  const display = displayCategory.toLowerCase();
+  if (displayCategory === MANUAL_CATEGORY) return catalogCategory === MANUAL_CATEGORY;
+  if (display === "lens") return catalog.includes("lens");
+  if (display === "film camera") return catalog.includes("camera body") && catalog.includes("film");
+  if (display === "digital camera") return catalog.includes("camera body") && !categoryMatchesDisplay(catalogCategory, "Film Camera");
+  if (display === "flash / lighting") return catalog.includes("flash") || catalog.includes("speedlight") || catalog.includes("strobe") || catalog.includes("lighting");
+  if (display === "tripod / support") return catalog.includes("tripod") || catalog.includes("monopod") || catalog.includes("support");
+  if (display === "bags & cases") return catalog.includes("bag") || catalog.includes("case");
+  if (display === "filters") return catalog.includes("filter");
+  if (display === "video / cinema gear") return catalog.includes("video") || catalog.includes("cinema") || catalog.includes("camcorder");
+  return catalog === display;
+}
+
+function catalogCategoryForItem(brand, displayCategory, itemName) {
+  for (const catalogCategory of catalogCategoriesForDisplay(brand, displayCategory)) {
+    if (typeof getCatalogItems !== "function") continue;
+    if (getCatalogItems(brand, catalogCategory).some((item) => item.name === itemName)) return catalogCategory;
+  }
+  return "";
+}
+
+function staffIntakeMountOptions() {
+  const category = document.getElementById("staff-intake-category")?.value || "";
+  if (!category.toLowerCase().includes("lens")) return [];
+  const brand = document.getElementById("staff-intake-brand")?.value || "";
+  const model = document.getElementById("staff-intake-model")?.value || "";
+  const manualModel = document.getElementById("staff-intake-manual-model")?.value || "";
+  const catalogItem = brand !== MANUAL_BRAND && model !== MANUAL_MODEL ? safeCatalogItem(brand, category, model) : null;
+  const inferredMounts = catalogMountsForItem(brand, category, catalogItem);
+  if (inferredMounts.length) return inferredMounts;
+
+  const text = `${category} ${model === MANUAL_MODEL ? manualModel : model}`.toLowerCase();
+  const explicit = mountsFromText(text);
+  if (explicit.length) return explicit;
+
+  const brandText = brand.toLowerCase();
+  if (brandText.includes("sigma")) {
+    if (text.includes("dg dn")) return ["Sony E", "L-Mount"];
+    if (text.includes("dc dn")) return ["Sony E", "Fujifilm X", "Micro Four Thirds"];
+    if (text.includes("70mm f/2.8 dg macro")) return ["L-Mount", "Sony E", "Sigma SA", "Canon EF"];
+    if (text.includes("dg hsm") || text.includes("os hsm")) return ["Canon EF", "Nikon F"];
+  }
+  if (brandText.includes("tamron")) {
+    if (text.includes("mirrorless") || text.includes("di iii")) return ["Sony E"];
+    return ["Canon EF", "Nikon F"];
+  }
+  if (brandText.includes("tokina")) {
+    if (text.includes("sony e")) return ["Sony E"];
+    if (text.includes("opera")) return ["Canon EF", "Nikon F"];
+    return ["Canon EF", "Nikon F", "Sony E"];
+  }
+  if (brandText.includes("zeiss")) {
+    if (text.includes("batis") || text.includes("loxia") || text.includes("sony fe")) return ["Sony E"];
+    if (text.includes("otus ml")) return ["Sony E", "Nikon Z", "Canon RF"];
+    if (text.includes("otus") || text.includes("milvus") || text.includes("dslr")) return ["Canon EF", "Nikon F"];
+    return ["Canon EF", "Nikon F"];
+  }
+  return ["Canon EF", "Canon RF", "Nikon F", "Nikon Z", "Sony E", "Fujifilm X", "Micro Four Thirds", "L-Mount", "Pentax K"];
+}
+
+function catalogMountsForItem(brand = "", displayCategory = "", item = null) {
+  if (Array.isArray(item?.mounts) && item.mounts.length) return item.mounts;
+  if (!displayCategory.toLowerCase().includes("lens")) return [];
+  const catalogCategory = item ? catalogCategoryForItem(brand, displayCategory, item.name) : "";
+  return inferMountsFromProductText(brand, catalogCategory || displayCategory, item?.name || "");
+}
+
+function inferMountsFromProductText(brand = "", category = "", model = "") {
+  const text = `${brand} ${category} ${model}`.toLowerCase();
+
+  if (text.includes("lens") && text.includes("canon")) {
+    if (text.includes("ef-s")) return ["Canon EF-S"];
+    if (/\bef-m\b/.test(text)) return ["Canon EF-M"];
+    if (/\brf\b/.test(text)) return ["Canon RF"];
+    if (/\bef\b/.test(text)) return ["Canon EF"];
+  }
+  if (text.includes("lens") && text.includes("nikon")) {
+    if (text.includes("z-mount") || /\bz\b/.test(model.toLowerCase())) return ["Nikon Z"];
+    if (text.includes("f-mount") || /\baf\b|\baf-s\b|\baf-p\b|\bdx\b/.test(model.toLowerCase())) return ["Nikon F"];
+  }
+  if (text.includes("lens") && text.includes("sony")) {
+    if (text.includes("a-mount")) return ["Sony A"];
+    if (text.includes("e-mount") || /\bfe\b|\be\b/.test(model.toLowerCase())) return ["Sony E"];
+  }
+  if (text.includes("fujifilm") || text.includes("fuji")) {
+    if (text.includes("gfx") || /\bgf\b/.test(model.toLowerCase())) return ["Fujifilm G"];
+    if (text.includes("x-mount") || /\bxf\b|\bxc\b/.test(model.toLowerCase())) return ["Fujifilm X"];
+  }
+  if (text.includes("olympus") || text.includes("om system") || text.includes("m.zuiko")) return ["Micro Four Thirds"];
+  if (text.includes("panasonic") || text.includes("lumix")) {
+    if (text.includes("l-mount") || text.includes("lumix s")) return ["L-Mount"];
+    if (text.includes("micro four thirds") || text.includes("lumix g")) return ["Micro Four Thirds"];
+  }
+  if (text.includes("leica")) {
+    if (text.includes("m-mount") || /\bsummilux-m\b|\bsummicron-m\b|\belmarit-m\b/.test(text)) return ["Leica M"];
+    if (text.includes("l-mount") || text.includes("-sl")) return ["L-Mount"];
+  }
+  if (text.includes("hasselblad") || text.includes("xcd")) return ["Hasselblad XCD"];
+  if (text.includes("phase one") || text.includes("schneider kreuznach")) return ["Phase One XF"];
+  if (text.includes("pentax") || text.includes("k-mount")) return ["Pentax K"];
+  if (text.includes("zeiss")) {
+    if (text.includes("batis") || text.includes("loxia") || text.includes("sony fe")) return ["Sony E"];
+    if (text.includes("milvus") || text.includes("dslr")) return ["Canon EF", "Nikon F"];
+  }
+
+  if (text.includes("sigma")) {
+    if (text.includes("dg dn")) return ["Sony E", "L-Mount"];
+    if (text.includes("dc dn")) return ["Sony E", "Fujifilm X", "Micro Four Thirds"];
+    if (text.includes("70mm f/2.8 dg macro")) return ["L-Mount", "Sony E", "Sigma SA", "Canon EF"];
+    if (text.includes("dg hsm") || text.includes("os hsm")) return ["Canon EF", "Nikon F"];
+  }
+  if (text.includes("tamron")) {
+    if (text.includes("sony e")) return ["Sony E"];
+    if (text.includes("di iii")) return ["Sony E"];
+    if (text.includes("dslr") || text.includes("di vc") || text.includes("sp ")) return ["Canon EF", "Nikon F"];
+  }
+  if (text.includes("tokina")) {
+    if (text.includes("sony e")) return ["Sony E"];
+    if (text.includes("opera")) return ["Canon EF", "Nikon F"];
+    if (text.includes("dslr") || text.includes("at-x")) return ["Canon EF", "Nikon F"];
+  }
+
+  return [];
+}
+
+function mountsFromText(text) {
+  const rules = [
+    ["canon rf", "Canon RF"],
+    [" rf", "Canon RF"],
+    ["canon ef", "Canon EF"],
+    [" ef", "Canon EF"],
+    ["nikon z", "Nikon Z"],
+    [" z-mount", "Nikon Z"],
+    ["nikon f", "Nikon F"],
+    [" f-mount", "Nikon F"],
+    ["sony fe", "Sony E"],
+    ["sony e", "Sony E"],
+    [" e-mount", "Sony E"],
+    ["fujifilm x", "Fujifilm X"],
+    [" x-mount", "Fujifilm X"],
+    ["micro four thirds", "Micro Four Thirds"],
+    ["mft", "Micro Four Thirds"],
+    ["l-mount", "L-Mount"],
+    ["phase one xf", "Phase One XF"],
+    ["pentax k", "Pentax K"],
+    [" k-mount", "Pentax K"],
+  ];
+  return [...new Set(rules.filter(([needle]) => text.includes(needle)).map(([, mount]) => mount))];
+}
+
+function buildEbayQueryForCatalogItem({ brand, model, mount, catalogItem }) {
+  const baseQuery = catalogItem?.ebayQuery || `${brand} ${model}`;
+  return mount ? `${baseQuery} ${mount}` : baseQuery;
+}
+
+function compareLensModels(a, b) {
+  const aKey = lensSortKey(a);
+  const bKey = lensSortKey(b);
+  for (let index = 0; index < aKey.length; index += 1) {
+    const aValue = aKey[index];
+    const bValue = bKey[index];
+    if (typeof aValue === "number" && typeof bValue === "number" && aValue !== bValue) return aValue - bValue;
+    if (aValue !== bValue) return naturalTextCompare(String(aValue), String(bValue));
+  }
+  return naturalTextCompare(a, b);
+}
+
+function lensSortKey(name = "") {
+  const normalized = String(name).replace(/[–—]/g, "-").toLowerCase();
+  const focal = normalized.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)\s*mm|(\d+(?:\.\d+)?)\s*mm/);
+  const firstFocal = focal ? Number(focal[1] || focal[3]) : 9999;
+  const secondFocal = focal?.[2] ? Number(focal[2]) : 0;
+  const aperture = normalized.match(/f\/?(\d+(?:\.\d+)?)/);
+  const apertureValue = aperture ? Number(aperture[1]) : 99;
+  return [mountPrefixRank(normalized), lensSeriesRank(normalized), firstFocal, secondFocal, apertureValue, generationRank(normalized), normalized];
+}
+
+function mountPrefixRank(text) {
+  const prefixes = ["ef-s", "ef-m", "ef", "rf", "dx", "fx", "z", "fe", "e", "xf", "m.zuiko", "mft", "k"];
+  const index = prefixes.findIndex((prefix) => text.startsWith(`${prefix} `) || text.startsWith(prefix));
+  return index === -1 ? 99 : index;
+}
+
+function lensSeriesRank(text) {
+  const series = [
+    "at-x",
+    "atx-m",
+    "art",
+    "batis",
+    "contemporary",
+    "loxia",
+    "milvus",
+    "opera",
+    "otus",
+    "sp",
+    "sports",
+  ];
+  const index = series.findIndex((name) => text.startsWith(`${name} `));
+  return index === -1 ? 99 : index;
+}
+
+function generationRank(text) {
+  if (/\biii\b/.test(text)) return 3;
+  if (/\bii\b/.test(text)) return 2;
+  if (/\bi\b/.test(text)) return 1;
+  return 0;
+}
+
+function naturalTextCompare(a, b) {
+  return String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: "base" });
 }
 
 function syncSelectedItem() {
@@ -2160,13 +2353,6 @@ function syncSelectedItem() {
     return;
   }
   if (!order.items.some((item) => item.id === selectedItemId)) selectedItemId = order.items[0]?.id || null;
-}
-
-function syncSelectedOrderToQueue() {
-  const filtered = filterOrders(orders, activeFilter);
-  if (!filtered.some((order) => order.id === selectedOrderId)) {
-    selectedOrderId = filtered[0]?.id || null;
-  }
 }
 
 function selectedOrder() {
@@ -2227,19 +2413,6 @@ function formatDate(value) {
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
-function formatDateTime(value) {
-  if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return String(value);
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(date);
-}
-
 function setStatus(message, isError = false) {
   statusEl.textContent = message;
   statusEl.className = isError ? "staff-error" : "";
@@ -2266,71 +2439,45 @@ function escapeAttr(value) {
 
 loadButton.addEventListener("click", loadRecords);
 refreshButton.addEventListener("click", loadRecords);
-filterSelect.addEventListener("change", () => {
-  activeFilter = filterSelect.value;
-  syncSelectedOrderToQueue();
-  syncSelectedItem();
+pricingReviewButton?.addEventListener("click", openPricingReview);
+startStaffIntakeButton?.addEventListener("click", startStaffIntake);
+staffSearchInput?.addEventListener("input", () => {
+  activeSearch = staffSearchInput.value;
+  const filtered = visibleOrders();
+  if (!filtered.some((order) => order.id === selectedOrderId)) {
+    selectedOrderId = filtered[0]?.id || null;
+    syncSelectedItem();
+  }
   renderQueue();
   renderDetail();
 });
-sortSelect.addEventListener("change", () => {
-  activeSort = sortSelect.value;
-  renderQueue();
-});
-searchInput.addEventListener("input", () => {
-  searchQuery = searchInput.value.trim();
-  syncSelectedOrderToQueue();
-  syncSelectedItem();
+staffFilterSelect?.addEventListener("change", () => {
+  activeFilter = staffFilterSelect.value;
+  const filtered = visibleOrders();
+  if (!filtered.some((order) => order.id === selectedOrderId)) {
+    selectedOrderId = filtered[0]?.id || null;
+    syncSelectedItem();
+  }
   renderQueue();
   renderDetail();
 });
-if (hideTestOrdersInput) {
-  hideTestOrdersInput.addEventListener("change", () => {
-    hideTestOrders = hideTestOrdersInput.checked;
-    if (hideTestOrders && testOnlyInput) {
-      testOnlyInput.checked = false;
-      showTestOrdersOnly = false;
+staffSortSelect?.addEventListener("change", () => {
+  activeSort = staffSortSelect.value;
+  renderQueue();
+});
+filterButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    activeFilter = button.dataset.filter;
+    const filtered = visibleOrders();
+    if (!filtered.some((order) => order.id === selectedOrderId)) {
+      selectedOrderId = filtered[0]?.id || null;
+      syncSelectedItem();
     }
-    syncSelectedOrderToQueue();
-    syncSelectedItem();
+    filterButtons.forEach((item) => item.classList.toggle("is-active", item === button));
     renderQueue();
     renderDetail();
   });
-}
-if (testOnlyInput) {
-  testOnlyInput.addEventListener("change", () => {
-    showTestOrdersOnly = testOnlyInput.checked;
-    if (showTestOrdersOnly && hideTestOrdersInput) {
-      hideTestOrdersInput.checked = false;
-      hideTestOrders = false;
-    }
-    syncSelectedOrderToQueue();
-    syncSelectedItem();
-    renderQueue();
-    renderDetail();
-  });
-}
-if (newWalkInOrderButton) {
-  newWalkInOrderButton.addEventListener("click", () => {
-    selectedOrderId = null;
-    selectedItemId = null;
-    renderQueue();
-    renderWalkInQuoteBuilder();
-    setStatus("Building a new in-store quote.");
-  });
-}
-if (clearLocalDemoButton) {
-  clearLocalDemoButton.addEventListener("click", () => {
-    localStorage.removeItem(DEMO_QUEUE_KEY);
-    records = records.filter((record) => !String(record.id || "").startsWith("demo-live"));
-    orders = buildOrders(records);
-    syncSelectedOrderToQueue();
-    syncSelectedItem();
-    renderQueue();
-    renderDetail();
-    setStatus("Local demo submissions cleared. Real Airtable test records are preserved and can be hidden with the test/demo filter.");
-  });
-}
+});
 usernameInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter") passwordInput.focus();
 });
@@ -2338,14 +2485,10 @@ passwordInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter") loadRecords();
 });
 
-if (new URLSearchParams(window.location.search).get("staffTest") === "1") {
-  usernameInput.value = TEST_STAFF_USERS[0];
-  passwordInput.value = TEST_PASSWORD;
+if ((CONFIG.staffAuthMode === "cookie" || CONFIG.staffAuthMode === "secret") && CONFIG.autoLoadStaff) {
   loadRecords();
-}
-
-if (CONFIG.autoLoadStaff) {
-  usernameInput.value = TEST_STAFF_USERS[0];
+} else if (new URLSearchParams(window.location.search).get("staffTest") === "1") {
+  usernameInput.value = TEST_EMPLOYEE;
   passwordInput.value = TEST_PASSWORD;
   loadRecords();
 }

@@ -7,7 +7,6 @@ const MANUAL_CATEGORY = "Manual Review / Vintage / Specialty";
 const SELECT_CATEGORY = "";
 const SELECT_BRAND = "";
 const SELECT_MODEL = "";
-const DEMO_QUEUE_KEY = "mpUsedGearStaffQueue";
 
 const FALLBACK_CATEGORIES = [
   "Digital Camera",
@@ -46,6 +45,7 @@ const CONDITION_LABELS = {
   good: "Good",
   well_used: "Well Used",
   heavily_used: "Heavily Used",
+  not_working: "Not Working",
 };
 
 const INCLUDED_ITEMS = {
@@ -55,17 +55,22 @@ const INCLUDED_ITEMS = {
     { name: "Charger", value: 50, checked: true },
     { name: "Body cap", value: 10, checked: true },
     { name: "Strap", value: 20, checked: true },
+    { name: "Original box", value: 10, checked: false, bonus: true },
   ],
   filmCamera: [
     { name: "Body cap", value: 10, checked: true },
     { name: "Strap", value: 20, checked: true },
+    { name: "Original box", value: 10, checked: false, bonus: true },
   ],
   lens: [
     { name: "Rear cap", value: 10, checked: true },
     { name: "Lens cap", value: 15, checked: true },
     { name: "Lens hood", value: 35, checked: true },
+    { name: "Original box", value: 10, checked: false, bonus: true },
   ],
-  default: [],
+  default: [
+    { name: "Original box", value: 10, checked: false, bonus: true },
+  ],
 };
 
 const money = new Intl.NumberFormat("en-US", {
@@ -108,10 +113,8 @@ const els = {
   sellerEmail: byId("seller-email"),
   sellerPhone: byId("seller-phone"),
   paymentPreference: byId("payment-preference"),
-  payoutHelper: byId("payout-helper"),
   mailCopy: byId("mail-option-copy"),
   addressFields: byId("address-fields"),
-  addressHelper: byId("address-helper"),
   parcelFields: byId("parcel-fields"),
   street: byId("street"),
   city: byId("city"),
@@ -222,7 +225,6 @@ function bindEvents() {
   document.querySelectorAll('input[name="delivery"]').forEach((input) => {
     input.addEventListener("change", updateDeliveryFields);
   });
-  els.paymentPreference.addEventListener("change", updatePayoutHelper);
 
   window.addEventListener("resize", resizeParentFrame);
   window.addEventListener("load", resizeParentFrame);
@@ -269,7 +271,7 @@ function populateModels() {
   const items = brand === MANUAL_BRAND ? [] : sortCatalogItemsForDisplay(uniqueCatalogItems(safeCatalogItems(brand, category)), category);
   els.model.innerHTML = [
     `<option value="${SELECT_MODEL}">Select model</option>`,
-    ...items.map((item) => `<option value="${escapeAttribute(item.name)}">${escapeHtml(displayModelName(item.name, category))}</option>`),
+    ...items.map((item) => `<option value="${escapeAttribute(item.name)}">${escapeHtml(catalogDisplayName(item, category))}</option>`),
     `<option value="${MANUAL_MODEL}">Other / not listed</option>`,
   ].join("");
 }
@@ -290,7 +292,7 @@ function gearSearchOptions() {
           brand,
           category,
           model: item.name,
-          label: `${brand} ${displayModelName(item.name, category)} - ${category}`,
+          label: `${brand} ${catalogDisplayName(item, category)} - ${category}`,
         }));
       }),
     );
@@ -323,9 +325,9 @@ function clearGearSearch() {
 }
 
 function updateManualFields() {
-  const needsManualText = els.category.value === MANUAL_CATEGORY || els.brand.value === MANUAL_BRAND || els.model.value === MANUAL_MODEL;
+  const needsManualText = els.brand.value === MANUAL_BRAND || els.model.value === MANUAL_MODEL;
   els.manualFields.hidden = !needsManualText;
-  els.manualBrand.required = els.category.value === MANUAL_CATEGORY || els.brand.value === MANUAL_BRAND;
+  els.manualBrand.required = els.brand.value === MANUAL_BRAND;
   els.manualModel.required = needsManualText;
   resizeParentFrame();
 }
@@ -345,18 +347,19 @@ function renderMountOptions() {
     `<option value="">Select mount</option>`,
     ...mounts.map((mount) => `<option value="${escapeAttribute(mount)}">${escapeHtml(mount)}</option>`),
   ].join("");
-  if (mounts.includes(selectedMount)) els.lensMount.value = selectedMount;
+  els.lensMount.value = mounts.includes(selectedMount) ? selectedMount : "";
 }
 
 function needsLensMount() {
-  const brand = els.brand.value.toLowerCase();
-  const category = els.category.value.toLowerCase();
-  const thirdPartyLensBrands = ["sigma", "tamron", "tokina", "zeiss"];
-  return category.includes("lens") && thirdPartyLensBrands.some((name) => brand.includes(name));
+  return mountOptionsForSelectedLens().length > 1;
 }
 
 function mountOptionsForSelectedLens() {
-  if (!needsLensMount()) return [];
+  if (!els.category.value.toLowerCase().includes("lens")) return [];
+  const catalogItem = selectedCatalogItem();
+  const inferredMounts = catalogMountsForItem(els.brand.value, els.category.value, catalogItem);
+  if (inferredMounts.length) return inferredMounts;
+
   const brand = els.brand.value.toLowerCase();
   const category = els.category.value.toLowerCase();
   const model = els.model.value === MANUAL_MODEL ? els.manualModel.value : els.model.value;
@@ -366,7 +369,8 @@ function mountOptionsForSelectedLens() {
 
   if (brand.includes("sigma")) {
     if (text.includes("dg dn")) return ["Sony E", "L-Mount"];
-    if (text.includes("dc dn")) return ["Sony E", "Fujifilm X", "Micro Four Thirds", "Canon RF"];
+    if (text.includes("dc dn")) return ["Sony E", "Fujifilm X", "Micro Four Thirds"];
+    if (text.includes("70mm f/2.8 dg macro")) return ["L-Mount", "Sony E", "Sigma SA", "Canon EF"];
     if (text.includes("dg hsm") || text.includes("os hsm")) return ["Canon EF", "Nikon F"];
   }
   if (brand.includes("tamron")) {
@@ -375,13 +379,90 @@ function mountOptionsForSelectedLens() {
   }
   if (brand.includes("tokina")) {
     if (text.includes("sony e")) return ["Sony E"];
+    if (text.includes("opera")) return ["Canon EF", "Nikon F"];
     return ["Canon EF", "Nikon F", "Sony E"];
   }
   if (brand.includes("zeiss")) {
     if (text.includes("batis") || text.includes("loxia") || text.includes("sony fe")) return ["Sony E"];
-    return ["Canon EF", "Nikon F", "Sony E"];
+    if (text.includes("otus ml")) return ["Sony E", "Nikon Z", "Canon RF"];
+    if (text.includes("otus") || text.includes("milvus") || text.includes("dslr")) return ["Canon EF", "Nikon F"];
+    return ["Canon EF", "Nikon F"];
   }
   return ["Canon EF", "Canon RF", "Nikon F", "Nikon Z", "Sony E", "Fujifilm X", "Micro Four Thirds", "L-Mount", "Pentax K"];
+}
+
+function catalogMountsForItem(brand = "", displayCategory = "", item = null) {
+  if (Array.isArray(item?.mounts) && item.mounts.length) return item.mounts;
+  if (!displayCategory.toLowerCase().includes("lens")) return [];
+
+  const catalogCategory = item ? catalogCategoryForItem(brand, displayCategory, item.name) : "";
+  return inferMountsFromProductText(brand, catalogCategory || displayCategory, item?.name || "");
+}
+
+function catalogCategoryForItem(brand, displayCategory, itemName) {
+  for (const catalogCategory of catalogCategoriesForDisplay(brand, displayCategory)) {
+    if (typeof getCatalogItems !== "function") continue;
+    if (getCatalogItems(brand, catalogCategory).some((item) => item.name === itemName)) return catalogCategory;
+  }
+  return "";
+}
+
+function inferMountsFromProductText(brand = "", category = "", model = "") {
+  const text = `${brand} ${category} ${model}`.toLowerCase();
+
+  if (text.includes("lens") && text.includes("canon")) {
+    if (text.includes("ef-s")) return ["Canon EF-S"];
+    if (/\bef-m\b/.test(text)) return ["Canon EF-M"];
+    if (/\brf\b/.test(text)) return ["Canon RF"];
+    if (/\bef\b/.test(text)) return ["Canon EF"];
+  }
+  if (text.includes("lens") && text.includes("nikon")) {
+    if (text.includes("z-mount") || /\bz\b/.test(model.toLowerCase())) return ["Nikon Z"];
+    if (text.includes("f-mount") || /\baf\b|\baf-s\b|\baf-p\b|\bdx\b/.test(model.toLowerCase())) return ["Nikon F"];
+  }
+  if (text.includes("lens") && text.includes("sony")) {
+    if (text.includes("a-mount")) return ["Sony A"];
+    if (text.includes("e-mount") || /\bfe\b|\be\b/.test(model.toLowerCase())) return ["Sony E"];
+  }
+  if (text.includes("fujifilm") || text.includes("fuji")) {
+    if (text.includes("gfx") || /\bgf\b/.test(model.toLowerCase())) return ["Fujifilm G"];
+    if (text.includes("x-mount") || /\bxf\b|\bxc\b/.test(model.toLowerCase())) return ["Fujifilm X"];
+  }
+  if (text.includes("olympus") || text.includes("om system") || text.includes("m.zuiko")) return ["Micro Four Thirds"];
+  if (text.includes("panasonic") || text.includes("lumix")) {
+    if (text.includes("l-mount") || text.includes("lumix s")) return ["L-Mount"];
+    if (text.includes("micro four thirds") || text.includes("lumix g")) return ["Micro Four Thirds"];
+  }
+  if (text.includes("leica")) {
+    if (text.includes("m-mount") || /\bsummilux-m\b|\bsummicron-m\b|\belmarit-m\b/.test(text)) return ["Leica M"];
+    if (text.includes("l-mount") || text.includes("-sl")) return ["L-Mount"];
+  }
+  if (text.includes("hasselblad") || text.includes("xcd")) return ["Hasselblad XCD"];
+  if (text.includes("phase one") || text.includes("schneider kreuznach")) return ["Phase One XF"];
+  if (text.includes("pentax") || text.includes("k-mount")) return ["Pentax K"];
+  if (text.includes("zeiss")) {
+    if (text.includes("batis") || text.includes("loxia") || text.includes("sony fe")) return ["Sony E"];
+    if (text.includes("milvus") || text.includes("dslr")) return ["Canon EF", "Nikon F"];
+  }
+
+  if (text.includes("sigma")) {
+    if (text.includes("dg dn")) return ["Sony E", "L-Mount"];
+    if (text.includes("dc dn")) return ["Sony E", "Fujifilm X", "Micro Four Thirds"];
+    if (text.includes("70mm f/2.8 dg macro")) return ["L-Mount", "Sony E", "Sigma SA", "Canon EF"];
+    if (text.includes("dg hsm") || text.includes("os hsm")) return ["Canon EF", "Nikon F"];
+  }
+  if (text.includes("tamron")) {
+    if (text.includes("sony e")) return ["Sony E"];
+    if (text.includes("di iii")) return ["Sony E"];
+    if (text.includes("dslr") || text.includes("di vc") || text.includes("sp ")) return ["Canon EF", "Nikon F"];
+  }
+  if (text.includes("tokina")) {
+    if (text.includes("sony e")) return ["Sony E"];
+    if (text.includes("opera")) return ["Canon EF", "Nikon F"];
+    if (text.includes("dslr") || text.includes("at-x")) return ["Canon EF", "Nikon F"];
+  }
+
+  return [];
 }
 
 function mountsFromText(text) {
@@ -402,6 +483,7 @@ function mountsFromText(text) {
     ["micro four thirds", "Micro Four Thirds"],
     ["mft", "Micro Four Thirds"],
     ["l-mount", "L-Mount"],
+    ["phase one xf", "Phase One XF"],
     ["pentax k", "Pentax K"],
     [" k-mount", "Pentax K"],
   ];
@@ -419,16 +501,24 @@ function renderIncludedItems() {
     `;
     return;
   }
+  const assumed = items.filter((item) => item.checked);
+  const optional = items.filter((item) => !item.checked);
   els.includedItems.innerHTML = `
     <div class="included-copy">
       <strong>Price assumes standard manufacturer accessories.</strong>
-      <span>These are the original accessories normally included with this item. Send what you have; Milford Photo will confirm everything after inspection.</span>
+      <span>Send what you have. Milford Photo will confirm everything after inspection and adjust the offer only if needed.</span>
     </div>
     <div class="included-columns">
       <div>
-        <h3>Original included accessories</h3>
+        <h3>Included in this quote</h3>
         <ul>
-          ${items.map((item) => `<li>${escapeHtml(item.name)}</li>`).join("")}
+          ${assumed.map((item) => `<li>${escapeHtml(item.name)}</li>`).join("")}
+        </ul>
+      </div>
+      <div>
+        <h3>Not included in this price</h3>
+        <ul>
+          ${optional.map((item) => `<li>${escapeHtml(item.name)}</li>`).join("") || "<li>Extra accessories can be mentioned in notes.</li>"}
         </ul>
       </div>
     </div>
@@ -551,8 +641,26 @@ function lensSeriesRank(text) {
 function displayModelName(name = "", category = "") {
   if (!category.toLowerCase().includes("lens")) return name;
   return String(name)
-    .replace(/\s*\((?:sony\s+fe|sony\s+e|e-mount|canon\s+ef|canon\s+rf|nikon\s+f|nikon\s+z|fujifilm\s+x|x-mount|micro\s+four\s+thirds|mft|l-mount|pentax\s+k|dslr)\)\s*$/i, "")
+    .replace(/\s*\((?:sony\s+fe|sony\s+e|e-mount|canon\s+ef|canon\s+rf|nikon\s+f|nikon\s+z|fujifilm\s+x|x-mount|micro\s+four\s+thirds|mft|l-mount|pentax\s+k|dslr|mirrorless)\)\s*$/i, "")
     .trim();
+}
+
+function catalogDisplayName(item, category = "") {
+  if (!item) return "";
+  return item.displayName || displayModelName(item.name, category);
+}
+
+function catalogQuoteModel(item, fallbackModel, category = "") {
+  if (!item) return displayModelName(fallbackModel, category);
+  return item.quoteModel || item.displayName || displayModelName(item.name, category);
+}
+
+function selectedCatalogItem() {
+  const selectedBrand = els.brand.value;
+  const selectedCategory = els.category.value;
+  const selectedModel = els.model.value;
+  if (!selectedBrand || !selectedCategory || !selectedModel || selectedBrand === MANUAL_BRAND || selectedModel === MANUAL_MODEL) return null;
+  return safeCatalogItem(selectedBrand, selectedCategory, selectedModel);
 }
 
 function generationRank(text) {
@@ -592,7 +700,7 @@ function categoryMatchesDisplay(catalogCategory = "", displayCategory = "") {
   const display = displayCategory.toLowerCase();
   if (displayCategory === MANUAL_CATEGORY) return catalogCategory === MANUAL_CATEGORY;
   if (display === "lens") return catalog.includes("lens");
-  if (display === "film camera") return catalog.includes("camera body") && (catalog.includes("film") || catalog.includes("rangefinder") || catalog.includes("medium format"));
+  if (display === "film camera") return catalog.includes("camera body") && catalog.includes("film");
   if (display === "digital camera") return catalog.includes("camera body") && !categoryMatchesDisplay(catalogCategory, "Film Camera");
   if (display === "flash / lighting") return catalog.includes("flash") || catalog.includes("speedlight") || catalog.includes("strobe") || catalog.includes("lighting");
   if (display === "tripod / support") return catalog.includes("tripod") || catalog.includes("monopod") || catalog.includes("support");
@@ -631,40 +739,46 @@ function readItemForm(options = {}) {
   const selectedBrand = els.brand.value;
   const selectedCategory = els.category.value;
   const selectedModel = els.model.value;
-  const manualModel = els.manualModel.value.trim();
   const catalogItem =
     selectedBrand !== MANUAL_BRAND && selectedModel !== MANUAL_MODEL
       ? safeCatalogItem(selectedBrand, selectedCategory, selectedModel)
       : null;
 
-  const brand = selectedCategory === MANUAL_CATEGORY || selectedBrand === MANUAL_BRAND ? els.manualBrand.value.trim() : selectedBrand;
-  let model = selectedModel === MANUAL_MODEL || (!selectedModel && manualModel) ? manualModel : displayModelName(selectedModel, selectedCategory);
+  const brand = selectedBrand === MANUAL_BRAND ? els.manualBrand.value.trim() : selectedBrand;
+  let model = selectedModel === MANUAL_MODEL ? els.manualModel.value.trim() : catalogQuoteModel(catalogItem, selectedModel, selectedCategory);
   const condition = selectedRadioValue("condition");
   const accessories = includedItemsForCategory(selectedCategory)
     .filter((item) => item.checked)
     .map((item) => item.name);
-  const mount = needsLensMount() ? els.lensMount.value.trim() : "";
-  const userNotes = els.itemNotes.value.trim();
+  const validMounts = mountOptionsForSelectedLens();
+  const requiresMountSelection = validMounts.length > 1;
+  const mount = requiresMountSelection ? els.lensMount.value.trim() : validMounts[0] || "";
   const notes = [
-    userNotes ? `Customer notes: ${userNotes}` : "",
+    els.itemNotes.value.trim(),
     mount ? `Lens mount: ${mount}` : "",
     accessories.length ? `Standard accessories assumed for quote: ${accessories.join(", ")}` : "",
   ]
     .filter(Boolean)
     .join("\n");
 
-  const missingBrand = selectedCategory !== MANUAL_CATEGORY && !selectedBrand;
-  const missingModel = selectedCategory !== MANUAL_CATEGORY && !selectedModel && !manualModel;
-  if (!selectedCategory || missingBrand || missingModel || !brand || !model || model === MANUAL_MODEL || (needsLensMount() && !mount)) {
+  if (
+    !selectedCategory ||
+    !selectedBrand ||
+    !selectedModel ||
+    !brand ||
+    !model ||
+    model === MANUAL_MODEL ||
+    (requiresMountSelection && (!mount || !validMounts.includes(mount)))
+  ) {
     if (!options.silent) {
       const message = !selectedCategory
         ? "Please select a category before adding the item."
-        : missingBrand
+        : !selectedBrand
           ? "Please select a brand before adding the item."
-          : missingModel
+          : !selectedModel
             ? "Please select a model before adding the item."
-            : needsLensMount() && !mount
-              ? "Please select the lens mount before adding the item."
+            : requiresMountSelection && (!mount || !validMounts.includes(mount))
+              ? "Please select a valid lens mount before adding the item."
               : "Please enter the brand and model before adding the item.";
       setStatus(message, "error");
     }
@@ -675,14 +789,25 @@ function readItemForm(options = {}) {
     id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
     brand,
     category: selectedCategory,
+    catalogCategory: catalogItem ? catalogCategoryForItem(brand, selectedCategory, catalogItem.name) : "",
     model,
+    year: catalogItem?.year || "",
     condition,
     notes,
     includedItems: accessories,
-    ebayQuery: mount ? `${brand} ${displayModelName(catalogItem?.name || model, selectedCategory)} ${mount}` : catalogItem?.ebayQuery || `${brand} ${model}`,
-    isManual: selectedCategory === MANUAL_CATEGORY || Boolean(userNotes),
-    manualReviewRequested: Boolean(userNotes),
+    mount,
+    pricingKey: catalogItem?.pricingKey || "",
+    productFamily: catalogItem?.productFamily || "",
+    generation: catalogItem?.generation || "",
+    ebayQuery: buildEbayQueryForCatalogItem({ brand, model, mount, catalogItem }),
+    isManual: selectedCategory === MANUAL_CATEGORY,
+    manualReviewRequested: Boolean(catalogItem?.manualReview),
   };
+}
+
+function buildEbayQueryForCatalogItem({ brand, model, mount, catalogItem }) {
+  const baseQuery = catalogItem?.ebayQuery || `${brand} ${model}`;
+  return mount ? `${baseQuery} ${mount}` : baseQuery;
 }
 
 function selectedRadioValue(name) {
@@ -767,7 +892,7 @@ async function submitQuote(event) {
 
   try {
     const delivery = selectedRadioValue("delivery") || "ship";
-    const payload = {
+    const data = await apiPost("/api/submit", {
       quoteToken: state.quote.quoteToken,
       seller: {
         name: els.sellerName.value.trim(),
@@ -788,8 +913,7 @@ async function submitQuote(event) {
         height: numberOrNull(els.parcelHeight.value),
         weight: numberOrNull(els.parcelWeight.value),
       },
-    };
-    const data = demoQueueEnabled() ? saveDemoQueueSubmission(payload, delivery) : await apiPost("/api/submit", payload);
+    });
 
     state.submission = data;
     renderDone(data);
@@ -798,81 +922,7 @@ async function submitQuote(event) {
     setStatus(error.message || "Unable to submit the quote right now.", "error");
   } finally {
     els.submitQuote.disabled = false;
-    updateDeliveryFields();
-  }
-}
-
-function demoQueueEnabled() {
-  const params = new URLSearchParams(window.location.search);
-  return params.get("demoQueue") === "1" || params.get("demoSubmit") === "1";
-}
-
-function saveDemoQueueSubmission(payload, delivery) {
-  const quote = state.quote;
-  const seller = payload.seller;
-  const quoteRef = quote.quoteId || `MP-TEST-${String(Date.now()).slice(-6)}`;
-  const submitted = new Date().toISOString();
-  const demoLabelEligible = delivery === "ship" && quote.routing.freeLabelEligible;
-  const demoLabelUrl = "https://example.com/milford-photo-demo-shipping-label.pdf";
-  const demoFollowUpCopy = quote.routing.requiresStaffBeforeLabel
-    ? "Milford Photo will review this submission and email a full quote with shipping instructions, usually within 1 business day."
-    : "Demo mode: this test quote was added to the staff dashboard queue in this browser. No email, shipping label, or Airtable record was created.";
-  const records = quote.items.map((item, index) => ({
-    id: `demo-live-${quoteRef}-${index}`,
-    fields: {
-      "Quote Reference": quoteRef,
-      "Seller Name": seller.name,
-      "Seller Email": seller.email,
-      "Seller Phone": seller.phone || "",
-      "Seller Street": seller.address.street || "",
-      "Seller City": seller.address.city || "",
-      "Seller State": seller.address.state || "",
-      "Seller ZIP": seller.address.zip || "",
-      "Item Brand": item.brand,
-      "Item Model": item.model,
-      Category: item.category,
-      Condition: CONDITION_LABELS[item.condition] || item.condition,
-      "Seller Notes": [
-        item.notes || "",
-        `Included items: ${(item.includedItems || []).join(", ") || "Not listed"}`,
-        `Preferred payout: ${payload.paymentPreference || "Not selected"}`,
-        `Delivery: ${delivery}`,
-        "Demo queue record only. No email, shipping label, or Airtable record was created.",
-      ].filter(Boolean).join("\n"),
-      "eBay Median Price": item.marketPrice || 0,
-      "Condition Multiplier": item.preAdjustmentOffer && item.marketPrice ? Math.round((item.preAdjustmentOffer / item.marketPrice) * 100) : 0,
-      "Milford Offer": item.offerAmount || 0,
-      "Final Offer": item.offerAmount || 0,
-      "Quote Submitted": submitted,
-      "Quote Expires": quote.expiresAt,
-      Status: demoLabelEligible ? "Label Generated" : "Demo Submitted",
-      Source: "Online demo",
-      "Tracking Number": demoLabelEligible ? `DEMO-${quoteRef.replace("MP-TEST-", "")}` : "",
-      "Shippo Label URL": demoLabelEligible ? demoLabelUrl : "",
-      "Serial Number": "",
-    },
-  }));
-
-  const stored = readDemoQueue();
-  localStorage.setItem(DEMO_QUEUE_KEY, JSON.stringify([...records, ...stored].slice(0, 40)));
-  return {
-    success: true,
-    quoteRef,
-    status: demoLabelEligible ? "Label Generated" : "Demo Submitted",
-    labelUrl: demoLabelEligible ? demoLabelUrl : null,
-    trackingNumber: demoLabelEligible ? `DEMO-${quoteRef.replace("MP-TEST-", "")}` : null,
-    nextStep: demoLabelEligible
-      ? "Demo mode: this instant quote was accepted and a sample label link was shown. No email, shipping label, or Airtable record was created."
-      : demoFollowUpCopy,
-  };
-}
-
-function readDemoQueue() {
-  try {
-    const records = JSON.parse(localStorage.getItem(DEMO_QUEUE_KEY) || "[]");
-    return Array.isArray(records) ? records : [];
-  } catch {
-    return [];
+    els.submitQuote.textContent = "Submit quote";
   }
 }
 
@@ -896,22 +946,15 @@ function renderCart() {
 
   els.cartList.innerHTML = displayItems
     .map(
-      (item, index) => {
-        const quoteItem = state.quote?.items?.[index];
-        const offerCopy = quoteItem ? formatItemOffer(quoteItem) : "";
-        return `
+      (item) => `
         <article class="cart-item">
           <div class="cart-title">
             <strong>${escapeHtml(item.brand)} ${escapeHtml(item.model)}${item.isPreview ? " (current)" : ""}</strong>
-            <span class="cart-title-actions">
-              ${offerCopy ? `<span class="cart-item-offer">${escapeHtml(offerCopy)}</span>` : ""}
-              ${item.isPreview ? "" : `<button class="remove-item" type="button" aria-label="Remove item" data-remove-id="${escapeAttribute(item.id)}">x</button>`}
-            </span>
+            ${item.isPreview ? "" : `<button class="remove-item" type="button" aria-label="Remove item" data-remove-id="${escapeAttribute(item.id)}">x</button>`}
           </div>
           <span class="cart-meta">${escapeHtml(item.category)} · ${escapeHtml(CONDITION_LABELS[item.condition] || item.condition)}</span>
         </article>
-      `;
-      },
+      `,
     )
     .join("");
 
@@ -926,24 +969,17 @@ function renderCart() {
 }
 
 function renderQuote(quote) {
-  renderCart();
   els.quoteResults.innerHTML = quote.items.map(renderQuoteItem).join("");
   els.quoteMessage.textContent = quote.routing.message;
-  els.acceptQuote.textContent = quote.totals.cash > 0 ? "Continue" : "Submit for review";
-  updateDeliveryFields();
-}
-
-function formatItemOffer(item) {
-  if (item.offerAmount) return money.format(item.offerAmount);
-  if (item.status === "declined") return "$0";
-  return "Review";
+  els.acceptQuote.textContent = quote.routing.declinedOnly ? "Not eligible online" : quote.totals.cash > 0 ? "Continue" : "Submit for review";
+  els.acceptQuote.disabled = Boolean(quote.routing.declinedOnly);
 }
 
 function renderQuoteItem(item) {
   const statusClass = item.status === "quoted" ? "quoted" : item.status === "declined" ? "declined" : "review";
-  const price = formatItemOffer(item);
-  const credit = item.storeCreditAmount ? `${money.format(item.storeCreditAmount)} store credit` : "Milford Photo follow-up";
-  const pricingLines = customerPricingLines(item);
+  const price = item.offerAmount ? money.format(item.offerAmount) : item.status === "declined" ? "$0" : "Review";
+  const credit = item.storeCreditAmount ? `${money.format(item.storeCreditAmount)} store credit` : item.message || "Staff follow-up needed";
+  const marketCopy = item.marketPrice ? `Market estimate: ${money.format(item.marketPrice)}` : item.message || "";
 
   return `
     <article class="quote-item">
@@ -954,7 +990,7 @@ function renderQuoteItem(item) {
         </div>
         <div class="quote-meta">
           ${escapeHtml(CONDITION_LABELS[item.condition] || item.condition)} · ${escapeHtml(item.category)}
-          ${pricingLines.map((line) => `<br />${escapeHtml(line)}`).join("")}
+          ${marketCopy ? `<br />${escapeHtml(marketCopy)}` : ""}
         </div>
       </div>
       <div class="quote-price">
@@ -963,33 +999,6 @@ function renderQuoteItem(item) {
       </div>
     </article>
   `;
-}
-
-function customerPricingLines(item) {
-  if (item.status === "declined") {
-    return [item.message || "Milford Photo is not currently buying this item online."];
-  }
-  if (item.status !== "quoted" && item.status !== "high_value_review") {
-    return [
-      "Needs Milford Photo review before a final quote.",
-      "We will email a full quote, usually within 1 business day.",
-    ];
-  }
-
-  const lines = [];
-  if (item.marketPrice) lines.push(`Used-market estimate: ${money.format(item.marketPrice)}`);
-  const confidence = pricingConfidenceLabel(item.confidence, item.sampleSize);
-  if (confidence) lines.push(confidence);
-  return lines;
-}
-
-function pricingConfidenceLabel(confidence, sampleSize) {
-  const sampleText = sampleSize ? ` from ${sampleSize} comparable listings` : "";
-  if (confidence === "high") return `Strong pricing match${sampleText}.`;
-  if (confidence === "medium") return `Good pricing match${sampleText}.`;
-  if (confidence === "low") return `Limited pricing data${sampleText}; Milford Photo will verify after arrival.`;
-  if (confidence === "stub") return "Demo pricing only; not a live market quote.";
-  return "";
 }
 
 function renderSummary() {
@@ -1006,54 +1015,35 @@ function renderSummary() {
   }
 
   els.quoteRef.textContent = state.quote.quoteId;
-  els.summaryCash.textContent = state.quote.totals.cash ? money.format(state.quote.totals.cash) : "Review";
-  els.summarySubtitle.textContent = state.quote.totals.cash
-    ? `Cash offer valid through ${formatDate(state.quote.expiresAt)}`
-    : "Manual review request";
+  const declinedOnly = Boolean(state.quote.routing?.declinedOnly);
+  els.summaryCash.textContent = declinedOnly ? "Declined" : state.quote.totals.cash ? money.format(state.quote.totals.cash) : "Review";
+  els.summarySubtitle.textContent = declinedOnly
+    ? "Not eligible for an online offer"
+    : state.quote.totals.cash
+      ? `Cash offer valid through ${formatDate(state.quote.expiresAt)}`
+      : "Manual review request";
   els.summaryCredit.textContent = state.quote.totals.storeCredit ? money.format(state.quote.totals.storeCredit) : "-";
   els.summaryCreditFeature.textContent = state.quote.totals.storeCredit ? money.format(state.quote.totals.storeCredit) : "-";
   els.summaryCreditCard.hidden = !state.quote.totals.storeCredit;
   els.summaryRouting.textContent = state.quote.routing.message;
-  els.summaryLabel.textContent = state.quote.routing.freeLabelEligible
-    ? "Free prepaid inbound shipping"
+  els.summaryLabel.textContent = declinedOnly
+    ? "No shipping label"
+    : state.quote.routing.freeLabelEligible
+    ? "Free prepaid inbound label"
     : state.quote.routing.requiresStaffBeforeLabel
       ? "Staff approval first"
-      : `Below ${money.format(state.quote.policy.freeShippingMin)} free shipping threshold`;
+      : `Below ${money.format(state.quote.policy.freeShippingMin)} threshold`;
 }
 
 function renderDone(result) {
-  const instantLabelFlow = isInstantLabelFlow();
-  const delivery = selectedRadioValue("delivery") || "ship";
-  const requiresStaffBeforeLabel = Boolean(state.quote?.routing?.requiresStaffBeforeLabel);
-  const freeLabelEligible = Boolean(state.quote?.routing?.freeLabelEligible);
-  els.doneTitle.textContent = instantLabelFlow ? `Offer ${result.quoteRef} accepted` : `Quote ${result.quoteRef} submitted`;
+  els.doneTitle.textContent = `Quote ${result.quoteRef} submitted`;
+  els.doneCopy.textContent =
+    result.nextStep ||
+    "Watch your email for shipping or drop-off instructions. Milford Photo will inspect the gear after it arrives, confirm or adjust the offer if needed, and send payment after you accept the final amount.";
   if (result.labelUrl) {
-    els.doneCopy.textContent =
-      "Your prepaid shipping label is ready now. Print the label from this page, pack your gear securely, and drop it off with the carrier shown on the label. We also emailed the label, item list, and packing instructions to you for reference.";
     els.labelLink.href = result.labelUrl;
-    els.labelLink.textContent = "Print / download shipping label";
     els.labelLink.hidden = false;
   } else {
-    if (result.labelDryRun) {
-      els.doneCopy.textContent =
-        "Your instant offer was accepted. Real prepaid labels are currently disabled while Milford Photo tests the system, so the live version will email your prepaid label and packing instructions immediately after this step.";
-      els.labelLink.hidden = true;
-    } else if (instantLabelFlow) {
-      els.doneCopy.textContent =
-        "Your instant offer was accepted. Milford Photo will email the prepaid shipping label and packing instructions as soon as the label is generated. No quote review is needed before shipping unless staff contacts you.";
-    } else if (delivery === "dropoff") {
-      els.doneCopy.textContent =
-        "Your quote is saved for in-store drop-off. Bring your gear and quote number to Milford Photo. Staff will inspect the gear, verify accessories, record serial numbers, and confirm the final payout.";
-    } else if (requiresStaffBeforeLabel) {
-      els.doneCopy.textContent =
-        "Milford Photo will review this submission and email a full quote with shipping instructions, usually within 1 business day. Photos and serial numbers can be handled after the gear arrives unless staff asks for them first.";
-    } else if (!freeLabelEligible && state.quote?.totals?.cash > 0) {
-      els.doneCopy.textContent =
-        "Your quote is saved. This order can still be mailed in, but free prepaid shipping does not apply automatically. Milford Photo will email shipping options within 1 business day, or you can bring the gear to the store.";
-    } else {
-      els.doneCopy.textContent =
-        result.nextStep || "Milford Photo will email you within 1 business day with the next step for this quote.";
-    }
     els.labelLink.hidden = true;
   }
   renderSummary();
@@ -1072,53 +1062,16 @@ function updateDeliveryFields() {
   els.zip.required = addressRequired;
 
   if (delivery === "dropoff") {
-    els.mailCopy.textContent = "Bring your gear and quote number to Milford Photo for inspection.";
+    els.mailCopy.textContent = "Use a prepaid label when the quote qualifies.";
   } else if (freeLabel) {
-    els.mailCopy.textContent = "Accept the instant offer and get a prepaid label on the next screen. A copy will also be emailed to you.";
+    els.mailCopy.textContent = "Milford Photo can email a prepaid label after the quote is submitted. No box dimensions needed here.";
   } else if (state.quote?.routing?.requiresStaffBeforeLabel) {
-    els.mailCopy.textContent = "Milford Photo will review and email a full quote with shipping instructions, usually within 1 business day.";
+    els.mailCopy.textContent = "Milford Photo will review before sending shipping instructions.";
   } else {
-    els.mailCopy.textContent = "You can still mail this in. Milford Photo will email shipping options within 1 business day.";
+    els.mailCopy.textContent = "This quote can be dropped off or shipped after Milford Photo follows up.";
   }
 
-  if (state.quote?.totals?.cash > 0) {
-    els.submitQuote.textContent = delivery === "ship" && freeLabel ? "Accept offer & get shipping label" : "Submit quote";
-    els.acceptQuote.textContent = delivery === "ship" && freeLabel ? "Accept offer" : "Continue";
-  }
-
-  updatePayoutHelper();
   resizeParentFrame();
-}
-
-function updatePayoutHelper() {
-  const method = els.paymentPreference.value;
-  const delivery = selectedRadioValue("delivery") || "ship";
-
-  if (method === "paypal" || method === "bank_transfer") {
-    els.payoutHelper.textContent = "After inspection and final approval, Milford Photo will send your payout through PayPal.";
-    els.addressHelper.textContent = delivery === "ship"
-      ? "Use the address where you want return shipments sent if Milford Photo needs to send gear back to you."
-      : "Use the address Milford Photo should keep on file for this quote.";
-    resizeParentFrame();
-    return;
-  }
-
-  if (method === "store_credit") {
-    els.payoutHelper.textContent = "After inspection, Milford Photo will issue store credit for the verified amount.";
-    els.addressHelper.textContent = delivery === "ship"
-      ? "Use the address where you want return shipments sent if Milford Photo needs to send gear back to you."
-      : "Use the address Milford Photo should keep on file for this quote.";
-    resizeParentFrame();
-    return;
-  }
-
-  els.payoutHelper.textContent = "We'll mail payment to the address you enter below after your gear is inspected and verified.";
-  els.addressHelper.textContent = "Use the address where you want return shipments and check payments sent. If you choose check payment, this should match the address where Milford Photo should mail your check.";
-  resizeParentFrame();
-}
-
-function isInstantLabelFlow() {
-  return Boolean(state.quote?.routing?.freeLabelEligible) && (selectedRadioValue("delivery") || "ship") === "ship";
 }
 
 function setStep(step) {

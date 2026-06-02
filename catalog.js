@@ -10,6 +10,8 @@
  *   <script src="catalog-nikon.js"></script>
  *   <script src="catalog-sony-fuji-oly.js"></script>
  *   <script src="catalog-panasonic-pentax-third-party.js"></script>
+ *   <script src="catalog-leica-hasselblad.js"></script>
+ *   <script src="catalog-modern-supplement.js"></script>
  *   <script src="catalog.js"></script>
  */
 
@@ -25,6 +27,9 @@ const GEAR_CATALOG = [
   TAMRON_CATALOG,
   TOKINA_CATALOG,
   ZEISS_CATALOG,
+  LEICA_CATALOG,
+  HASSELBLAD_CATALOG,
+  ...(typeof SUPPLEMENTAL_CATALOGS !== "undefined" ? SUPPLEMENTAL_CATALOGS : []),
   GODOX_CATALOG,
   PROFOTO_CATALOG,
   MANFROTTO_CATALOG,
@@ -125,11 +130,18 @@ function getCatalogItem(brandName, categoryName, itemName) {
 const EBAY_CATEGORY_MAP = {
   "Camera Body — DSLR":            "31388",  // Digital Cameras
   "Camera Body — Mirrorless":      "31388",
-  "Camera Body — Film SLR":        "4977",   // Film Cameras
-  "Camera Body — Point & Shoot":   "4977",
-  "Camera Body — Rangefinder":     "4977",
-  "Camera Body — Medium Format":   "4977",
   "Camera Body — Digital":         "31388",
+  "Camera Body — Rangefinder":     "31388",
+  "Camera Body — Medium Format":   "31388",
+  "Camera Body — Medium Format DSLR": "31388",
+  "Camera Body — X Series Mirrorless": "31388",
+  "Camera Body — GFX Medium Format": "31388",
+  "Camera Body — Mirrorless (E/FE-Mount)": "31388",
+  "Camera Body — Mirrorless (Micro Four Thirds)": "31388",
+  "Camera Body — Lumix S (Full Frame)": "31388",
+  "Camera Body — Film SLR":        "4977",   // Film Cameras
+  "Camera Body — Film":            "4977",
+  "Camera Body — Point & Shoot":   "4977",
   "Lens — E-Mount / FE-Mount":     "3323",   // Lenses
   "Lens — A-Mount":                "3323",
   "Lens — EF / EF-S":             "3323",
@@ -144,6 +156,11 @@ const EBAY_CATEGORY_MAP = {
   "Lens — Third-Party (E-Mount)":  "3323",
   "Lens — Third-Party (Various)":  "3323",
   "Lens — ZE/ZF (Third-Party)":   "3323",
+  "Lens — Phase One XF":          "3323",
+  "Lens — Voigtlander":           "3323",
+  "Lens — Rokinon / Samyang":     "3323",
+  "Lens — Laowa":                 "3323",
+  "Lens — Viltrox":               "3323",
   "Flash / Speedlight":            "15245",  // Flashes
   "Tripod / Monopod":              "64639",  // Tripods
   "Camera Bag / Case":             "3377",   // Camera Bags
