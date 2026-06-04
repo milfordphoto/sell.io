@@ -73,6 +73,15 @@ const STAFF_INTAKE_CONDITIONS = [
   { value: "heavily_used", label: "Heavily Used", copy: CONDITION_COPY["Heavily Used"] },
 ];
 
+const STAFF_ACTION_STEPS = [
+  { action: "received", label: "Mark item received", status: "Received - Needs Inspection", email: true },
+  { action: "save", label: "Save item intake", status: "Inspection In Progress" },
+  { action: "adjusted", label: "Finish item evaluation", status: "Evaluated", primary: true },
+  { action: "accepted", label: "Mark item accepted", status: "Customer Accepted Item" },
+  { action: "payment", label: "Payment sent", status: "Payment Sent", email: true },
+  { action: "return", label: "Return item", status: "Return Item", email: true, danger: true },
+];
+
 const STATUS_LABELS = {
   quoted: "Instant offer",
   high_value_review: "Staff approval",
@@ -498,13 +507,14 @@ function renderDetail() {
           </label>
         </section>
 
-        <section class="staff-actions-panel">
-          <button class="secondary-action" type="button" data-action="received">Mark item received</button>
-          <button class="secondary-action" type="button" data-action="save">Save item intake</button>
-          <button class="primary-action" type="button" data-action="adjusted">Finish item evaluation</button>
-          <button class="secondary-action" type="button" data-action="accepted">Mark item accepted</button>
-          <button class="secondary-action" type="button" data-action="payment">Payment sent</button>
-          <button class="secondary-action danger-action" type="button" data-action="return">Return item</button>
+        <section class="staff-actions-panel" aria-label="Item workflow actions">
+          <div class="staff-actions-heading">
+            <strong>Item workflow actions</strong>
+            <span>Work left to right. Customer email actions ask for confirmation before sending.</span>
+          </div>
+          <div class="staff-action-steps">
+            ${renderStaffActionSteps(fields, parsed)}
+          </div>
         </section>
       </form>
 
@@ -530,6 +540,28 @@ function renderOrderHeader(order) {
       </div>
     </section>
   `;
+}
+
+function renderStaffActionSteps(fields, parsed) {
+  return STAFF_ACTION_STEPS.map((step, index) => {
+    const completed = staffActionCompleted(step.action, fields, parsed);
+    const classes = [
+      "staff-step-action",
+      step.primary ? "is-primary" : "",
+      step.danger ? "is-danger" : "",
+      completed ? "is-complete" : "",
+    ].filter(Boolean).join(" ");
+    const meta = completed ? "Completed" : step.email ? "Emails customer" : "No customer email";
+    return `
+      <button class="${classes}" type="button" data-action="${escapeAttr(step.action)}">
+        <span class="staff-step-number">${index + 1}</span>
+        <span class="staff-step-copy">
+          <strong>${escapeHtml(step.label)}</strong>
+          <small>${escapeHtml(meta)}</small>
+        </span>
+      </button>
+    `;
+  }).join("");
 }
 
 function renderWorkflow(order) {
@@ -679,18 +711,12 @@ async function handleStaffAction(record, accessories, action, buttons) {
   const finalOffer = numberOrNull(document.getElementById("custom-offer").value)
     ?? numberOrNull(document.getElementById("suggested-offer")?.value)
     ?? 0;
-  const statusByAction = {
-    received: "Received - Needs Inspection",
-    save: "Inspection In Progress",
-    adjusted: "Evaluated",
-    accepted: "Customer Accepted Item",
-    payment: "Payment Sent",
-    return: "Return Item",
-  };
+  const status = staffActionStatus(action);
+  if (!status) return;
 
   const body = {
     recordId: record.id,
-    status: statusByAction[action],
+    status,
     finalOffer,
     staffNotes: buildStaffNotes(review, action, finalOffer),
   };
@@ -701,6 +727,11 @@ async function handleStaffAction(record, accessories, action, buttons) {
   }
   if (action === "return") {
     body.declineReason = review.reason || "Customer wants this item returned.";
+  }
+
+  if (staffActionSendsCustomerEmail(action) && !confirmStaffActionEmail(action)) {
+    setStatus("Action canceled. No customer email sent.");
+    return;
   }
 
   setDetailBusy(buttons, true);
@@ -714,12 +745,25 @@ async function handleStaffAction(record, accessories, action, buttons) {
     selectedOrderId = selectedOrder()?.id || selectedOrderId;
     renderQueue();
     renderDetail();
-    setStatus(`Saved: ${statusByAction[action]}.`);
+    setStatus(`Saved: ${status}.`);
   } catch (error) {
     setStatus(error.message || "Unable to save item update.", true);
   } finally {
     setDetailBusy(buttons, false);
   }
+}
+
+function staffActionStatus(action) {
+  return STAFF_ACTION_STEPS.find((step) => step.action === action)?.status || "";
+}
+
+function staffActionSendsCustomerEmail(action) {
+  return Boolean(STAFF_ACTION_STEPS.find((step) => step.action === action)?.email);
+}
+
+function confirmStaffActionEmail(action) {
+  const label = STAFF_ACTION_STEPS.find((step) => step.action === action)?.label || "This action";
+  return window.confirm(`${label} will update the item and email the customer now. Continue?`);
 }
 
 async function handleOrderAction(order, status) {
@@ -1982,6 +2026,30 @@ function staffRecordLooksReceived(fields = {}) {
 
 function staffWorkflowText(fields = {}) {
   return `${fields.Status || ""} ${fields["Workflow Step"] || ""}`.toLowerCase();
+}
+
+function staffActionCompleted(action, fields = {}, parsed = {}) {
+  const status = staffWorkflowText(fields);
+  if (action === "received") {
+    return parsed.received
+      || statusIncludesAny(status, ["received", "inspection", "evaluated", "final", "accepted item", "customer accepted", "payment", "return"]);
+  }
+  if (action === "save") {
+    return statusIncludesAny(status, ["inspection", "evaluated", "final", "accepted item", "customer accepted", "payment", "return"]);
+  }
+  if (action === "adjusted") {
+    return statusIncludesAny(status, ["evaluated", "final", "accepted item", "customer accepted", "payment", "return"]);
+  }
+  if (action === "accepted") {
+    return statusIncludesAny(status, ["accepted item", "customer accepted", "payment"]);
+  }
+  if (action === "payment") return status.includes("payment");
+  if (action === "return") return status.includes("return");
+  return false;
+}
+
+function statusIncludesAny(status, needles) {
+  return needles.some((needle) => status.includes(needle));
 }
 
 function ebaySoldListingsUrl(fields = {}) {
