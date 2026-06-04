@@ -894,13 +894,14 @@ function startStaffIntake() {
 }
 
 function renderStaffIntake() {
+  const heading = staffIntakeHeadingCopy();
   detailEl.innerHTML = `
     <article class="staff-intake staff-new-quote">
       <header class="staff-order-header">
         <div>
           <p class="brand-line">In-store intake</p>
-          <h2>Start a new quote</h2>
-          <p>Build the quote while the customer is at the counter, then open it in the staff intake workflow.</p>
+          <h2 id="staff-intake-title">${escapeHtml(heading.title)}</h2>
+          <p id="staff-intake-subtitle">${escapeHtml(heading.subtitle)}</p>
         </div>
         <div class="staff-order-total">
           <span>Current offer</span>
@@ -985,7 +986,7 @@ function renderStaffIntake() {
           </label>
 
           <div class="form-actions staff-intake-actions">
-            <button class="secondary-action" type="button" id="staff-intake-add-item">Add item to quote</button>
+            <button class="secondary-action" type="button" id="staff-intake-add-item">${escapeHtml(heading.button)}</button>
           </div>
         </section>
 
@@ -1047,6 +1048,34 @@ function renderStaffIntake() {
   `;
 
   bindStaffIntake();
+}
+
+function staffIntakeHeadingCopy() {
+  const count = staffIntakeState.cart.length;
+  if (!count) {
+    return {
+      title: "Start a new quote",
+      subtitle: "Build the quote while the customer is at the counter, then open it in the staff intake workflow.",
+      button: "Add item to quote",
+    };
+  }
+  const itemCopy = `${count} item${count === 1 ? "" : "s"} added`;
+  return {
+    title: "Add next item",
+    subtitle: `${itemCopy}. Select the next piece of gear, or enter customer details when the quote is ready.`,
+    button: "Add next item to quote",
+  };
+}
+
+function updateStaffIntakeHeading() {
+  const title = document.getElementById("staff-intake-title");
+  const subtitle = document.getElementById("staff-intake-subtitle");
+  const addButton = document.getElementById("staff-intake-add-item");
+  if (!title || !subtitle || !addButton) return;
+  const heading = staffIntakeHeadingCopy();
+  title.textContent = heading.title;
+  subtitle.textContent = heading.subtitle;
+  addButton.textContent = heading.button;
 }
 
 function bindStaffIntake() {
@@ -1718,6 +1747,7 @@ function renderStaffIntakeCurrentPreview() {
 }
 
 function renderStaffIntakeQuote() {
+  updateStaffIntakeHeading();
   const quote = staffIntakeState.cartQuote;
   const total = document.getElementById("staff-intake-total");
   const routing = document.getElementById("staff-intake-routing");
