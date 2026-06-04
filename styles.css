@@ -824,6 +824,57 @@ fieldset {
   font-size: 0.84rem;
 }
 
+.staff-intake-cart-item.has-remove-action,
+.staff-intake-quote-item.has-remove-action {
+  position: relative;
+  padding-top: 40px;
+}
+
+.staff-intake-remove-item {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-weight: 850;
+  line-height: 1;
+}
+
+.staff-intake-remove-item span {
+  display: inline-grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.staff-intake-remove-item small {
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.02em;
+}
+
+.staff-intake-remove-item:hover,
+.staff-intake-remove-item:focus-visible {
+  color: var(--mp-red);
+}
+
+.staff-intake-remove-item:hover span,
+.staff-intake-remove-item:focus-visible span {
+  border-color: rgba(213, 33, 39, 0.35);
+  color: var(--mp-red);
+}
+
 .staff-intake-current-price {
   display: grid;
   gap: 8px;

@@ -1679,10 +1679,10 @@ function renderStaffIntakeCart() {
     return;
   }
   cart.innerHTML = staffIntakeState.cart.map((item) => `
-    <article class="cart-item staff-intake-cart-item">
+    <article class="cart-item staff-intake-cart-item has-remove-action">
+      <button class="staff-intake-remove-item" type="button" aria-label="Remove item" data-staff-intake-remove="${escapeAttr(item.id)}"><span aria-hidden="true">x</span><small>Remove item</small></button>
       <div class="cart-title">
         <strong>${escapeHtml(item.brand)} ${escapeHtml(item.model)}</strong>
-        <button class="remove-item" type="button" aria-label="Remove item" data-staff-intake-remove="${escapeAttr(item.id)}">x</button>
       </div>
       <span class="cart-meta">${escapeHtml(item.category)} - ${escapeHtml(conditionLabel(item.condition))}${item.mount ? ` - ${escapeHtml(item.mount)}` : ""}</span>
     </article>
@@ -1804,13 +1804,13 @@ function renderStaffIntakeQuoteItem(item, sourceItem, options = {}) {
   const marketCopy = item.marketPrice ? `Market estimate: ${money.format(item.marketPrice)}` : item.message || "";
   const canRemove = sourceItem?.id && staffIntakeState.cart.some((cartItem) => cartItem.id === sourceItem.id);
   return `
-    <article class="quote-item${options.preview ? " staff-intake-preview-item" : ""}">
+    <article class="quote-item staff-intake-quote-item${canRemove ? " has-remove-action" : ""}${options.preview ? " staff-intake-preview-item" : ""}">
+      ${canRemove ? `<button class="staff-intake-remove-item" type="button" aria-label="Remove item" data-staff-intake-remove="${escapeAttr(sourceItem.id)}"><span aria-hidden="true">x</span><small>Remove item</small></button>` : ""}
       <div>
         <div class="quote-title">
           <strong>${escapeHtml(item.brand)} ${escapeHtml(item.model)}</strong>
           <span class="staff-intake-quote-actions">
             <span class="status-pill ${statusClass}">${escapeHtml(STATUS_LABELS[item.status] || item.status)}</span>
-            ${canRemove ? `<button class="remove-item" type="button" aria-label="Remove item" data-staff-intake-remove="${escapeAttr(sourceItem.id)}">x</button>` : ""}
           </span>
         </div>
         <div class="quote-meta">
