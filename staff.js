@@ -1392,14 +1392,24 @@ function renderStaffIntakeIncludedItems() {
     <div class="staff-intake-included-list">
       ${items.map((item) => `
         <label class="staff-accessory-item">
-          <input type="checkbox" data-staff-intake-included="${escapeAttr(item.name)}" ${item.checked ? "checked" : ""} />
+          <input type="checkbox" data-staff-intake-included="${escapeAttr(item.name)}" data-staff-intake-adjustment="${escapeAttr(item.value)}" ${item.checked ? "checked" : ""} />
           <span>${escapeHtml(item.name)}</span>
-          <strong>Expected</strong>
+          <strong data-staff-intake-impact>${escapeHtml(staffIntakeAccessoryImpactText(item.value, item.checked))}</strong>
         </label>
       `).join("")}
     </div>
   `;
-  container.querySelectorAll("[data-staff-intake-included]").forEach((input) => input.addEventListener("change", queueStaffIntakeCurrentPreview));
+  container.querySelectorAll("[data-staff-intake-included]").forEach((input) => input.addEventListener("change", () => {
+    const impact = input.closest(".staff-accessory-item")?.querySelector("[data-staff-intake-impact]");
+    if (impact) impact.textContent = staffIntakeAccessoryImpactText(input.dataset.staffIntakeAdjustment, input.checked);
+    queueStaffIntakeCurrentPreview();
+  }));
+}
+
+function staffIntakeAccessoryImpactText(value, checked) {
+  const amount = Number(value) || 0;
+  if (!amount) return checked ? "Expected" : "No price change";
+  return checked ? `Missing: -$${formatMoney(amount)}` : `Add: +$${formatMoney(amount)}`;
 }
 
 async function addStaffIntakeItem() {

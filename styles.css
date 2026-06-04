@@ -1676,6 +1676,8 @@ fieldset {
 .staff-accessory-item strong {
   margin-left: auto;
   color: var(--muted);
+  text-align: right;
+  white-space: nowrap;
 }
 
 .staff-condition-grid {
