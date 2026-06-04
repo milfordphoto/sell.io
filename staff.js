@@ -151,6 +151,8 @@ let staffIntakeState = createStaffIntakeState();
 let staffIntakePreviewTimer = null;
 let staffIntakePreviewRequestId = 0;
 let staffIntakeCartQuoteRequestId = 0;
+let staffIntakeToastTimer = null;
+let staffIntakeToastHideTimer = null;
 
 const STAFF_INTAKE_PREVIEW_DELAY_MS = 300;
 
@@ -986,7 +988,7 @@ function renderStaffIntake() {
           </label>
 
           <div class="form-actions staff-intake-actions">
-            <button class="secondary-action" type="button" id="staff-intake-add-item">${escapeHtml(heading.button)}</button>
+            <button class="primary-action staff-intake-add-action" type="button" id="staff-intake-add-item">${escapeHtml(heading.button)}</button>
           </div>
         </section>
 
@@ -1065,6 +1067,7 @@ function renderStaffIntake() {
           </div>
         </section>
       </form>
+      <div class="staff-intake-toast" id="staff-intake-toast" role="status" aria-live="polite" hidden></div>
     </article>
   `;
 
@@ -1444,6 +1447,7 @@ async function addStaffIntakeItem() {
   renderStaffIntakeCurrentPreview();
   renderStaffIntakeQuote();
   setStatus(`${item.brand} ${item.model} added to the in-store quote. Updating offer...`);
+  showStaffIntakeToast("Item added to quote");
 
   try {
     await priceStaffIntakeCart();
@@ -1883,6 +1887,22 @@ function clearStaffIntakeItemForm() {
   updateStaffIntakeManualFields();
   updateStaffIntakeMountField();
   renderStaffIntakeIncludedItems();
+}
+
+function showStaffIntakeToast(message) {
+  const toast = document.getElementById("staff-intake-toast");
+  if (!toast) return;
+  window.clearTimeout(staffIntakeToastTimer);
+  window.clearTimeout(staffIntakeToastHideTimer);
+  toast.textContent = message;
+  toast.hidden = false;
+  window.requestAnimationFrame(() => toast.classList.add("is-visible"));
+  staffIntakeToastTimer = window.setTimeout(() => {
+    toast.classList.remove("is-visible");
+    staffIntakeToastHideTimer = window.setTimeout(() => {
+      toast.hidden = true;
+    }, 180);
+  }, 3000);
 }
 
 async function staffPost(path, payload, options = {}) {
