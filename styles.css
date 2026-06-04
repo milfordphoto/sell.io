@@ -493,23 +493,27 @@ fieldset {
   line-height: 1.45;
 }
 
-.condition-grid .choice-card {
+.condition-grid .choice-card,
+.staff-condition-grid .choice-card {
   min-height: 104px;
   gap: 5px;
   padding: 12px;
 }
 
-.condition-grid .choice-card strong {
+.condition-grid .choice-card strong,
+.staff-condition-grid .choice-card strong {
   font-size: 0.94rem;
   line-height: 1.2;
 }
 
-.condition-grid .choice-card span {
+.condition-grid .choice-card span,
+.staff-condition-grid .choice-card span {
   font-size: 0.8rem;
   line-height: 1.32;
 }
 
-.condition-grid .choice-card input {
+.condition-grid .choice-card input,
+.staff-condition-grid .choice-card input {
   justify-self: end;
 }
 
@@ -1703,6 +1707,10 @@ fieldset {
   text-transform: uppercase;
 }
 
+.staff-info-grid .seller-address {
+  color: var(--ink);
+}
+
 .staff-review-form {
   display: grid;
   gap: 14px;
@@ -1789,12 +1797,12 @@ fieldset {
 
 .staff-condition-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
 }
 
 .staff-condition-option {
-  min-height: 118px;
+  min-height: 104px;
 }
 
 .staff-adjust-grid {
@@ -2113,11 +2121,14 @@ fieldset {
   .staff-intake-header,
   .staff-info-grid,
   .staff-accessory-grid,
-  .staff-condition-grid,
   .staff-adjust-grid,
   .pricing-review-controls,
   .staff-decision-grid {
     grid-template-columns: 1fr;
+  }
+
+  .staff-condition-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .staff-workflow {

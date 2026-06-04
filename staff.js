@@ -123,8 +123,8 @@ const money = new Intl.NumberFormat("en-US", {
 const WORKFLOW_STEPS = [
   { key: "initial", label: "Initial Quote" },
   { key: "shipped", label: "Shipped to Milford Photo" },
-  { key: "received", label: "Received" },
-  { key: "evaluated", label: "Evaluated" },
+  { key: "received", label: "Receive" },
+  { key: "evaluated", label: "Evaluate" },
   { key: "final", label: "Final Quote" },
   { key: "customer", label: "Customer Decision" },
   { key: "payout", label: "Payout" },
@@ -393,9 +393,9 @@ function renderDetail() {
         <section>
           <h3>Seller</h3>
           <p>${escapeHtml(order.customer || "-")}</p>
+          <p class="seller-address">${order.address || "-"}</p>
           <p>${escapeHtml(order.email || "-")}</p>
           <p>${escapeHtml(order.phone || "-")}</p>
-          <p>${order.address || "-"}</p>
         </section>
         <section>
           <h3>Original quote</h3>
@@ -410,8 +410,9 @@ function renderDetail() {
         </section>
         <section>
           <h3>Shipping</h3>
-          <p>Tracking: ${escapeHtml(fields["Tracking Number"] || "-")}</p>
-          <p>${fields["Shippo Label URL"] ? `<a href="${escapeAttr(fields["Shippo Label URL"])}" target="_blank" rel="noreferrer">Open label</a>` : "No label link"}</p>
+          <p>Incoming tracking: ${escapeHtml(incomingTrackingNumber(fields))}</p>
+          <p>Outgoing tracking: ${escapeHtml(outgoingTrackingNumber(fields))}</p>
+          <p>${fields["Shippo Label URL"] ? `<a href="${escapeAttr(fields["Shippo Label URL"])}" target="_blank" rel="noreferrer">Open inbound label</a>` : "No inbound label link"}</p>
           <p>Payment method: ${escapeHtml(fields["Payment Method"] || "-")}</p>
         </section>
       </div>
@@ -2028,6 +2029,21 @@ function staffWorkflowText(fields = {}) {
   return `${fields.Status || ""} ${fields["Workflow Step"] || ""}`.toLowerCase();
 }
 
+function incomingTrackingNumber(fields = {}) {
+  return fields["Incoming Tracking Number"]
+    || fields["Inbound Tracking Number"]
+    || fields["Tracking Number"]
+    || "-";
+}
+
+function outgoingTrackingNumber(fields = {}) {
+  return fields["Outgoing Tracking Number"]
+    || fields["Outbound Tracking Number"]
+    || fields["Return Tracking Number"]
+    || fields["Return Shipment Tracking"]
+    || "-";
+}
+
 function staffActionCompleted(action, fields = {}, parsed = {}) {
   const status = staffWorkflowText(fields);
   if (action === "received") {
@@ -2245,7 +2261,8 @@ function orderMatchesSearch(order) {
         fields["Item Brand"],
         fields["Item Model"],
         fields.Category,
-        fields["Tracking Number"],
+        incomingTrackingNumber(fields),
+        outgoingTrackingNumber(fields),
         fields.Status,
         fields["Workflow Step"],
       ].filter(Boolean).join(" ");
