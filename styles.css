@@ -271,6 +271,12 @@ legend {
   font-weight: 820;
 }
 
+.field small {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 760;
+}
+
 input,
 select,
 textarea {
@@ -973,6 +979,25 @@ fieldset {
 .parcel-fields {
   margin-top: 6px;
   padding-top: 2px;
+}
+
+.staff-intake-address-fields {
+  margin: 2px 0 18px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--soft);
+}
+
+.staff-intake-address-fields .field:last-child {
+  margin-bottom: 0;
+}
+
+.staff-intake-address-fields p {
+  margin: -2px 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.4;
 }
 
 .consent {

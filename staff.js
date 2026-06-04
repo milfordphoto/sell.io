@@ -1034,6 +1034,27 @@ function renderStaffIntake() {
               </select>
             </label>
           </div>
+          <div class="staff-intake-address-fields">
+            <label class="field">
+              <span>Mailing address <small>optional</small></span>
+              <input id="staff-intake-seller-street" autocomplete="street-address" placeholder="Street address" />
+            </label>
+            <div class="three-col">
+              <label class="field">
+                <span>City</span>
+                <input id="staff-intake-seller-city" autocomplete="address-level2" />
+              </label>
+              <label class="field">
+                <span>State</span>
+                <input id="staff-intake-seller-state" autocomplete="address-level1" maxlength="2" />
+              </label>
+              <label class="field">
+                <span>ZIP</span>
+                <input id="staff-intake-seller-zip" autocomplete="postal-code" />
+              </label>
+            </div>
+            <p>Useful for mailed checks, return shipping, or matching a customer record. Leave blank for quick counter intake.</p>
+          </div>
           <label class="consent staff-intake-consent">
             <input id="staff-intake-terms" type="checkbox" required />
             <span>Customer understands the quote is pending Milford Photo inspection and may be adjusted after verification.</span>
@@ -1627,6 +1648,10 @@ async function submitStaffIntakeQuote(event) {
   const sellerName = document.getElementById("staff-intake-seller-name").value.trim();
   const sellerEmail = document.getElementById("staff-intake-seller-email").value.trim();
   const sellerPhone = document.getElementById("staff-intake-seller-phone").value.trim();
+  const sellerStreet = document.getElementById("staff-intake-seller-street").value.trim();
+  const sellerCity = document.getElementById("staff-intake-seller-city").value.trim();
+  const sellerState = document.getElementById("staff-intake-seller-state").value.trim();
+  const sellerZip = document.getElementById("staff-intake-seller-zip").value.trim();
   const terms = document.getElementById("staff-intake-terms");
 
   if (!sellerName || !sellerEmail) {
@@ -1657,6 +1682,12 @@ async function submitStaffIntakeQuote(event) {
         name: sellerName,
         email: sellerEmail,
         phone: sellerPhone,
+        address: {
+          street: sellerStreet,
+          city: sellerCity,
+          state: sellerState,
+          zip: sellerZip,
+        },
       },
       delivery: "dropoff",
       paymentPreference: document.getElementById("staff-intake-payment-preference").value,
