@@ -369,6 +369,8 @@ function renderDetail() {
   const parsed = parseStaffNotes(fields["Staff Notes"]);
   const baseOffer = numberOrNull(fields["Milford Offer"]) ?? 0;
   const finalOffer = numberOrNull(fields["Final Offer"]) ?? calculateOffer(fields, parsed, accessories, baseOffer);
+  const paymentMethod = paymentMethodValue(fields);
+  const defaultDecision = staffDecisionForRecord(record, order, finalOffer, parsed);
 
   detailEl.innerHTML = `
     <article class="staff-intake">
@@ -413,7 +415,7 @@ function renderDetail() {
           <p>Incoming tracking: ${escapeHtml(incomingTrackingNumber(fields))}</p>
           <p>Outgoing tracking: ${escapeHtml(outgoingTrackingNumber(fields))}</p>
           <p>${fields["Shippo Label URL"] ? `<a href="${escapeAttr(fields["Shippo Label URL"])}" target="_blank" rel="noreferrer">Open inbound label</a>` : "No inbound label link"}</p>
-          <p>Payment method: ${escapeHtml(fields["Payment Method"] || "-")}</p>
+          <p>Payment method: ${escapeHtml(paymentMethodLabel(paymentMethod))}</p>
         </section>
       </div>
 
@@ -467,7 +469,7 @@ function renderDetail() {
             <span>4</span>
             <div>
               <h3>Final item quote</h3>
-              <p>Set the final item offer and choose what happens if the customer declines this item.</p>
+              <p>Set the final item offer. Unchanged or higher offers default to acceptance; reduced offers wait for customer confirmation.</p>
             </div>
           </div>
           <div class="staff-adjust-grid">
@@ -482,23 +484,23 @@ function renderDetail() {
             <label class="field">
               <span>Payout method</span>
               <select id="payment-method">
-                <option value="check" ${String(fields["Payment Method"] || "").toLowerCase().includes("check") ? "selected" : ""}>Check</option>
-                <option value="paypal" ${String(fields["Payment Method"] || "").toLowerCase().includes("paypal") || String(fields["Payment Method"] || "").toLowerCase().includes("bank") ? "selected" : ""}>PayPal</option>
-                <option value="store_credit" ${String(fields["Payment Method"] || "").toLowerCase().includes("store credit") ? "selected" : ""}>Store credit</option>
+                <option value="check" ${paymentMethod === "check" ? "selected" : ""}>Check</option>
+                <option value="paypal" ${paymentMethod === "paypal" ? "selected" : ""}>PayPal</option>
+                <option value="store_credit" ${paymentMethod === "store_credit" ? "selected" : ""}>Store credit</option>
               </select>
             </label>
           </div>
           <div class="staff-decision-grid">
             <label class="staff-decision-card">
-              <input type="radio" name="item-decision" value="pending" ${parsed.decision === "pending" ? "checked" : ""} />
+              <input type="radio" name="item-decision" value="pending" ${defaultDecision === "pending" ? "checked" : ""} />
               <span>Await customer decision</span>
             </label>
             <label class="staff-decision-card">
-              <input type="radio" name="item-decision" value="accept" ${parsed.decision === "accept" ? "checked" : ""} />
+              <input type="radio" name="item-decision" value="accept" ${defaultDecision === "accept" ? "checked" : ""} />
               <span>Customer accepts this item</span>
             </label>
             <label class="staff-decision-card">
-              <input type="radio" name="item-decision" value="return" ${parsed.decision === "return" ? "checked" : ""} />
+              <input type="radio" name="item-decision" value="return" ${defaultDecision === "return" ? "checked" : ""} />
               <span>Customer wants this item returned</span>
             </label>
           </div>
@@ -634,6 +636,62 @@ function renderCondition(condition, selectedCondition) {
   `;
 }
 
+function staffDecisionForRecord(record, order, finalOffer, parsed = parseStaffNotes(record?.fields?.["Staff Notes"])) {
+  const fields = record?.fields || {};
+  if (parsed.customerFinalDecision === "return") return "return";
+  if (parsed.customerFinalDecision === "accept") return "accept";
+
+  const status = staffWorkflowText(fields);
+  if (status.includes("customer accepted") || status.includes("payment")) return "accept";
+
+  if (!orderHasReducedFinalOffer(order, record, finalOffer)) return "accept";
+  return itemOfferWasReduced(fields, finalOffer) ? "pending" : "accept";
+}
+
+function updateDefaultDecision(record, suggestedOffer) {
+  const decisionInputs = Array.from(document.querySelectorAll("input[name='item-decision']"));
+  if (!decisionInputs.length || decisionInputs.some((input) => input.dataset.userSelected === "true")) return;
+  const customOffer = numberOrNull(document.getElementById("custom-offer")?.value);
+  const finalOffer = customOffer ?? suggestedOffer;
+  const decision = staffDecisionForRecord(record, selectedOrder(), finalOffer);
+  decisionInputs.forEach((input) => {
+    input.checked = input.value === decision;
+  });
+}
+
+function orderHasReducedFinalOffer(order, currentRecord, currentFinalOffer) {
+  return (order?.items || [currentRecord]).filter(Boolean).some((item) => {
+    const fields = item.fields || {};
+    const finalOffer = item.id === currentRecord?.id
+      ? currentFinalOffer
+      : numberOrNull(fields["Final Offer"]) ?? numberOrNull(fields["Milford Offer"]);
+    return itemOfferWasReduced(fields, finalOffer);
+  });
+}
+
+function itemOfferWasReduced(fields = {}, finalOffer) {
+  const originalOffer = numberOrNull(fields["Milford Offer"]);
+  const finalAmount = numberOrNull(finalOffer);
+  return originalOffer !== null && finalAmount !== null && finalAmount < originalOffer;
+}
+
+function paymentMethodValue(fields = {}) {
+  const raw = fields["Payment Method"]
+    || noteValue(fields["Staff Notes"], "Payment preference")
+    || staffNoteValue(fields, "Payment preference")
+    || staffNoteValue(fields, "Preferred payout");
+  const normalized = String(raw || "").toLowerCase();
+  if (normalized.includes("store")) return "store_credit";
+  if (normalized.includes("paypal") || normalized.includes("bank")) return "paypal";
+  return "check";
+}
+
+function paymentMethodLabel(value = "") {
+  if (value === "paypal") return "PayPal";
+  if (value === "store_credit") return "Store credit";
+  return "Check";
+}
+
 function bindDetail(record, accessories) {
   const form = document.getElementById("staff-review-form");
   const actionButtons = Array.from(form.querySelectorAll("[data-action]"));
@@ -649,6 +707,7 @@ function bindDetail(record, accessories) {
   });
 
   form.querySelectorAll("input, textarea").forEach((input) => {
+    if (input.name === "item-decision") return;
     input.addEventListener("input", () => updateSuggestedOffer(record, accessories));
     input.addEventListener("change", () => updateSuggestedOffer(record, accessories));
   });
@@ -675,6 +734,12 @@ function bindDetail(record, accessories) {
     input.addEventListener("change", () => {
       form.querySelectorAll(".staff-condition-option").forEach((option) => option.classList.remove("is-selected"));
       input.closest(".staff-condition-option").classList.add("is-selected");
+    });
+  });
+
+  form.querySelectorAll("input[name='item-decision']").forEach((input) => {
+    input.addEventListener("change", () => {
+      input.dataset.userSelected = "true";
     });
   });
 
@@ -705,6 +770,7 @@ function updateSuggestedOffer(record, accessories) {
   suggestedInput.value = suggested;
   suggestedInput.dataset.suggestedOffer = String(suggested);
   if (!keepCustom) customInput.value = suggested;
+  updateDefaultDecision(record, suggested);
 }
 
 async function handleStaffAction(record, accessories, action, buttons) {
@@ -2001,8 +2067,12 @@ function calculateOffer(fields, review, accessories, fallbackOffer) {
 }
 
 function staffNoteValue(fields = {}, label = "") {
+  return noteValue(fields["Seller Notes"], label);
+}
+
+function noteValue(notes = "", label = "") {
   const prefix = `${label}:`;
-  return String(fields["Seller Notes"] || "")
+  return String(notes || "")
     .split(/\r?\n/)
     .find((line) => line.trim().toLowerCase().startsWith(prefix.toLowerCase()))
     ?.slice(prefix.length)
@@ -2115,15 +2185,22 @@ function parseStaffNotes(notes = "") {
     verifiedCondition: "",
     accessories: {},
     decision: "pending",
+    customerFinalDecision: "",
     reason: "",
   };
+  let inCustomerFinalQuoteDecision = false;
 
   notes.split("\n").forEach((line) => {
     const clean = line.trim();
+    if (clean === "CUSTOMER FINAL QUOTE DECISION") inCustomerFinalQuoteDecision = true;
+    if (clean === "INTAKE REVIEW" || clean === "ORDER UPDATE") inCustomerFinalQuoteDecision = false;
     if (clean.startsWith("Received:")) parsed.received = clean.includes("Yes");
     if (clean.startsWith("All recommended accessories included:")) parsed.allAccessories = clean.includes("Yes");
     if (clean.startsWith("Verified condition:")) parsed.verifiedCondition = clean.replace("Verified condition:", "").trim();
-    if (clean.startsWith("Customer decision:")) parsed.decision = clean.replace("Customer decision:", "").trim() || "pending";
+    if (clean.startsWith("Customer decision:")) {
+      parsed.decision = clean.replace("Customer decision:", "").trim() || "pending";
+      if (inCustomerFinalQuoteDecision) parsed.customerFinalDecision = parsed.decision;
+    }
     if (clean.startsWith("- ")) {
       const [name, state] = clean.slice(2).split(":").map((part) => part.trim());
       if (name) parsed.accessories[name] = state !== "missing";
