@@ -1015,12 +1015,14 @@ function staffActionLogEntry(record) {
 function emailEventLogEntry(record, order) {
   const fields = record.fields || {};
   const recipient = fields.Recipient || "";
+  const template = fields.Template || "";
   const toCustomer = recipient && recipient.toLowerCase() === String(order.email || "").toLowerCase();
+  const toStaff = template.startsWith("staff_");
   return {
     timestamp: fields["Sent At"],
     actorType: "system",
-    actorLabel: toCustomer ? "System email to customer" : "System email",
-    title: emailTemplateTitle(fields.Template),
+    actorLabel: toStaff ? "System email to staff" : toCustomer ? "System email to customer" : "System email",
+    title: emailTemplateTitle(template),
     detail: fields.Subject || "",
     meta: recipient ? `Recipient: ${recipient}` : "",
   };
