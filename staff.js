@@ -532,7 +532,10 @@ function renderOrderHeader(order) {
   return `
     <section class="staff-order-header">
       <div>
-        <p class="brand-line">Order ${escapeHtml(order.quote)}</p>
+        <p class="brand-line staff-order-kicker">
+          <span>Order ${escapeHtml(order.quote)}</span>
+          <button class="staff-log-link" type="button" data-order-log="${escapeAttr(order.id)}">Open order log</button>
+        </p>
         <h2>${escapeHtml(order.customer)}</h2>
         <p>${escapeHtml(order.items.length)} item${order.items.length === 1 ? "" : "s"} in this order${order.synthetic && order.items.length > 1 ? " - grouped for testing from same customer/address/time window" : ""}</p>
       </div>
@@ -706,6 +709,10 @@ function bindDetail(record, accessories) {
     });
   });
 
+  detailEl.querySelector("[data-order-log]")?.addEventListener("click", () => {
+    openOrderLog(selectedOrder());
+  });
+
   form.querySelectorAll("input, textarea").forEach((input) => {
     if (input.name === "item-decision") return;
     input.addEventListener("input", () => updateSuggestedOffer(record, accessories));
@@ -851,6 +858,256 @@ async function handleOrderAction(order, status) {
   } catch (error) {
     setStatus(error.message || "Unable to save order update.", true);
   }
+}
+
+async function openOrderLog(order) {
+  if (!order) return;
+  showOrderLogModal(order, { loading: true });
+  try {
+    const history = await fetchOrderHistory(order);
+    showOrderLogModal(order, { entries: buildOrderLogEntries(order, history) });
+  } catch (error) {
+    showOrderLogModal(order, { error: error.message || "Unable to load order log." });
+  }
+}
+
+async function fetchOrderHistory(order) {
+  const quoteRefs = order.quoteRefs?.length ? order.quoteRefs : [order.quote].filter(Boolean);
+  const histories = await Promise.all(quoteRefs.map(async (quoteRef) => {
+    const response = await fetch(`${API_BASE}/api/staff/history?quoteRef=${encodeURIComponent(quoteRef)}`, {
+      headers: staffAuthHeaders(),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || `Request failed with ${response.status}`);
+    return data;
+  }));
+  return {
+    staffActions: histories.flatMap((history) => history.staffActions || []),
+    emailEvents: histories.flatMap((history) => history.emailEvents || []),
+  };
+}
+
+function showOrderLogModal(order, state = {}) {
+  closeOrderLogModal();
+  const modal = document.createElement("div");
+  modal.className = "staff-log-modal";
+  modal.setAttribute("role", "dialog");
+  modal.setAttribute("aria-modal", "true");
+  modal.setAttribute("aria-labelledby", "staff-log-title");
+
+  const content = state.loading
+    ? `<div class="staff-log-empty">Loading order log...</div>`
+    : state.error
+      ? `<div class="staff-log-empty is-error">${escapeHtml(state.error)}</div>`
+      : renderOrderLogTimeline(state.entries || []);
+
+  modal.innerHTML = `
+    <div class="staff-log-backdrop" data-close-order-log></div>
+    <section class="staff-log-panel">
+      <header class="staff-log-header">
+        <div>
+          <p class="brand-line">Order log</p>
+          <h2 id="staff-log-title">${escapeHtml(order.quote)}</h2>
+          <p>${escapeHtml(order.customer)} - ${escapeHtml(order.items.length)} item${order.items.length === 1 ? "" : "s"}</p>
+        </div>
+        <button class="staff-log-close" type="button" data-close-order-log aria-label="Close order log">Close</button>
+      </header>
+      ${content}
+    </section>
+  `;
+  document.body.append(modal);
+  modal.querySelectorAll("[data-close-order-log]").forEach((button) => {
+    button.addEventListener("click", closeOrderLogModal);
+  });
+  document.addEventListener("keydown", handleOrderLogKeydown);
+}
+
+function closeOrderLogModal() {
+  document.querySelector(".staff-log-modal")?.remove();
+  document.removeEventListener("keydown", handleOrderLogKeydown);
+}
+
+function handleOrderLogKeydown(event) {
+  if (event.key === "Escape") closeOrderLogModal();
+}
+
+function renderOrderLogTimeline(entries) {
+  if (!entries.length) return `<div class="staff-log-empty">No order activity has been recorded yet.</div>`;
+  return `
+    <ol class="staff-log-timeline">
+      ${entries.map((entry) => `
+        <li class="staff-log-entry">
+          <div class="staff-log-entry-top">
+            <span class="staff-log-actor is-${escapeAttr(entry.actorType)}">${escapeHtml(entry.actorLabel)}</span>
+            <time>${escapeHtml(formatLogTimestamp(entry.timestamp))}</time>
+          </div>
+          <strong>${escapeHtml(entry.title)}</strong>
+          ${entry.detail ? `<p>${escapeHtml(entry.detail)}</p>` : ""}
+          ${entry.meta ? `<small>${escapeHtml(entry.meta)}</small>` : ""}
+        </li>
+      `).join("")}
+    </ol>
+  `;
+}
+
+function buildOrderLogEntries(order, history = {}) {
+  const entries = [
+    ...quoteSubmissionLogEntries(order),
+    ...customerDecisionLogEntries(order),
+    ...(history.staffActions || []).map(staffActionLogEntry),
+    ...(history.emailEvents || []).map((record) => emailEventLogEntry(record, order)),
+  ].filter(Boolean);
+
+  return entries.sort((a, b) => (logTimestampValue(b.timestamp) - logTimestampValue(a.timestamp)));
+}
+
+function quoteSubmissionLogEntries(order) {
+  const first = order.items[0]?.fields || {};
+  const submitted = first["Quote Submitted"] || order.submitted;
+  const source = String(first.Source || "").toLowerCase();
+  const staffUser = noteValue(first["Staff Notes"], "Created by");
+  const actorType = source.includes("staff") ? "staff" : "customer";
+  const payment = paymentMethodLabel(paymentMethodValue(first));
+  const delivery = staffDeliveryFromFields(first);
+  return [{
+    timestamp: submitted,
+    actorType,
+    actorLabel: actorType === "staff" ? `Staff: ${staffUser || "staff"}` : "Customer",
+    title: actorType === "staff" ? "In-store quote created" : "Customer submitted quote",
+    detail: `${order.items.length} item${order.items.length === 1 ? "" : "s"} added. Preferred payout: ${payment}. Delivery: ${delivery || "-"}.`,
+    meta: `Quote ${order.quote}`,
+  }];
+}
+
+function customerDecisionLogEntries(order) {
+  return order.items.flatMap((record) => {
+    const fields = record.fields || {};
+    const decisions = parseCustomerDecisionBlocks(fields["Staff Notes"]);
+    return decisions.map((decision) => ({
+      timestamp: decision.submitted,
+      actorType: "customer",
+      actorLabel: "Customer",
+      title: decision.decision === "return" ? "Customer requested item return" : "Customer accepted item",
+      detail: `${shortGearTitle(fields)} - ${decision.decision === "return" ? "return to customer" : "sell to Milford Photo"}.`,
+      meta: decision.paymentPreference ? `Payout preference: ${decision.paymentPreference}` : "",
+    }));
+  });
+}
+
+function staffActionLogEntry(record) {
+  const fields = record.fields || {};
+  const priorOffer = numberOrNull(fields["Prior Offer"]);
+  const newOffer = numberOrNull(fields["New Offer"]);
+  const offerMeta = priorOffer !== null && newOffer !== null && priorOffer !== newOffer
+    ? `Offer changed from $${formatMoney(priorOffer)} to $${formatMoney(newOffer)}.`
+    : "";
+  const statusMeta = [fields["Prior Status"], fields["New Status"]].filter(Boolean).join(" -> ");
+  return {
+    timestamp: fields.Timestamp,
+    actorType: "staff",
+    actorLabel: `Staff: ${fields["Staff User"] || "unknown"}`,
+    title: staffActionTitle(fields.Action || fields["New Status"]),
+    detail: [statusMeta, offerMeta].filter(Boolean).join(" "),
+    meta: compactLogNotes(fields.Notes || ""),
+  };
+}
+
+function emailEventLogEntry(record, order) {
+  const fields = record.fields || {};
+  const recipient = fields.Recipient || "";
+  const toCustomer = recipient && recipient.toLowerCase() === String(order.email || "").toLowerCase();
+  return {
+    timestamp: fields["Sent At"],
+    actorType: "system",
+    actorLabel: toCustomer ? "System email to customer" : "System email",
+    title: emailTemplateTitle(fields.Template),
+    detail: fields.Subject || "",
+    meta: recipient ? `Recipient: ${recipient}` : "",
+  };
+}
+
+function parseCustomerDecisionBlocks(notes = "") {
+  const decisions = [];
+  let current = null;
+  String(notes || "").split(/\r?\n/).forEach((line) => {
+    const clean = line.trim();
+    if (clean === "CUSTOMER FINAL QUOTE DECISION") {
+      if (current) decisions.push(current);
+      current = { decision: "", paymentPreference: "", submitted: "" };
+      return;
+    }
+    if (!current) return;
+    if (clean.startsWith("Customer decision:")) current.decision = clean.replace("Customer decision:", "").trim();
+    if (clean.startsWith("Payment preference:")) current.paymentPreference = clean.replace("Payment preference:", "").trim();
+    if (clean.startsWith("Decision submitted:")) current.submitted = clean.replace("Decision submitted:", "").trim();
+  });
+  if (current) decisions.push(current);
+  return decisions.filter((decision) => decision.decision);
+}
+
+function staffActionTitle(value = "") {
+  const text = String(value || "").toLowerCase();
+  if (text.includes("payment")) return "Staff marked payment sent";
+  if (text.includes("return")) return "Staff started return";
+  if (text.includes("final quote")) return "Staff sent final quote";
+  if (text.includes("received")) return "Staff marked item received";
+  if (text.includes("inspection")) return "Staff saved intake review";
+  if (text.includes("evaluated")) return "Staff finished item evaluation";
+  if (text.includes("accepted")) return "Staff marked item accepted";
+  if (text.includes("feedback")) return "Staff added feedback";
+  return value || "Staff updated order";
+}
+
+function emailTemplateTitle(template = "") {
+  const labels = {
+    quote_received: "Quote confirmation email sent",
+    label_ready: "Shipping label email sent",
+    label_pending: "Label pending email sent",
+    staff_new_quote: "Staff new quote alert sent",
+    staff_final_decision: "Staff customer decision alert sent",
+    gear_received: "Gear received email sent",
+    final_quote_ready: "Final quote email sent",
+    offer_approved: "Final quote email sent",
+    offer_adjusted: "Adjusted quote email sent",
+    payment_sent: "Payment sent email sent",
+    return_started: "Return shipment email sent",
+  };
+  return labels[template] || `Email sent${template ? `: ${template}` : ""}`;
+}
+
+function compactLogNotes(notes = "") {
+  const compact = String(notes || "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith("- "))
+    .slice(0, 4)
+    .join(" | ");
+  return compact.length > 240 ? `${compact.slice(0, 237)}...` : compact;
+}
+
+function staffDeliveryFromFields(fields = {}) {
+  const delivery = staffNoteValue(fields, "Delivery");
+  const normalized = delivery.toLowerCase();
+  if (normalized === "dropoff") return "In-store drop-off";
+  if (normalized === "ship") return "Mail-in shipment";
+  return delivery;
+}
+
+function logTimestampValue(value) {
+  const time = Date.parse(value || "");
+  return Number.isFinite(time) ? time : 0;
+}
+
+function formatLogTimestamp(value) {
+  const time = Date.parse(value || "");
+  if (!Number.isFinite(time)) return "Time not recorded";
+  return new Date(time).toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }
 
 async function updateRecord(body) {
