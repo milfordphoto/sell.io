@@ -115,10 +115,10 @@ const els = {
   quoteMessage: byId("quote-message"),
   acceptQuote: byId("accept-quote"),
   submitForm: byId("submit-form"),
-  sellerName: byId("seller-name"),
+  sellerFirstName: byId("seller-first-name"),
+  sellerLastName: byId("seller-last-name"),
   sellerEmail: byId("seller-email"),
   sellerPhone: byId("seller-phone"),
-  paymentPreference: byId("payment-preference"),
   mailCopy: byId("mail-option-copy"),
   addressFields: byId("address-fields"),
   parcelFields: byId("parcel-fields"),
@@ -1013,10 +1013,14 @@ async function submitQuote(event) {
 
   try {
     const delivery = selectedRadioValue("delivery") || "ship";
+    const firstName = els.sellerFirstName.value.trim();
+    const lastName = els.sellerLastName.value.trim();
     const data = await apiPost("/api/submit", {
       quoteToken: state.quote.quoteToken,
       seller: {
-        name: els.sellerName.value.trim(),
+        firstName,
+        lastName,
+        name: [firstName, lastName].filter(Boolean).join(" "),
         email: els.sellerEmail.value.trim(),
         phone: els.sellerPhone.value.trim(),
         address: {
@@ -1027,7 +1031,6 @@ async function submitQuote(event) {
         },
       },
       delivery,
-      paymentPreference: els.paymentPreference.value,
       parcel: {
         length: numberOrNull(els.parcelLength.value),
         width: numberOrNull(els.parcelWidth.value),
@@ -1241,14 +1244,13 @@ function renderDone(result) {
 function updateDeliveryFields() {
   const delivery = selectedRadioValue("delivery") || "ship";
   const freeLabel = Boolean(state.quote?.routing?.freeLabelEligible);
-  const addressRequired = delivery === "ship";
 
   els.addressFields.hidden = false;
   els.parcelFields.hidden = true;
-  els.street.required = addressRequired;
-  els.city.required = addressRequired;
-  els.stateField.required = addressRequired;
-  els.zip.required = addressRequired;
+  els.street.required = true;
+  els.city.required = true;
+  els.stateField.required = true;
+  els.zip.required = true;
 
   if (delivery === "dropoff") {
     els.mailCopy.textContent = "Use a prepaid label when the quote qualifies.";

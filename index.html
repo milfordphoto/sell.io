@@ -155,31 +155,47 @@
                 <h3 id="contact-details-title">Customer information</h3>
                 <div class="two-col">
                   <label class="field">
-                    <span>Name</span>
-                    <input id="seller-name" autocomplete="name" required />
+                    <span>First name</span>
+                    <input id="seller-first-name" autocomplete="given-name" required />
                   </label>
+                  <label class="field">
+                    <span>Last name</span>
+                    <input id="seller-last-name" autocomplete="family-name" required />
+                  </label>
+                </div>
+
+                <label class="field">
+                  <span>Street address</span>
+                  <input id="street" autocomplete="street-address" required />
+                </label>
+
+                <div class="address-fields" id="address-fields">
+                  <div class="three-col">
+                    <label class="field">
+                      <span>City</span>
+                      <input id="city" autocomplete="address-level2" required />
+                    </label>
+                    <label class="field">
+                      <span>State</span>
+                      <input id="state" maxlength="2" autocomplete="address-level1" required />
+                    </label>
+                    <label class="field">
+                      <span>ZIP</span>
+                      <input id="zip" autocomplete="postal-code" required />
+                    </label>
+                  </div>
+                </div>
+
+                <div class="two-col">
                   <label class="field">
                     <span>Email</span>
                     <input id="seller-email" inputmode="email" autocomplete="email" pattern="[^@\s]+@[^@\s]+\.[^@\s]+" required />
                   </label>
+                  <label class="field">
+                    <span>Phone</span>
+                    <input id="seller-phone" type="tel" autocomplete="tel" required />
+                  </label>
                 </div>
-
-                <label class="field compact-field">
-                  <span>Phone</span>
-                  <input id="seller-phone" type="tel" autocomplete="tel" />
-                </label>
-              </section>
-
-              <section class="details-group" aria-labelledby="payout-details-title">
-                <h3 id="payout-details-title">Payout preference</h3>
-                <label class="field">
-                  <span>Preferred payout</span>
-                  <select id="payment-preference">
-                    <option value="check">Check</option>
-                    <option value="paypal">PayPal</option>
-                    <option value="store_credit">Store credit</option>
-                  </select>
-                </label>
               </section>
 
               <fieldset class="delivery-grid">
@@ -195,28 +211,6 @@
                   <span>Use the same quote with a Milford Photo specialist.</span>
                 </label>
               </fieldset>
-
-              <div class="address-fields" id="address-fields">
-                <h3>Address</h3>
-                <label class="field">
-                  <span>Street address</span>
-                  <input id="street" autocomplete="street-address" />
-                </label>
-                <div class="three-col">
-                  <label class="field">
-                    <span>City</span>
-                    <input id="city" autocomplete="address-level2" />
-                  </label>
-                  <label class="field">
-                    <span>State</span>
-                    <input id="state" maxlength="2" autocomplete="address-level1" />
-                  </label>
-                  <label class="field">
-                    <span>ZIP</span>
-                    <input id="zip" autocomplete="postal-code" />
-                  </label>
-                </div>
-              </div>
 
               <div class="parcel-fields" id="parcel-fields" hidden>
                 <div class="three-col">
