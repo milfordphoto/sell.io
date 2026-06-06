@@ -1384,13 +1384,7 @@ function resizeParentFrame() {
   state.frameResizePending = true;
   window.requestAnimationFrame(() => {
     state.frameResizePending = false;
-    const height = Math.max(
-      document.body.scrollHeight,
-      document.body.offsetHeight,
-      document.documentElement.clientHeight,
-      document.documentElement.scrollHeight,
-      document.documentElement.offsetHeight,
-    );
+    const height = measuredWidgetHeight();
     window.parent?.postMessage(
       {
         type: "MP_USED_GEAR_HEIGHT",
@@ -1400,6 +1394,18 @@ function resizeParentFrame() {
       "*",
     );
   });
+}
+
+function measuredWidgetHeight() {
+  const app = document.getElementById("app");
+  const shell = document.querySelector(".shell");
+  if (app && shell) {
+    const appStyle = window.getComputedStyle(app);
+    const paddingTop = Number.parseFloat(appStyle.paddingTop) || 0;
+    const paddingBottom = Number.parseFloat(appStyle.paddingBottom) || 0;
+    return Math.max(900, Math.ceil(shell.offsetHeight + paddingTop + paddingBottom));
+  }
+  return Math.max(900, Math.ceil(document.body.scrollHeight || document.documentElement.scrollHeight || 0));
 }
 
 function handleParentFrameMessage(event) {
