@@ -585,31 +585,42 @@ function mountsFromText(text) {
 }
 
 function renderIncludedItems() {
-  const items = includedItemsForCategory(els.category.value);
+  const items = expectedIncludedItemsForCategory(els.category.value);
   if (!items.length) {
     els.includedItems.innerHTML = `
       <div class="included-copy">
-        <strong>Choose a category to see what is assumed in the quote.</strong>
-        <span>Standard accessories will be listed here before the offer is finalized.</span>
+        <strong>Choose a category to see original manufacturer accessories.</strong>
+        <span>OEM accessories that affect the offer will be listed here before the quote is finalized.</span>
       </div>
     `;
     return;
   }
-  const assumed = items.filter((item) => item.checked);
   els.includedItems.innerHTML = `
     <div class="included-copy">
-      <strong>Price assumes standard manufacturer accessories.</strong>
-      <span>Send what you have. Milford Photo will confirm everything after inspection and adjust the offer only if needed.</span>
+      <strong>Original manufacturer accessories (OEM) assumed in this price.</strong>
+      <span>Uncheck anything that is missing or replaced by a non-OEM item. The offer will update before you submit.</span>
     </div>
-    ${assumed.length ? `<div class="included-columns">
-      <div>
-        <h3>Included in this quote</h3>
-        <ul>
-          ${assumed.map((item) => `<li>${escapeHtml(item.name)}</li>`).join("")}
-        </ul>
-      </div>
-    </div>` : ""}
+    <div class="accessory-check-list">
+      ${items.map((item) => `
+        <label class="accessory-check">
+          <input type="checkbox" data-accessory-name="${escapeAttribute(item.name)}" data-accessory-value="${escapeAttribute(item.value)}" ${item.checked ? "checked" : ""} />
+          <span>
+            <strong>${escapeHtml(item.name)}</strong>
+            <small>Original/OEM accessory</small>
+          </span>
+          <em data-accessory-status>${item.checked ? "Included" : `Missing: -${money.format(item.value)}`}</em>
+        </label>
+      `).join("")}
+      <p class="accessory-adjustment-summary" data-accessory-summary>No accessory deductions selected.</p>
+    </div>
   `;
+  els.includedItems.querySelectorAll("input[data-accessory-name]").forEach((input) => {
+    input.addEventListener("change", () => {
+      renderAccessoryAdjustments();
+      scheduleCurrentOffer();
+    });
+  });
+  renderAccessoryAdjustments();
 }
 
 function includedItemsForCategory(category = "") {
@@ -619,6 +630,44 @@ function includedItemsForCategory(category = "") {
   if (text.includes("lens")) return INCLUDED_ITEMS.lens;
   if (text.includes("camera") || text.includes("body") || text.includes("dslr") || text.includes("mirrorless")) return INCLUDED_ITEMS.camera;
   return INCLUDED_ITEMS.default;
+}
+
+function expectedIncludedItemsForCategory(category = "") {
+  return includedItemsForCategory(category).filter((item) => !item.bonus);
+}
+
+function selectedIncludedAccessoriesForCategory(category = "") {
+  const expected = expectedIncludedItemsForCategory(category);
+  const checkedInputs = [...els.includedItems.querySelectorAll("input[data-accessory-name]:checked")];
+  if (!checkedInputs.length && !els.includedItems.querySelector("input[data-accessory-name]")) {
+    return expected.filter((item) => item.checked).map((item) => item.name);
+  }
+  return checkedInputs.map((input) => input.dataset.accessoryName).filter(Boolean);
+}
+
+function missingIncludedAccessoriesForCategory(category = "") {
+  const selected = new Set(selectedIncludedAccessoriesForCategory(category).map((name) => name.toLowerCase()));
+  return expectedIncludedItemsForCategory(category).filter((item) => !selected.has(item.name.toLowerCase()));
+}
+
+function renderAccessoryAdjustments() {
+  const missing = [];
+  els.includedItems.querySelectorAll(".accessory-check").forEach((label) => {
+    const input = label.querySelector("input[data-accessory-name]");
+    const status = label.querySelector("[data-accessory-status]");
+    if (!input || !status) return;
+    const value = Number(input.dataset.accessoryValue || 0);
+    const isMissing = !input.checked;
+    label.classList.toggle("is-missing", isMissing);
+    status.textContent = isMissing ? `Missing: -${money.format(value)}` : "Included";
+    if (isMissing) missing.push({ name: input.dataset.accessoryName, value });
+  });
+  const summary = els.includedItems.querySelector("[data-accessory-summary]");
+  if (!summary) return;
+  const total = missing.reduce((sum, item) => sum + item.value, 0);
+  summary.textContent = total
+    ? `Current offer reduced by ${money.format(total)} for missing original manufacturer accessories.`
+    : "No accessory deductions selected.";
 }
 
 function safeCatalogBrands() {
@@ -823,16 +872,16 @@ function readItemForm(options = {}) {
   const brand = selectedBrand === MANUAL_BRAND ? els.manualBrand.value.trim() : selectedBrand;
   let model = selectedModel === MANUAL_MODEL ? els.manualModel.value.trim() : catalogQuoteModel(catalogItem, selectedModel, selectedCategory);
   const condition = selectedRadioValue("condition");
-  const accessories = includedItemsForCategory(selectedCategory)
-    .filter((item) => item.checked)
-    .map((item) => item.name);
+  const accessories = selectedIncludedAccessoriesForCategory(selectedCategory);
+  const missingAccessories = missingIncludedAccessoriesForCategory(selectedCategory);
   const validMounts = mountOptionsForSelectedLens();
   const requiresMountSelection = validMounts.length > 1;
   const mount = requiresMountSelection ? els.lensMount.value.trim() : validMounts[0] || "";
   const notes = [
     els.itemNotes.value.trim(),
     mount ? `Lens mount: ${mount}` : "",
-    accessories.length ? `Standard accessories assumed for quote: ${accessories.join(", ")}` : "",
+    accessories.length ? `Original manufacturer accessories included for quote: ${accessories.join(", ")}` : "",
+    missingAccessories.length ? `Original manufacturer accessories missing: ${missingAccessories.map((item) => `${item.name} (-${money.format(item.value)})`).join(", ")}` : "",
   ]
     .filter(Boolean)
     .join("\n");
@@ -1160,6 +1209,7 @@ function renderQuoteItem(item) {
   const price = item.offerAmount ? money.format(item.offerAmount) : item.status === "declined" ? "$0" : "Review";
   const credit = item.storeCreditAmount ? `${money.format(item.storeCreditAmount)} store credit` : item.message || "Staff follow-up needed";
   const marketCopy = item.marketPrice ? `Market estimate: ${money.format(item.marketPrice)}` : item.message || "";
+  const accessoryLines = item.accessoryAdjustment?.lines?.filter((line) => line && !line.startsWith("Original box")) || [];
 
   return `
     <article class="quote-item">
@@ -1172,6 +1222,7 @@ function renderQuoteItem(item) {
           ${escapeHtml(CONDITION_LABELS[item.condition] || item.condition)} · ${escapeHtml(item.category)}
           ${marketCopy ? `<br />${escapeHtml(marketCopy)}` : ""}
         </div>
+        ${accessoryLines.length ? `<div class="quote-adjustment">${accessoryLines.map((line) => escapeHtml(line)).join("<br />")}</div>` : ""}
       </div>
       <div class="quote-price">
         <strong>${escapeHtml(price)}</strong>
