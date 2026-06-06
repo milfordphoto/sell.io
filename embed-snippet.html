@@ -14,10 +14,23 @@
   (function () {
     var widgetOrigin = "https://milford-used-gear-widget.pages.dev";
     var minHeight = 1200;
-    var extraSpace = 80;
+    var extraSpace = 120;
+    var lastHeight = minHeight;
+    var enforcePending = false;
 
     function getFrame() {
       return document.getElementById("mp-used-gear-frame");
+    }
+
+    function setImportantStyle(element, property, value) {
+      if (!element || !element.style) return;
+      if (
+        element.style.getPropertyValue(property) === value &&
+        element.style.getPropertyPriority(property) === "important"
+      ) {
+        return;
+      }
+      element.style.setProperty(property, value, "important");
     }
 
     function setHeight(rawHeight) {
@@ -25,22 +38,45 @@
       if (!frame) return;
 
       var height = Math.max(minHeight, Math.ceil(Number(rawHeight || 0)) + extraSpace);
+      lastHeight = height;
       var embed = document.getElementById("mp-used-gear-embed");
       var dakisBlock = frame.closest ? frame.closest(".dmCustomHtml") : null;
+      var frameTop = frame.getBoundingClientRect().top + window.pageYOffset;
+      var targetBottom = frameTop + height + 40;
 
-      frame.style.height = height + "px";
-      frame.style.minHeight = height + "px";
+      setImportantStyle(frame, "height", height + "px");
+      setImportantStyle(frame, "min-height", height + "px");
+      setImportantStyle(frame, "overflow", "hidden");
 
-      if (embed) {
-        embed.style.height = height + "px";
-        embed.style.minHeight = height + "px";
-        embed.style.overflow = "visible";
-      }
-
+      if (embed) growContainerToBottom(embed, targetBottom);
       if (dakisBlock) {
-        dakisBlock.style.height = height + "px";
-        dakisBlock.style.minHeight = height + "px";
-        dakisBlock.style.overflow = "visible";
+        growContainerToBottom(dakisBlock, targetBottom);
+        growDakisAncestors(dakisBlock, targetBottom);
+      }
+    }
+
+    function growContainerToBottom(element, targetBottom) {
+      if (!element) return;
+      var rect = element.getBoundingClientRect();
+      var elementTop = rect.top + window.pageYOffset;
+      var neededHeight = Math.max(minHeight, Math.ceil(targetBottom - elementTop));
+
+      setImportantStyle(element, "height", neededHeight + "px");
+      setImportantStyle(element, "min-height", neededHeight + "px");
+      setImportantStyle(element, "overflow", "visible");
+    }
+
+    function growDakisAncestors(startElement, targetBottom) {
+      var element = startElement.parentElement;
+      var stopAfterIds = {
+        "1716942098": true
+      };
+
+      while (element && element !== document.body) {
+        if (element.classList && element.classList.contains("dmFooterContainer")) break;
+        growContainerToBottom(element, targetBottom);
+        if (stopAfterIds[element.id]) break;
+        element = element.parentElement;
       }
     }
 
@@ -48,6 +84,20 @@
       var frame = getFrame();
       if (!frame || !frame.contentWindow) return;
       frame.contentWindow.postMessage({ type: "MP_USED_GEAR_REQUEST_HEIGHT" }, widgetOrigin);
+    }
+
+    function enforceLastHeight() {
+      if (lastHeight) setHeight(lastHeight);
+      requestHeight();
+    }
+
+    function scheduleEnforceLastHeight() {
+      if (enforcePending) return;
+      enforcePending = true;
+      window.setTimeout(function () {
+        enforcePending = false;
+        enforceLastHeight();
+      }, 100);
     }
 
     window.addEventListener("message", function (event) {
@@ -59,11 +109,22 @@
     window.addEventListener("load", requestHeight);
     window.addEventListener("resize", requestHeight);
     window.addEventListener("orientationchange", function () {
-      window.setTimeout(requestHeight, 300);
+      window.setTimeout(enforceLastHeight, 300);
     });
 
+    if ("MutationObserver" in window) {
+      new MutationObserver(function () {
+        scheduleEnforceLastHeight();
+      }).observe(document.body, {
+        attributes: true,
+        childList: true,
+        subtree: true
+      });
+    }
+
     window.setTimeout(requestHeight, 500);
-    window.setTimeout(requestHeight, 1500);
-    window.setTimeout(requestHeight, 3000);
+    window.setTimeout(enforceLastHeight, 1500);
+    window.setTimeout(enforceLastHeight, 3000);
+    window.setInterval(enforceLastHeight, 2000);
   })();
 </script>
