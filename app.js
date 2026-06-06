@@ -93,6 +93,7 @@ const state = {
   cartQuoteTimer: null,
   quote: null,
   submission: null,
+  frameResizePending: false,
 };
 
 const els = {
@@ -244,9 +245,21 @@ function bindEvents() {
 
   window.addEventListener("resize", resizeParentFrame);
   window.addEventListener("load", resizeParentFrame);
+  window.addEventListener("message", handleParentFrameMessage);
   if ("ResizeObserver" in window) {
-    new ResizeObserver(resizeParentFrame).observe(document.documentElement);
+    const resizeObserver = new ResizeObserver(resizeParentFrame);
+    resizeObserver.observe(document.documentElement);
+    if (document.body) resizeObserver.observe(document.body);
   }
+  if ("MutationObserver" in window && document.body) {
+    new MutationObserver(resizeParentFrame).observe(document.body, {
+      attributes: true,
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
+  }
+  [100, 500, 1000, 2000, 4000].forEach((delay) => window.setTimeout(resizeParentFrame, delay));
 }
 
 function populateBrands() {
@@ -1367,7 +1380,10 @@ function escapeAttribute(value = "") {
 }
 
 function resizeParentFrame() {
+  if (state.frameResizePending) return;
+  state.frameResizePending = true;
   window.requestAnimationFrame(() => {
+    state.frameResizePending = false;
     const height = Math.max(
       document.body.scrollHeight,
       document.body.offsetHeight,
@@ -1378,11 +1394,17 @@ function resizeParentFrame() {
     window.parent?.postMessage(
       {
         type: "MP_USED_GEAR_HEIGHT",
-        height,
+        height: Math.ceil(height + 24),
+        source: "milford-used-gear-widget",
       },
       "*",
     );
   });
+}
+
+function handleParentFrameMessage(event) {
+  if (!event.data || event.data.type !== "MP_USED_GEAR_REQUEST_HEIGHT") return;
+  resizeParentFrame();
 }
 
 init();

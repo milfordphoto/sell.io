@@ -1,0 +1,69 @@
+<!-- Milford Photo Used Gear widget embed for Dakis -->
+<div id="mp-used-gear-embed" style="width: 100%; min-height: 1200px;">
+  <iframe
+    id="mp-used-gear-frame"
+    title="Milford Photo Used Gear Quote"
+    src="https://milford-used-gear-widget.pages.dev/"
+    loading="lazy"
+    scrolling="no"
+    style="width: 100%; min-height: 1200px; height: 1200px; border: 0; display: block; overflow: hidden;"
+  ></iframe>
+</div>
+
+<script>
+  (function () {
+    var widgetOrigin = "https://milford-used-gear-widget.pages.dev";
+    var minHeight = 1200;
+    var extraSpace = 80;
+
+    function getFrame() {
+      return document.getElementById("mp-used-gear-frame");
+    }
+
+    function setHeight(rawHeight) {
+      var frame = getFrame();
+      if (!frame) return;
+
+      var height = Math.max(minHeight, Math.ceil(Number(rawHeight || 0)) + extraSpace);
+      var embed = document.getElementById("mp-used-gear-embed");
+      var dakisBlock = frame.closest ? frame.closest(".dmCustomHtml") : null;
+
+      frame.style.height = height + "px";
+      frame.style.minHeight = height + "px";
+
+      if (embed) {
+        embed.style.height = height + "px";
+        embed.style.minHeight = height + "px";
+        embed.style.overflow = "visible";
+      }
+
+      if (dakisBlock) {
+        dakisBlock.style.height = height + "px";
+        dakisBlock.style.minHeight = height + "px";
+        dakisBlock.style.overflow = "visible";
+      }
+    }
+
+    function requestHeight() {
+      var frame = getFrame();
+      if (!frame || !frame.contentWindow) return;
+      frame.contentWindow.postMessage({ type: "MP_USED_GEAR_REQUEST_HEIGHT" }, widgetOrigin);
+    }
+
+    window.addEventListener("message", function (event) {
+      if (event.origin !== widgetOrigin) return;
+      if (!event.data || event.data.type !== "MP_USED_GEAR_HEIGHT") return;
+      setHeight(event.data.height);
+    });
+
+    window.addEventListener("load", requestHeight);
+    window.addEventListener("resize", requestHeight);
+    window.addEventListener("orientationchange", function () {
+      window.setTimeout(requestHeight, 300);
+    });
+
+    window.setTimeout(requestHeight, 500);
+    window.setTimeout(requestHeight, 1500);
+    window.setTimeout(requestHeight, 3000);
+  })();
+</script>
