@@ -108,7 +108,6 @@ const els = {
   manualFields: byId("manual-fields"),
   manualBrand: byId("manual-brand"),
   manualModel: byId("manual-model"),
-  itemNotes: byId("item-notes"),
   addItem: byId("add-item"),
   getQuote: byId("get-quote"),
   quoteResults: byId("quote-results"),
@@ -231,9 +230,6 @@ function bindEvents() {
       scheduleCurrentOffer();
     }),
   );
-  els.itemNotes.addEventListener("input", () => {
-    scheduleCurrentOffer();
-  });
   els.addItem.addEventListener("click", addCurrentItem);
   els.getQuote.addEventListener("click", getQuote);
   els.submitForm.addEventListener("submit", submitQuote);
@@ -852,7 +848,6 @@ function addCurrentItem() {
   state.cart.push(item);
   state.quote = null;
   state.cartQuoteLoading = true;
-  els.itemNotes.value = "";
   renderCart();
   renderSummary();
   scheduleCartQuote();
@@ -878,7 +873,6 @@ function readItemForm(options = {}) {
   const requiresMountSelection = validMounts.length > 1;
   const mount = requiresMountSelection ? els.lensMount.value.trim() : validMounts[0] || "";
   const notes = [
-    els.itemNotes.value.trim(),
     mount ? `Lens mount: ${mount}` : "",
     accessories.length ? `Original manufacturer accessories included for quote: ${accessories.join(", ")}` : "",
     missingAccessories.length ? `Original manufacturer accessories missing: ${missingAccessories.map((item) => `${item.name} (-${money.format(item.value)})`).join(", ")}` : "",
