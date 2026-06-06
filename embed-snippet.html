@@ -16,7 +16,6 @@
     var minHeight = 900;
     var extraSpace = 120;
     var lastHeight = minHeight;
-    var enforcePending = false;
 
     function getFrame() {
       return document.getElementById("mp-used-gear-frame");
@@ -38,7 +37,15 @@
       if (!frame) return;
 
       var height = Math.max(minHeight, Math.ceil(Number(rawHeight || 0)) + extraSpace);
+      if (Math.abs(height - lastHeight) < 8) return;
       lastHeight = height;
+      applyHeight(height);
+    }
+
+    function applyHeight(height) {
+      var frame = getFrame();
+      if (!frame) return;
+
       var embed = document.getElementById("mp-used-gear-embed");
       var dakisBlock = frame.closest ? frame.closest(".dmCustomHtml") : null;
       var frameTop = frame.getBoundingClientRect().top + window.pageYOffset;
@@ -87,17 +94,8 @@
     }
 
     function enforceLastHeight() {
-      if (lastHeight) setHeight(lastHeight);
+      if (lastHeight) applyHeight(lastHeight);
       requestHeight();
-    }
-
-    function scheduleEnforceLastHeight() {
-      if (enforcePending) return;
-      enforcePending = true;
-      window.setTimeout(function () {
-        enforcePending = false;
-        enforceLastHeight();
-      }, 100);
     }
 
     window.addEventListener("message", function (event) {
@@ -112,19 +110,9 @@
       window.setTimeout(enforceLastHeight, 300);
     });
 
-    if ("MutationObserver" in window) {
-      new MutationObserver(function () {
-        scheduleEnforceLastHeight();
-      }).observe(document.body, {
-        attributes: true,
-        childList: true,
-        subtree: true
-      });
-    }
-
+    window.setTimeout(requestHeight, 100);
     window.setTimeout(requestHeight, 500);
     window.setTimeout(enforceLastHeight, 1500);
     window.setTimeout(enforceLastHeight, 3000);
-    window.setInterval(enforceLastHeight, 2000);
   })();
 </script>
