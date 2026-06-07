@@ -122,47 +122,50 @@ function renderItem(record, index) {
   const title = itemTitle(fields);
   const finalOffer = offerFor(fields);
   const originalOffer = numberOrNull(fields["Milford Offer"]);
-  const condition = fields.Condition || "Condition not listed";
+  const offerChanged = originalOffer !== null && originalOffer !== finalOffer;
+  const condition = verifiedConditionFor(fields) || fields.Condition || "Condition not listed";
   const status = fields.Status || "Final quote ready";
+  const reason = adjustmentReason(fields, originalOffer, finalOffer);
   const accepted = state.decisions[record.id] === "accept";
   const returned = state.decisions[record.id] === "return";
 
   return `
     <article class="final-item" data-record-id="${escapeAttribute(record.id)}">
-      <div class="final-item-header">
-        <div>
-          <span class="final-item-number">${index + 1}</span>
-          <h3>${escapeHtml(title)}</h3>
-          <p>${escapeHtml(condition)} · ${escapeHtml(status)}</p>
+      <div class="final-item-decision-row">
+        <div class="final-item-main">
+          <span class="final-item-number" aria-label="Item ${index + 1}">${index + 1}</span>
+          <div>
+            <h3>${escapeHtml(title)}</h3>
+            <p>${escapeHtml(condition)} · ${escapeHtml(status)}</p>
+          </div>
         </div>
-        <strong>${formatMoney(finalOffer)}</strong>
+        <div class="final-item-actions" role="group" aria-label="${escapeAttribute(title)} decision">
+          <label class="final-choice-card final-choice-card-compact">
+            <input type="radio" name="decision-${escapeAttribute(record.id)}" value="accept" ${accepted ? "checked" : ""} />
+            <span>
+              <strong>Sell this item</strong>
+              <small>Include in payout.</small>
+            </span>
+          </label>
+          <label class="final-choice-card final-choice-card-compact">
+            <input type="radio" name="decision-${escapeAttribute(record.id)}" value="return" ${returned ? "checked" : ""} />
+            <span>
+              <strong>Return this item</strong>
+              <small>Prepare for return shipping.</small>
+            </span>
+          </label>
+        </div>
+        <div class="final-item-price">
+          <span>Final offer</span>
+          <strong>${formatMoney(finalOffer)}</strong>
+          ${offerChanged ? `<small>Original online offer ${formatMoney(originalOffer)}</small>` : ""}
+        </div>
       </div>
-      ${originalOffer !== null && originalOffer !== finalOffer ? `
-        <div class="final-adjustment">
-          <strong>Original online offer:</strong> ${formatMoney(originalOffer)}
+      ${reason ? `
+        <div class="final-adjustment ${offerChanged ? "is-important" : ""}">
+          <strong>Inspection note:</strong> ${escapeHtml(reason)}
         </div>
       ` : ""}
-      ${adjustmentReason(fields) ? `
-        <div class="final-adjustment">
-          <strong>Inspection note:</strong> ${escapeHtml(adjustmentReason(fields))}
-        </div>
-      ` : ""}
-      <div class="final-choice-grid">
-        <label class="final-choice-card">
-          <input type="radio" name="decision-${escapeAttribute(record.id)}" value="accept" ${accepted ? "checked" : ""} />
-          <span>
-            <strong>Sell this item</strong>
-            <small>Milford Photo will include this item in payout.</small>
-          </span>
-        </label>
-        <label class="final-choice-card">
-          <input type="radio" name="decision-${escapeAttribute(record.id)}" value="return" ${returned ? "checked" : ""} />
-          <span>
-            <strong>Return this item</strong>
-            <small>Milford Photo will prepare this item for return shipping.</small>
-          </span>
-        </label>
-      </div>
     </article>
   `;
 }
@@ -376,11 +379,120 @@ function offerFor(fields) {
   return numberOrNull(fields["Final Offer"]) ?? numberOrNull(fields["Milford Offer"]) ?? 0;
 }
 
-function adjustmentReason(fields) {
-  const notes = String(fields["Staff Notes"] || "");
-  const line = notes.split("\n").find((item) => item.trim().startsWith("Reason / notes:"));
-  if (!line) return "";
-  return line.replace(/Reason \/ notes:/i, "").trim();
+function verifiedConditionFor(fields) {
+  return String(fields["Verified Condition"] || "").trim() || inspectionDetailsFromNotes(fields["Staff Notes"]).verifiedCondition;
+}
+
+function adjustmentReason(fields, originalOfferAmount, finalOfferAmount) {
+  const publicReasons = meaningfulInspectionReason(fields["Adjustment Reasons"]);
+  if (publicReasons) return publicReasons;
+
+  const inspection = inspectionDetailsFromNotes(fields["Staff Notes"]);
+  return itemAdjustmentReasons(fields, inspection, originalOfferAmount, finalOfferAmount).join(" ");
+}
+
+function inspectionDetailsFromNotes(notes = "") {
+  const parsed = {
+    verifiedCondition: "",
+    accessories: {},
+    reason: "",
+  };
+  let inAccessoryCheck = false;
+
+  String(notes || "").split("\n").forEach((line) => {
+    const clean = line.trim();
+    const lower = clean.toLowerCase();
+    if (!clean) {
+      inAccessoryCheck = false;
+      return;
+    }
+
+    if (lower === "accessory check:") {
+      parsed.accessories = {};
+      inAccessoryCheck = true;
+      return;
+    }
+
+    if (inAccessoryCheck && clean.startsWith("- ")) {
+      const separatorIndex = clean.indexOf(":");
+      if (separatorIndex > 2) {
+        const name = clean.slice(2, separatorIndex).trim();
+        const state = clean.slice(separatorIndex + 1).trim().toLowerCase();
+        if (name) parsed.accessories[name] = state;
+      }
+      return;
+    }
+
+    if (inAccessoryCheck && !clean.startsWith("- ")) {
+      inAccessoryCheck = false;
+    }
+
+    if (lower.startsWith("verified condition:")) {
+      parsed.verifiedCondition = clean.replace(/verified condition:/i, "").trim();
+    }
+    if (lower.startsWith("reason / notes:")) {
+      parsed.reason = clean.replace(/reason \/ notes:/i, "").trim();
+    }
+  });
+
+  parsed.reason = meaningfulInspectionReason(parsed.reason);
+  return parsed;
+}
+
+function itemAdjustmentReasons(fields, inspection, originalOfferAmount, finalOfferAmount) {
+  const reasons = [];
+  const missingAccessories = Object.entries(inspection.accessories || {})
+    .filter(([, state]) => String(state || "").toLowerCase() === "missing")
+    .map(([name]) => name);
+
+  if (missingAccessories.length) {
+    reasons.push(`Adjusted for missing ${joinHumanList(missingAccessories)}.`);
+  }
+
+  const originalCondition = String(fields.Condition || "").trim();
+  const verifiedCondition = String(inspection.verifiedCondition || "").trim();
+  if (originalCondition && verifiedCondition && !sameCustomerText(originalCondition, verifiedCondition)) {
+    reasons.push(`Condition adjusted from ${originalCondition} to ${verifiedCondition}.`);
+  }
+
+  if (inspection.reason) reasons.push(punctuateSentence(inspection.reason));
+
+  if (!reasons.length && originalOfferAmount !== null && Number(finalOfferAmount || 0) !== Number(originalOfferAmount || 0)) {
+    reasons.push(
+      Number(finalOfferAmount || 0) > Number(originalOfferAmount || 0)
+        ? "Final offer increased after inspection."
+        : "Final offer changed after inspection.",
+    );
+  }
+
+  return [...new Set(reasons)];
+}
+
+function meaningfulInspectionReason(reason = "") {
+  const clean = String(reason || "").trim();
+  const normalized = clean.toLowerCase().replace(/\.$/, "");
+  if (!clean) return "";
+  if (["none", "n/a", "na"].includes(normalized)) return "";
+  if (normalized === "created through staff in-store intake") return "";
+  if (normalized.startsWith("created through staff")) return "";
+  return clean;
+}
+
+function sameCustomerText(left = "", right = "") {
+  return String(left || "").trim().toLowerCase() === String(right || "").trim().toLowerCase();
+}
+
+function punctuateSentence(value = "") {
+  const clean = String(value || "").trim();
+  if (!clean) return "";
+  return /[.!?]$/.test(clean) ? clean : `${clean}.`;
+}
+
+function joinHumanList(items = []) {
+  const cleanItems = items.map((item) => String(item || "").trim()).filter(Boolean);
+  if (cleanItems.length <= 1) return cleanItems[0] || "";
+  if (cleanItems.length === 2) return `${cleanItems[0]} and ${cleanItems[1]}`;
+  return `${cleanItems.slice(0, -1).join(", ")}, and ${cleanItems[cleanItems.length - 1]}`;
 }
 
 function readDemoQueue() {
@@ -459,6 +571,23 @@ function demoFinalRecords(quoteRef) {
         "Quote Submitted": submitted,
         Status: "Final Quote Sent",
         "Staff Notes": "INTAKE REVIEW\nReceived: Yes\nSerial number: DEMO-SIGMA-2470\nVerified condition: Good\nCustomer decision: pending\nFinal offer: $520\nReason / notes: Rear cap was missing and barrel wear was heavier than entered.",
+      },
+    },
+    {
+      id: `${quoteRef}-nikon-f80`,
+      fields: {
+        "Quote Reference": quoteRef,
+        "Seller Name": "Demo Customer",
+        "Seller Email": "demo@example.com",
+        "Item Brand": "Nikon",
+        "Item Model": "F80 / N80",
+        Category: "Camera Body - Film",
+        Condition: "Excellent",
+        "Milford Offer": 130,
+        "Final Offer": 125,
+        "Quote Submitted": submitted,
+        Status: "Final Quote Sent",
+        "Staff Notes": "INTAKE REVIEW\nReceived: Yes\nSerial number: DEMO-NIKON-F80\nVerified condition: Good\nCustomer decision: pending\nFinal offer: $125\nReason / notes: None",
       },
     },
   ];

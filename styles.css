@@ -1041,6 +1041,74 @@ fieldset {
   margin-top: 0;
 }
 
+.final-item-decision-row {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.15fr) minmax(310px, 1.25fr) minmax(130px, auto);
+  gap: 14px;
+  align-items: stretch;
+}
+
+.final-item-main {
+  display: flex;
+  min-width: 0;
+  gap: 12px;
+  align-items: center;
+}
+
+.final-item-main > div {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+}
+
+.final-item-main h3 {
+  margin: 0;
+  font-size: clamp(1.1rem, 2vw, 1.38rem);
+  line-height: 1.2;
+}
+
+.final-item-main p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.final-item-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.final-item-price {
+  display: grid;
+  min-width: 130px;
+  align-content: center;
+  justify-items: end;
+  gap: 5px;
+  padding-left: 14px;
+  border-left: 1px solid var(--line);
+  text-align: right;
+}
+
+.final-item-price span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.final-item-price strong {
+  color: var(--ink);
+  font-size: clamp(1.45rem, 2.6vw, 2rem);
+  line-height: 1;
+}
+
+.final-item-price small {
+  color: var(--muted);
+  line-height: 1.35;
+}
+
 .final-item-header {
   display: flex;
   justify-content: space-between;
@@ -1096,6 +1164,11 @@ fieldset {
   line-height: 1.45;
 }
 
+.final-adjustment.is-important {
+  border-color: rgba(213, 33, 39, 0.25);
+  background: rgba(213, 33, 39, 0.055);
+}
+
 .final-choice-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1135,6 +1208,15 @@ fieldset {
 .final-choice-card small {
   color: var(--muted);
   line-height: 1.35;
+}
+
+.final-choice-card-compact {
+  min-height: 68px;
+  align-items: center;
+}
+
+.final-choice-card-compact input {
+  margin-top: 0;
 }
 
 .final-payout {
@@ -1515,8 +1597,24 @@ fieldset {
     text-align: left;
   }
 
+  .final-item-decision-row {
+    grid-template-columns: 1fr;
+  }
+
+  .final-item-price {
+    justify-items: start;
+    padding: 12px 0 0;
+    border-top: 1px solid var(--line);
+    border-left: 0;
+    text-align: left;
+  }
+
   .final-choice-grid,
   .payout-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .final-item-actions {
     grid-template-columns: 1fr;
   }
 
