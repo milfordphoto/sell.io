@@ -864,6 +864,7 @@ function bindDetail(record, accessories) {
   });
 
   sendFinalQuoteButton.addEventListener("click", async () => {
+    sendFinalQuoteButton.disabled = true;
     await handleOrderAction(selectedOrder(), "Final Quote Sent");
   });
 }
@@ -960,11 +961,17 @@ async function handleOrderAction(order, status) {
   if (!order) return;
   setStatus("Saving order update...");
   try {
-    const updatedRecords = await Promise.all(order.items.map((record) => updateRecord({
-      recordId: record.id,
-      status,
-      staffNotes: appendOrderNote(record.fields?.["Staff Notes"], status),
-    })));
+    const sendsFinalQuoteEmail = status === "Final Quote Sent";
+    const updatedRecords = [];
+    for (let index = 0; index < order.items.length; index += 1) {
+      const record = order.items[index];
+      updatedRecords.push(await updateRecord({
+        recordId: record.id,
+        status,
+        staffNotes: appendOrderNote(record.fields?.["Staff Notes"], status),
+        ...(sendsFinalQuoteEmail ? { notifyCustomer: index === 0 } : {}),
+      }));
+    }
     const updatedMap = new Map(updatedRecords.map((record) => [record.id, record]));
     records = records.map((record) => updatedMap.get(record.id) || record);
     orders = buildOrders(records);
