@@ -1311,49 +1311,92 @@ fieldset {
   font-size: 1rem;
 }
 
-.done-next-steps ol {
+.done-roadmap {
   display: grid;
-  gap: 10px;
+  gap: 12px;
   margin: 0;
   padding: 0;
   list-style: none;
-  counter-reset: done-step;
 }
 
-.done-next-steps li {
+.done-roadmap-step {
   display: grid;
-  grid-template-columns: 28px 1fr;
-  gap: 10px;
+  grid-template-columns: 116px 1fr;
+  gap: 14px;
   align-items: start;
-  color: var(--ink-soft);
-  line-height: 1.42;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #ffffff;
 }
 
-.done-next-steps li::before {
+.done-roadmap-step.is-complete {
+  border-color: #d7dde5;
+  background: #eef2f4;
+}
+
+.done-roadmap-step.is-current {
+  border-color: #ddb53a;
+  background: #fff3bf;
+  box-shadow: inset 4px 0 0 #d99a16;
+}
+
+.done-roadmap-step.is-upcoming {
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.done-roadmap-meta {
   display: grid;
-  width: 24px;
-  height: 24px;
-  place-items: center;
+  gap: 6px;
+}
+
+.done-roadmap-step-label {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.done-roadmap-status {
+  width: fit-content;
+  padding: 4px 8px;
   border-radius: 999px;
-  background: var(--green);
-  color: #ffffff;
-  content: counter(done-step);
-  counter-increment: done-step;
-  font-size: 0.78rem;
+  background: #ffffff;
+  color: var(--ink);
+  font-size: 0.76rem;
   font-weight: 850;
 }
 
-.done-next-steps strong,
-.done-next-steps span {
-  grid-column: 2;
+.done-roadmap-step.is-complete .done-roadmap-status {
+  background: rgba(20, 122, 80, 0.13);
+  color: var(--green);
 }
 
-.done-next-steps strong {
-  color: var(--ink);
+.done-roadmap-step.is-current .done-roadmap-status {
+  background: var(--ink);
+  color: #ffffff;
 }
 
-.done-next-steps span {
-  margin-top: -7px;
+.done-roadmap-step.is-upcoming .done-roadmap-status {
+  color: var(--muted);
+}
+
+.done-roadmap-copy {
+  display: grid;
+  gap: 6px;
+}
+
+.done-roadmap-copy h4 {
+  margin: 0;
+  font-size: clamp(1.2rem, 2vw, 1.7rem);
+  line-height: 1.05;
+}
+
+.done-roadmap-copy p {
+  margin: 0;
+  color: var(--ink-soft);
+  line-height: 1.45;
 }
 
 .label-link {
@@ -1361,6 +1404,20 @@ fieldset {
   border: 1px solid var(--green);
   background: var(--green);
   color: #ffffff;
+}
+
+@media (max-width: 640px) {
+  .done-roadmap-step {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .done-roadmap-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

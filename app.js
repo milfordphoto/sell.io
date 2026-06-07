@@ -1288,9 +1288,7 @@ function renderSummary() {
 
 function renderDone(result) {
   els.doneTitle.textContent = `Quote ${result.quoteRef} submitted`;
-  els.doneCopy.textContent =
-    result.nextStep ||
-    "Watch your email for shipping or drop-off instructions. Milford Photo will inspect the gear after it arrives, confirm or adjust the offer if needed, and send payment after you accept the final amount.";
+  els.doneCopy.textContent = doneIntroFor(result);
   els.doneNextSteps.innerHTML = renderDoneNextSteps(result);
   if (result.labelUrl) {
     els.labelLink.href = result.labelUrl;
@@ -1301,6 +1299,17 @@ function renderDone(result) {
   renderSummary();
 }
 
+function doneIntroFor(result = {}) {
+  const delivery = selectedRadioValue("delivery") || "ship";
+  if (result.labelUrl) {
+    return "Milford Photo received your quote and your prepaid shipping label is ready. Follow the status below to see what has been completed and what happens next.";
+  }
+  if (delivery === "dropoff") {
+    return "Milford Photo received your quote. Follow the status below to see what has been completed and what happens when you bring the gear in.";
+  }
+  return "Milford Photo received your quote. Follow the status below to see what has been completed, what to do next, and what happens after your gear arrives.";
+}
+
 function renderDoneNextSteps(result = {}) {
   const delivery = selectedRadioValue("delivery") || "ship";
   const quoteRef = result.quoteRef || state.quote?.quoteId || "your quote";
@@ -1308,19 +1317,19 @@ function renderDoneNextSteps(result = {}) {
   const freeLabelExpected = Boolean(result.labelDryRun || state.quote?.routing?.freeLabelEligible);
   const requiresStaffFirst = Boolean(state.quote?.routing?.requiresStaffBeforeLabel);
 
-  const deliveryStep = delivery === "dropoff"
+  const currentStep = delivery === "dropoff"
     ? {
-        title: "Bring the gear to the store",
-        copy: `Bring the items and quote ${quoteRef} to Milford Photo. Staff can look up the quote and check each item in at the counter.`,
+        title: "Bring in your gear",
+        copy: `Bring the items and quote ${quoteRef} to Milford Photo. Staff will look up the quote and check each item in at the counter.`,
       }
     : hasLabel
       ? {
-          title: "Ship the gear",
+          title: "Ship your gear",
           copy: "Print the prepaid label, pack the gear securely with the included original/OEM accessories, and drop it off with the carrier.",
         }
       : freeLabelExpected
         ? {
-            title: "Watch for the label email",
+            title: "Ship your gear",
             copy: "Milford Photo will email the prepaid label and packing instructions. Pack the gear after that email arrives.",
           }
         : requiresStaffFirst
@@ -1335,27 +1344,48 @@ function renderDoneNextSteps(result = {}) {
 
   const steps = [
     {
-      title: "Check your email",
-      copy: `Milford Photo sent a confirmation for quote ${quoteRef}. Keep that quote number handy if you call or stop in.`,
-    },
-    deliveryStep,
-    {
-      title: "Inspection timing",
-      copy: "After the gear arrives or is dropped off, most quotes are inspected within 1-3 business days.",
+      stepLabel: "Step 1",
+      title: "Receive quote",
+      status: "complete",
+      statusLabel: "Completed",
+      copy: `Milford Photo received quote ${quoteRef} and sent a confirmation email.`,
     },
     {
-      title: "Final quote and payout",
-      copy: "If anything changes, Milford Photo will email a line-item explanation before you accept or decline. Payment or store credit is processed after the final quote is accepted.",
+      stepLabel: "Step 2",
+      title: currentStep.title,
+      status: "current",
+      statusLabel: "Next step",
+      copy: currentStep.copy,
+    },
+    {
+      stepLabel: "Step 3",
+      title: "Gear evaluated",
+      status: "upcoming",
+      statusLabel: "Upcoming",
+      copy: "After the gear arrives or is dropped off, Milford Photo verifies condition, model, and included original/OEM accessories. Most quotes are inspected within 1-3 business days.",
+    },
+    {
+      stepLabel: "Step 4",
+      title: "Get paid",
+      status: "upcoming",
+      statusLabel: "Upcoming",
+      copy: "If anything changes, Milford Photo emails a line-item explanation before you accept or decline. Payment or store credit is processed after the final quote is accepted.",
     },
   ];
 
   return `
-    <h3>What happens next</h3>
-    <ol>
+    <h3>Your quote status</h3>
+    <ol class="done-roadmap" aria-label="Quote status">
       ${steps.map((step) => `
-        <li>
-          <strong>${escapeHtml(step.title)}</strong>
-          <span>${escapeHtml(step.copy)}</span>
+        <li class="done-roadmap-step is-${escapeHtml(step.status)}"${step.status === "current" ? ' aria-current="step"' : ""}>
+          <div class="done-roadmap-meta">
+            <span class="done-roadmap-step-label">${escapeHtml(step.stepLabel)}</span>
+            <span class="done-roadmap-status">${escapeHtml(step.statusLabel)}</span>
+          </div>
+          <div class="done-roadmap-copy">
+            <h4>${escapeHtml(step.title)}</h4>
+            <p>${escapeHtml(step.copy)}</p>
+          </div>
         </li>
       `).join("")}
     </ol>
