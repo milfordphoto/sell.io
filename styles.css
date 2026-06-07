@@ -2261,6 +2261,32 @@ fieldset {
   color: var(--muted);
 }
 
+.staff-payout-info {
+  display: grid;
+  gap: 5px;
+  align-content: center;
+  min-height: 74px;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--soft);
+}
+
+.staff-payout-info span {
+  color: var(--ink);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.staff-payout-info strong {
+  line-height: 1.2;
+}
+
+.staff-payout-info small {
+  color: var(--muted);
+  line-height: 1.35;
+}
+
 .staff-actions-panel {
   display: grid;
   gap: 12px;

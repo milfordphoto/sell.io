@@ -17,7 +17,7 @@ const state = {
   token: new URLSearchParams(window.location.search).get("token") || "",
   records: [],
   decisions: {},
-  payout: "check",
+  payout: "",
   submitted: false,
   mode: "demo",
   loadError: "",
@@ -173,6 +173,7 @@ function renderPayout() {
       <div class="section-heading final-small-heading">
         <p>Payout</p>
         <h2>How would you like to be paid?</h2>
+        <span>Choose a payout method for the items you are selling.</span>
       </div>
       <div class="final-choice-grid payout-grid">
         <label class="final-choice-card">
@@ -206,6 +207,7 @@ function bindForm() {
     item.querySelectorAll("input[type='radio']").forEach((input) => {
       input.addEventListener("change", () => {
         state.decisions[item.dataset.recordId] = input.value;
+        clearFormError();
         renderTotals();
       });
     });
@@ -214,6 +216,7 @@ function bindForm() {
   document.querySelectorAll("input[name='payout']").forEach((input) => {
     input.addEventListener("change", () => {
       state.payout = input.value;
+      clearFormError();
       renderTotals();
     });
   });
@@ -224,6 +227,11 @@ function bindForm() {
 async function submitDecision(event) {
   event.preventDefault();
   const submitButton = event.currentTarget.querySelector("button[type='submit']");
+  const hasAcceptedItems = state.records.some((record) => state.decisions[record.id] !== "return");
+  if (hasAcceptedItems && !state.payout) {
+    renderFormError("Choose how you would like to be paid before submitting.");
+    return;
+  }
   submitButton.disabled = true;
   submitButton.textContent = "Submitting...";
 
@@ -232,7 +240,7 @@ async function submitDecision(event) {
       await apiPost("/api/final-decision", {
         quoteRef: state.quoteRef,
         token: state.token,
-        paymentMethod: state.payout,
+        paymentMethod: hasAcceptedItems ? state.payout : "",
         decisions: state.records.map((record) => ({
           recordId: record.id,
           decision: state.decisions[record.id] || "accept",
@@ -255,7 +263,7 @@ async function submitDecision(event) {
     const fields = {
       ...record.fields,
       Status: decision === "accept" ? "Customer Accepted Item" : "Return Item",
-      "Payment Method": payoutLabel(state.payout),
+      "Payment Method": hasAcceptedItems ? payoutLabel(state.payout) : "",
       "Staff Notes": appendCustomerDecision(record.fields?.["Staff Notes"], decision, action, now),
     };
     return { ...record, fields };
@@ -275,6 +283,10 @@ function renderFormError(message) {
   document.getElementById("final-decision-form")?.prepend(error);
 }
 
+function clearFormError() {
+  document.querySelector(".final-error")?.remove();
+}
+
 function renderSubmitted() {
   const acceptedCount = Object.values(state.decisions).filter((decision) => decision === "accept").length;
   const returnCount = Object.values(state.decisions).filter((decision) => decision === "return").length;
@@ -290,7 +302,7 @@ function renderSubmitted() {
     <div class="final-next-steps">
       <h3>What happens next</h3>
       <ol>
-        <li>Milford Photo will process accepted items using your selected payout method.</li>
+        ${acceptedCount ? `<li>Milford Photo will process accepted items using ${escapeHtml(payoutLabel(state.payout))}.</li>` : ""}
         <li>If you requested any returns, staff will prepare those items for return shipping.</li>
         <li>You will receive an update when payment or return shipment is ready.</li>
       </ol>
@@ -314,7 +326,12 @@ function renderTotals() {
     ? `${accepted.length} accepted item${accepted.length === 1 ? "" : "s"}`
     : "No items selected for payout";
   els.creditTotal.textContent = formatMoney(storeCredit);
-  els.creditCard.hidden = state.payout !== "store_credit" && cashTotal <= 0;
+  els.creditCard.hidden = state.payout !== "store_credit" || cashTotal <= 0;
+  const payoutSummary = accepted.length
+    ? state.payout
+      ? payoutLabel(state.payout)
+      : "Choose payout method"
+    : "No payout needed";
   els.summaryList.innerHTML = `
     <section>
       <h3>Accepted</h3>
@@ -326,7 +343,7 @@ function renderTotals() {
     </section>
     <section>
       <h3>Payout</h3>
-      <p>${escapeHtml(payoutLabel(state.payout))}</p>
+      <p>${escapeHtml(payoutSummary)}</p>
     </section>
   `;
 }
@@ -450,7 +467,8 @@ function demoFinalRecords(quoteRef) {
 function payoutLabel(value) {
   if (value === "paypal" || value === "bank_transfer") return "PayPal";
   if (value === "store_credit") return "Store credit";
-  return "Check";
+  if (value === "check") return "Check";
+  return "Choose payout method";
 }
 
 function numberOrNull(value) {

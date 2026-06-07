@@ -406,6 +406,7 @@ function renderDetail() {
   const baseOffer = numberOrNull(fields["Milford Offer"]) ?? 0;
   const finalOffer = numberOrNull(fields["Final Offer"]) ?? calculateOffer(fields, parsed, accessories, baseOffer);
   const paymentMethod = paymentMethodValue(fields);
+  const staffMaySetPayment = staffCanSetPaymentMethod(fields, paymentMethod);
   const defaultDecision = staffDecisionForRecord(record, order, finalOffer, parsed);
 
   detailEl.innerHTML = `
@@ -489,14 +490,23 @@ function renderDetail() {
               <span>Custom final offer</span>
               <input id="custom-offer" type="number" min="0" step="1" value="${finalOffer}" />
             </label>
-            <label class="field">
-              <span>Payout method</span>
-              <select id="payment-method">
-                <option value="check" ${paymentMethod === "check" ? "selected" : ""}>Check</option>
-                <option value="paypal" ${paymentMethod === "paypal" ? "selected" : ""}>PayPal</option>
-                <option value="store_credit" ${paymentMethod === "store_credit" ? "selected" : ""}>Store credit</option>
-              </select>
-            </label>
+            ${staffMaySetPayment ? `
+              <label class="field">
+                <span>Payout method</span>
+                <select id="payment-method">
+                  <option value="" ${!paymentMethod ? "selected" : ""}>Customer chooses after final quote</option>
+                  <option value="check" ${paymentMethod === "check" ? "selected" : ""}>Check</option>
+                  <option value="paypal" ${paymentMethod === "paypal" ? "selected" : ""}>PayPal</option>
+                  <option value="store_credit" ${paymentMethod === "store_credit" ? "selected" : ""}>Store credit</option>
+                </select>
+              </label>
+            ` : `
+              <div class="staff-payout-info">
+                <span>Payout method</span>
+                <strong>Customer chooses after final quote</strong>
+                <small>Online customers choose check, PayPal, or store credit when they accept the final quote.</small>
+              </div>
+            `}
           </div>
           <div class="staff-decision-grid">
             <label class="staff-decision-card">
@@ -585,7 +595,7 @@ function renderOrderInfoGrid(order, fields, baseOffer, paymentMethod) {
         <p>Incoming tracking: ${escapeHtml(incomingTrackingNumber(fields))}</p>
         <p>Outgoing tracking: ${escapeHtml(outgoingTrackingNumber(fields))}</p>
         <p>${fields["Shippo Label URL"] ? `<a href="${escapeAttr(fields["Shippo Label URL"])}" target="_blank" rel="noreferrer">Open inbound label</a>` : "No inbound label link"}</p>
-        <p>Payment method: ${escapeHtml(paymentMethodLabel(paymentMethod))}</p>
+        <p>Payout: ${escapeHtml(paymentMethodLabel(paymentMethod))}</p>
       </section>
     </div>
   `;
@@ -759,16 +769,26 @@ function paymentMethodValue(fields = {}) {
     || noteValue(fields["Staff Notes"], "Payment preference")
     || staffNoteValue(fields, "Payment preference")
     || staffNoteValue(fields, "Preferred payout");
+  if (!raw) return "";
   const normalized = String(raw || "").toLowerCase();
   if (normalized.includes("store")) return "store_credit";
   if (normalized.includes("paypal") || normalized.includes("bank")) return "paypal";
-  return "check";
+  if (normalized.includes("check")) return "check";
+  return "";
 }
 
 function paymentMethodLabel(value = "") {
   if (value === "paypal") return "PayPal";
   if (value === "store_credit") return "Store credit";
-  return "Check";
+  if (value === "check") return "Check";
+  return "Customer chooses after final quote";
+}
+
+function staffCanSetPaymentMethod(fields = {}, paymentMethod = "") {
+  if (paymentMethod) return true;
+  const source = String(fields.Source || "").toLowerCase();
+  const staffNotes = String(fields["Staff Notes"] || "").toLowerCase();
+  return source.includes("staff") || staffNotes.includes("staff in-store intake");
 }
 
 function bindDetail(record, accessories) {
@@ -892,7 +912,8 @@ async function handleStaffAction(record, accessories, action, buttons, options =
 
   if (action === "payment") {
     body.action = "payment_sent";
-    body.paymentMethod = document.getElementById("payment-method")?.value || "check";
+    const selectedPaymentMethod = document.getElementById("payment-method")?.value || "";
+    if (selectedPaymentMethod) body.paymentMethod = selectedPaymentMethod;
   }
   if (action === "return") {
     body.declineReason = review.reason || "Customer wants this item returned.";
@@ -1069,7 +1090,7 @@ function quoteSubmissionLogEntries(order) {
     actorType,
     actorLabel: actorType === "staff" ? `Staff: ${staffUser || "staff"}` : "Customer",
     title: actorType === "staff" ? "In-store quote created" : "Customer submitted quote",
-    detail: `${order.items.length} item${order.items.length === 1 ? "" : "s"} added. Preferred payout: ${payment}. Delivery: ${delivery || "-"}.`,
+    detail: `${order.items.length} item${order.items.length === 1 ? "" : "s"} added. Payout: ${payment}. Delivery: ${delivery || "-"}.`,
     meta: `Quote ${order.quote}`,
   }];
 }
@@ -1493,8 +1514,9 @@ function renderStaffIntake() {
               <input id="staff-intake-seller-phone" type="tel" autocomplete="tel" />
             </label>
             <label class="field">
-              <span>Preferred payout</span>
+              <span>Payout method <small>optional in-store</small></span>
               <select id="staff-intake-payment-preference">
+                <option value="">Customer chooses after final quote</option>
                 <option value="check">Check</option>
                 <option value="paypal">PayPal</option>
                 <option value="store_credit">Store credit</option>
