@@ -1336,9 +1336,9 @@ fieldset {
 }
 
 .done-roadmap-step.is-current {
-  border-color: #ddb53a;
-  background: #fff3bf;
-  box-shadow: inset 4px 0 0 #d99a16;
+  border-color: rgba(213, 33, 39, 0.28);
+  background: rgba(213, 33, 39, 0.07);
+  box-shadow: inset 4px 0 0 var(--mp-red);
 }
 
 .done-roadmap-step.is-upcoming {
@@ -1374,8 +1374,12 @@ fieldset {
 }
 
 .done-roadmap-step.is-current .done-roadmap-status {
-  background: var(--ink);
+  background: var(--mp-red);
   color: #ffffff;
+}
+
+.done-roadmap-step.is-current .done-roadmap-step-label {
+  color: var(--mp-red-dark);
 }
 
 .done-roadmap-step.is-upcoming .done-roadmap-status {
