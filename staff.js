@@ -375,8 +375,7 @@ function renderDetail() {
   detailEl.innerHTML = `
     <article class="staff-intake">
       ${renderOrderHeader(order)}
-      ${renderWorkflow(order)}
-      ${renderItemTabs(order)}
+      ${renderOrderProgress(order)}
 
       <header class="staff-intake-header">
         <div>
@@ -568,6 +567,27 @@ function renderStaffActionSteps(fields, parsed) {
       </button>
     `;
   }).join("");
+}
+
+function renderOrderProgress(order) {
+  return `
+    <section class="staff-order-progress" aria-label="Order status and item navigation">
+      <div class="staff-order-progress-group">
+        <div class="staff-progress-heading">
+          <strong>Order status</strong>
+          <span>Overall customer order workflow</span>
+        </div>
+        ${renderWorkflow(order)}
+      </div>
+      <div class="staff-order-progress-group">
+        <div class="staff-progress-heading">
+          <strong>Items in this order</strong>
+          <span>Open each item to receive and evaluate it</span>
+        </div>
+        ${renderItemTabs(order)}
+      </div>
+    </section>
+  `;
 }
 
 function renderWorkflow(order) {
@@ -2475,7 +2495,7 @@ function workflowState(order) {
   const completed = new Set(["initial"]);
   if (statuses.some((status) => status.includes("label") || status.includes("accepted") || status.includes("shipped") || status.includes("received") || status.includes("inspection") || status.includes("evaluated") || status.includes("final") || status.includes("payment") || status.includes("return"))) completed.add("shipped");
   if (statuses.some((status) => status.includes("received") || status.includes("inspection") || status.includes("evaluated") || status.includes("final") || status.includes("accepted item") || status.includes("customer accepted") || status.includes("payment") || status.includes("return"))) completed.add("received");
-  if (statuses.every((status) => status.includes("evaluated") || status.includes("final") || status.includes("accepted") || status.includes("payment") || status.includes("return") || status.includes("declined"))) completed.add("evaluated");
+  if (statuses.every((status) => status.includes("evaluated") || status.includes("final") || status.includes("accepted item") || status.includes("customer accepted") || status.includes("payment") || status.includes("return") || status.includes("declined"))) completed.add("evaluated");
   if (statuses.some((status) => status.includes("final quote") || status.includes("accepted item") || status.includes("customer accepted") || status.includes("payment") || status.includes("return"))) completed.add("final");
   if (statuses.some((status) => status.includes("accepted item") || status.includes("return item") || status.includes("customer accepted") || status.includes("payment"))) completed.add("customer");
   if (statuses.some((status) => status.includes("payment"))) completed.add("payout");
