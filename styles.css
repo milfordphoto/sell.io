@@ -2613,6 +2613,11 @@ fieldset {
   background: rgba(35, 77, 125, 0.06);
 }
 
+.staff-order-decision.is-sent {
+  border-color: var(--line);
+  background: #f4f5f7;
+}
+
 .staff-order-decision h3,
 .staff-order-decision p {
   margin: 0;
@@ -2627,6 +2632,13 @@ fieldset {
 .staff-order-decision button:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+.staff-order-decision.is-sent button:disabled {
+  border-color: #cfd4dc;
+  background: #d9dde5;
+  color: #5f6674;
+  opacity: 1;
 }
 
 .staff-pricing-review {

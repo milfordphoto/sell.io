@@ -676,13 +676,19 @@ function renderItemTabs(order) {
 function renderOrderDecisionPanel(order) {
   const evaluated = order.items.filter((item) => itemStatusClass(item) === "is-evaluated").length;
   const ready = evaluated === order.items.length;
+  const sent = finalQuoteEmailSent(order);
+  const copy = sent
+    ? "Final quote email has already been sent. The customer can accept items or request returns from the final quote link."
+    : ready
+      ? "All items are evaluated. Staff can send the item-by-item final quote for the customer to accept or return each item."
+      : `${evaluated} of ${order.items.length} items evaluated. Finish every item before sending the final quote email.`;
   return `
-    <section class="staff-order-decision">
+    <section class="staff-order-decision ${sent ? "is-sent" : ""}">
       <div>
         <h3>Final quote email</h3>
-        <p>${ready ? "All items are evaluated. Staff can send the item-by-item final quote for the customer to accept or return each item." : `${evaluated} of ${order.items.length} items evaluated. Finish every item before sending the final quote email.`}</p>
+        <p>${escapeHtml(copy)}</p>
       </div>
-      <button class="primary-action" type="button" id="send-final-quote" ${ready ? "" : "disabled"}>Send final quote email</button>
+      <button class="primary-action" type="button" id="send-final-quote" ${ready && !sent ? "" : "disabled"}>${sent ? "Final quote email sent" : "Send final quote email"}</button>
     </section>
   `;
 }
@@ -2480,6 +2486,19 @@ function staffActionCompleted(action, fields = {}, parsed = {}) {
   if (action === "payment") return status.includes("payment");
   if (action === "return") return status.includes("return");
   return false;
+}
+
+function finalQuoteEmailSent(order) {
+  return (order?.items || []).some((item) => {
+    const status = staffWorkflowText(item.fields);
+    return statusIncludesAny(status, [
+      "final quote sent",
+      "customer final quote decision",
+      "customer accepted",
+      "payment",
+      "items shipped to customer",
+    ]);
+  });
 }
 
 function statusIncludesAny(status, needles) {
