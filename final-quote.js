@@ -4,12 +4,6 @@ const API_BASE = resolveApiBase();
 
 const els = {
   panel: document.getElementById("final-panel"),
-  quoteRef: document.getElementById("final-quote-ref"),
-  cashTotal: document.getElementById("final-cash-total"),
-  cashCopy: document.getElementById("final-cash-copy"),
-  creditCard: document.getElementById("final-credit-card"),
-  creditTotal: document.getElementById("final-credit-total"),
-  summaryList: document.getElementById("final-summary-list"),
 };
 
 const state = {
@@ -64,7 +58,6 @@ async function matchingRecords() {
 }
 
 function render() {
-  els.quoteRef.textContent = state.quoteRef || "-";
   if (!state.records.length) {
     renderMissing();
     renderTotals();
@@ -140,14 +133,14 @@ function renderItem(record, index) {
           </div>
         </div>
         <div class="final-item-actions" role="group" aria-label="${escapeAttribute(title)} decision">
-          <label class="final-choice-card final-choice-card-compact">
+          <label class="final-choice-card final-choice-card-compact final-choice-card-sell">
             <input type="radio" name="decision-${escapeAttribute(record.id)}" value="accept" ${accepted ? "checked" : ""} />
             <span>
               <strong>Sell this item</strong>
               <small>Include in payout.</small>
             </span>
           </label>
-          <label class="final-choice-card final-choice-card-compact">
+          <label class="final-choice-card final-choice-card-compact final-choice-card-return">
             <input type="radio" name="decision-${escapeAttribute(record.id)}" value="return" ${returned ? "checked" : ""} />
             <span>
               <strong>Return this item</strong>
@@ -162,7 +155,7 @@ function renderItem(record, index) {
         </div>
       </div>
       ${reason ? `
-        <div class="final-adjustment ${offerChanged ? "is-important" : ""}">
+        <div class="final-adjustment">
           <strong>Inspection note:</strong> ${escapeHtml(reason)}
         </div>
       ` : ""}
@@ -173,6 +166,18 @@ function renderItem(record, index) {
 function renderPayout() {
   return `
     <section class="final-payout">
+      <div class="final-payout-summary" aria-label="Quote summary">
+        <div class="final-payout-summary-copy">
+          <span>Quote summary</span>
+          <strong id="final-quote-ref">${escapeHtml(state.quoteRef || "-")}</strong>
+          <small id="final-cash-copy">Final cash offer for accepted items</small>
+        </div>
+        <div class="final-payout-total">
+          <span>Total accepted offer</span>
+          <strong id="final-cash-total">$0</strong>
+          <small id="final-credit-card" hidden>Store credit option: <b id="final-credit-total">$0</b></small>
+        </div>
+      </div>
       <div class="section-heading final-small-heading">
         <p>Payout</p>
         <h2>How would you like to be paid?</h2>
@@ -323,32 +328,26 @@ function renderTotals() {
   const returned = state.records.filter((record) => state.decisions[record.id] === "return");
   const cashTotal = accepted.reduce((total, record) => total + offerFor(record.fields || {}), 0);
   const storeCredit = Math.round(cashTotal * (1 + STORE_CREDIT_BONUS));
+  const summary = summaryEls();
 
-  els.cashTotal.textContent = formatMoney(cashTotal);
-  els.cashCopy.textContent = accepted.length
+  if (!summary.cashTotal) return;
+  summary.quoteRef.textContent = state.quoteRef || "-";
+  summary.cashTotal.textContent = formatMoney(cashTotal);
+  summary.cashCopy.textContent = accepted.length
     ? `${accepted.length} accepted item${accepted.length === 1 ? "" : "s"}`
     : "No items selected for payout";
-  els.creditTotal.textContent = formatMoney(storeCredit);
-  els.creditCard.hidden = state.payout !== "store_credit" || cashTotal <= 0;
-  const payoutSummary = accepted.length
-    ? state.payout
-      ? payoutLabel(state.payout)
-      : "Choose payout method"
-    : "No payout needed";
-  els.summaryList.innerHTML = `
-    <section>
-      <h3>Accepted</h3>
-      <p>${accepted.length || 0} item${accepted.length === 1 ? "" : "s"}</p>
-    </section>
-    <section>
-      <h3>Returning</h3>
-      <p>${returned.length || 0} item${returned.length === 1 ? "" : "s"}</p>
-    </section>
-    <section>
-      <h3>Payout</h3>
-      <p>${escapeHtml(payoutSummary)}</p>
-    </section>
-  `;
+  summary.creditTotal.textContent = formatMoney(storeCredit);
+  summary.creditCard.hidden = state.payout !== "store_credit" || cashTotal <= 0;
+}
+
+function summaryEls() {
+  return {
+    quoteRef: document.getElementById("final-quote-ref"),
+    cashTotal: document.getElementById("final-cash-total"),
+    cashCopy: document.getElementById("final-cash-copy"),
+    creditCard: document.getElementById("final-credit-card"),
+    creditTotal: document.getElementById("final-credit-total"),
+  };
 }
 
 function appendCustomerDecision(notes = "", decision, action, now) {
