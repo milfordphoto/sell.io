@@ -375,6 +375,7 @@ function renderDetail() {
   detailEl.innerHTML = `
     <article class="staff-intake">
       ${renderOrderHeader(order)}
+      ${renderOrderInfoGrid(order, fields, baseOffer, paymentMethod)}
       ${renderOrderProgress(order)}
 
       <header class="staff-intake-header">
@@ -389,34 +390,6 @@ function renderDetail() {
           <small>${escapeHtml(fields.Status || "New")}</small>
         </div>
       </header>
-
-      <div class="staff-info-grid">
-        <section>
-          <h3>Seller</h3>
-          <p>${escapeHtml(order.customer || "-")}</p>
-          <p class="seller-address">${order.address || "-"}</p>
-          <p>${escapeHtml(order.email || "-")}</p>
-          <p>${escapeHtml(order.phone || "-")}</p>
-        </section>
-        <section>
-          <h3>Original quote</h3>
-          <p>Item cash offer: <strong>$${formatMoney(baseOffer)}</strong></p>
-          <p>Order total: <strong>$${formatMoney(order.totals.original)}</strong></p>
-          <p>Market estimate: ${moneyOrDash(fields["eBay Median Price"])}</p>
-          <p>Quote source: ${escapeHtml(quoteSourceLabel(fields))}</p>
-          <p>Pricing basis: ${escapeHtml(staffNoteValue(fields, "Pricing basis") || "-")}</p>
-          <p>Price last reviewed: ${escapeHtml(staffNoteValue(fields, "Price last reviewed") || "-")}</p>
-          <p><a href="${escapeAttr(ebaySoldListingsUrl(fields))}" target="_blank" rel="noreferrer">Search eBay sold listings</a></p>
-          <p>Expires: ${formatDate(fields["Quote Expires"]) || "-"}</p>
-        </section>
-        <section>
-          <h3>Shipping</h3>
-          <p>Incoming tracking: ${escapeHtml(incomingTrackingNumber(fields))}</p>
-          <p>Outgoing tracking: ${escapeHtml(outgoingTrackingNumber(fields))}</p>
-          <p>${fields["Shippo Label URL"] ? `<a href="${escapeAttr(fields["Shippo Label URL"])}" target="_blank" rel="noreferrer">Open inbound label</a>` : "No inbound label link"}</p>
-          <p>Payment method: ${escapeHtml(paymentMethodLabel(paymentMethod))}</p>
-        </section>
-      </div>
 
       <form class="staff-review-form" id="staff-review-form">
         <section class="staff-review-section">
@@ -544,6 +517,38 @@ function renderOrderHeader(order) {
         <small>Original quote: $${formatMoney(order.totals.original)}</small>
       </div>
     </section>
+  `;
+}
+
+function renderOrderInfoGrid(order, fields, baseOffer, paymentMethod) {
+  return `
+    <div class="staff-info-grid staff-order-info-grid">
+      <section>
+        <h3>Seller</h3>
+        <p>${escapeHtml(order.customer || "-")}</p>
+        <p class="seller-address">${order.address || "-"}</p>
+        <p>${escapeHtml(order.email || "-")}</p>
+        <p>${escapeHtml(order.phone || "-")}</p>
+      </section>
+      <section>
+        <h3>Original quote</h3>
+        <p>Selected item cash offer: <strong>$${formatMoney(baseOffer)}</strong></p>
+        <p>Order total: <strong>$${formatMoney(order.totals.original)}</strong></p>
+        <p>Market estimate: ${moneyOrDash(fields["eBay Median Price"])}</p>
+        <p>Quote source: ${escapeHtml(quoteSourceLabel(fields))}</p>
+        <p>Pricing basis: ${escapeHtml(staffNoteValue(fields, "Pricing basis") || "-")}</p>
+        <p>Price last reviewed: ${escapeHtml(staffNoteValue(fields, "Price last reviewed") || "-")}</p>
+        <p><a href="${escapeAttr(ebaySoldListingsUrl(fields))}" target="_blank" rel="noreferrer">Search eBay sold listings</a></p>
+        <p>Expires: ${formatDate(fields["Quote Expires"]) || "-"}</p>
+      </section>
+      <section>
+        <h3>Shipping</h3>
+        <p>Incoming tracking: ${escapeHtml(incomingTrackingNumber(fields))}</p>
+        <p>Outgoing tracking: ${escapeHtml(outgoingTrackingNumber(fields))}</p>
+        <p>${fields["Shippo Label URL"] ? `<a href="${escapeAttr(fields["Shippo Label URL"])}" target="_blank" rel="noreferrer">Open inbound label</a>` : "No inbound label link"}</p>
+        <p>Payment method: ${escapeHtml(paymentMethodLabel(paymentMethod))}</p>
+      </section>
+    </div>
   `;
 }
 

@@ -2125,6 +2125,12 @@ fieldset {
   margin: 18px 0;
 }
 
+.staff-order-info-grid {
+  margin: 12px 0 22px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--line);
+}
+
 .staff-info-grid section {
   display: grid;
   gap: 6px;
