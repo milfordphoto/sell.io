@@ -134,6 +134,7 @@ const els = {
   submitQuote: byId("submit-quote"),
   doneTitle: byId("done-title"),
   doneCopy: byId("done-copy"),
+  doneNextSteps: byId("done-next-steps"),
   labelLink: byId("label-link"),
   quoteRef: byId("quote-ref"),
   currentOfferCard: byId("current-offer-card"),
@@ -1290,6 +1291,7 @@ function renderDone(result) {
   els.doneCopy.textContent =
     result.nextStep ||
     "Watch your email for shipping or drop-off instructions. Milford Photo will inspect the gear after it arrives, confirm or adjust the offer if needed, and send payment after you accept the final amount.";
+  els.doneNextSteps.innerHTML = renderDoneNextSteps(result);
   if (result.labelUrl) {
     els.labelLink.href = result.labelUrl;
     els.labelLink.hidden = false;
@@ -1297,6 +1299,67 @@ function renderDone(result) {
     els.labelLink.hidden = true;
   }
   renderSummary();
+}
+
+function renderDoneNextSteps(result = {}) {
+  const delivery = selectedRadioValue("delivery") || "ship";
+  const quoteRef = result.quoteRef || state.quote?.quoteId || "your quote";
+  const hasLabel = Boolean(result.labelUrl);
+  const freeLabelExpected = Boolean(result.labelDryRun || state.quote?.routing?.freeLabelEligible);
+  const requiresStaffFirst = Boolean(state.quote?.routing?.requiresStaffBeforeLabel);
+
+  const deliveryStep = delivery === "dropoff"
+    ? {
+        title: "Bring the gear to the store",
+        copy: `Bring the items and quote ${quoteRef} to Milford Photo. Staff can look up the quote and check each item in at the counter.`,
+      }
+    : hasLabel
+      ? {
+          title: "Ship the gear",
+          copy: "Print the prepaid label, pack the gear securely with the included original/OEM accessories, and drop it off with the carrier.",
+        }
+      : freeLabelExpected
+        ? {
+            title: "Watch for the label email",
+            copy: "Milford Photo will email the prepaid label and packing instructions. Pack the gear after that email arrives.",
+          }
+        : requiresStaffFirst
+          ? {
+              title: "Watch for staff follow-up",
+              copy: "Milford Photo will review the submission and email the next step, usually within 1 business day.",
+            }
+          : {
+              title: "Choose mail-in or drop-off",
+              copy: "Milford Photo will email shipping options within 1 business day, or you can bring the gear to the store with this quote number.",
+            };
+
+  const steps = [
+    {
+      title: "Check your email",
+      copy: `Milford Photo sent a confirmation for quote ${quoteRef}. Keep that quote number handy if you call or stop in.`,
+    },
+    deliveryStep,
+    {
+      title: "Inspection timing",
+      copy: "After the gear arrives or is dropped off, most quotes are inspected within 1-3 business days.",
+    },
+    {
+      title: "Final quote and payout",
+      copy: "If anything changes, Milford Photo will email a line-item explanation before you accept or decline. Payment or store credit is processed after the final quote is accepted.",
+    },
+  ];
+
+  return `
+    <h3>What happens next</h3>
+    <ol>
+      ${steps.map((step) => `
+        <li>
+          <strong>${escapeHtml(step.title)}</strong>
+          <span>${escapeHtml(step.copy)}</span>
+        </li>
+      `).join("")}
+    </ol>
+  `;
 }
 
 function updateDeliveryFields() {

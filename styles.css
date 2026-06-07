@@ -1297,6 +1297,65 @@ fieldset {
   line-height: 1.5;
 }
 
+.done-next-steps {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid rgba(20, 122, 80, 0.18);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.done-next-steps h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.done-next-steps ol {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: done-step;
+}
+
+.done-next-steps li {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 10px;
+  align-items: start;
+  color: var(--ink-soft);
+  line-height: 1.42;
+}
+
+.done-next-steps li::before {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--green);
+  color: #ffffff;
+  content: counter(done-step);
+  counter-increment: done-step;
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.done-next-steps strong,
+.done-next-steps span {
+  grid-column: 2;
+}
+
+.done-next-steps strong {
+  color: var(--ink);
+}
+
+.done-next-steps span {
+  margin-top: -7px;
+}
+
 .label-link {
   width: fit-content;
   border: 1px solid var(--green);
