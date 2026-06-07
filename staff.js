@@ -74,12 +74,48 @@ const STAFF_INTAKE_CONDITIONS = [
 ];
 
 const STAFF_ACTION_STEPS = [
-  { action: "received", label: "Mark item received", status: "Received - Needs Inspection", email: true },
-  { action: "save", label: "Save item intake", status: "Inspection In Progress" },
-  { action: "adjusted", label: "Finish item evaluation", status: "Evaluated", primary: true },
-  { action: "accepted", label: "Mark item accepted", status: "Customer Accepted Item" },
-  { action: "payment", label: "Payment sent", status: "Payment Sent", email: true },
-  { action: "return", label: "Return item", status: "Return Item", email: true, danger: true },
+  {
+    action: "received",
+    label: "Mark item received",
+    status: "Received - Needs Inspection",
+    notifyLabel: "Email received notice",
+    notifyMeta: "Includes tracking when available and 1-2 business day inspection timing.",
+  },
+  {
+    action: "save",
+    label: "Save item intake",
+    status: "Inspection In Progress",
+    notifyLabel: "Email inspection update",
+    notifyTemplate: "staff_item_update",
+  },
+  {
+    action: "adjusted",
+    label: "Finish item evaluation",
+    status: "Evaluated",
+    primary: true,
+    notifyLabel: "Email evaluation update",
+    notifyTemplate: "staff_item_update",
+  },
+  {
+    action: "accepted",
+    label: "Mark item accepted",
+    status: "Customer Accepted Item",
+    notifyLabel: "Email accepted update",
+    notifyTemplate: "staff_item_update",
+  },
+  {
+    action: "payment",
+    label: "Payment sent",
+    status: "Payment Sent",
+    notifyLabel: "Email payment sent",
+  },
+  {
+    action: "return",
+    label: "Return item",
+    status: "Return Item",
+    notifyLabel: "Email return update",
+    danger: true,
+  },
 ];
 
 const STATUS_LABELS = {
@@ -485,11 +521,14 @@ function renderDetail() {
         <section class="staff-actions-panel" aria-label="Item workflow actions">
           <div class="staff-actions-heading">
             <strong>Item workflow actions</strong>
-            <span>Work left to right. Customer email actions ask for confirmation before sending.</span>
+            <span>Internal buttons update staff progress only. Use Email customer separately when you want to notify the customer.</span>
           </div>
           <div class="staff-action-steps">
             ${renderStaffActionSteps(fields, parsed)}
           </div>
+          <p class="staff-actions-note">
+            Tracking automation note: when incoming delivery tracking is connected, a delivered scan can trigger the received email automatically. Until then, email the customer from step 1 after the package is checked in.
+          </p>
         </section>
       </form>
 
@@ -561,15 +600,21 @@ function renderStaffActionSteps(fields, parsed) {
       step.danger ? "is-danger" : "",
       completed ? "is-complete" : "",
     ].filter(Boolean).join(" ");
-    const meta = completed ? "Completed" : step.email ? "Emails customer" : "No customer email";
+    const meta = completed ? "Completed" : "Staff progress only";
     return `
-      <button class="${classes}" type="button" data-action="${escapeAttr(step.action)}">
-        <span class="staff-step-number">${index + 1}</span>
-        <span class="staff-step-copy">
-          <strong>${escapeHtml(step.label)}</strong>
-          <small>${escapeHtml(meta)}</small>
-        </span>
-      </button>
+      <div class="staff-action-card">
+        <button class="${classes}" type="button" data-action="${escapeAttr(step.action)}">
+          <span class="staff-step-number">${index + 1}</span>
+          <span class="staff-step-copy">
+            <strong>${escapeHtml(step.label)}</strong>
+            <small>${escapeHtml(meta)}</small>
+          </span>
+        </button>
+        <button class="staff-notify-action" type="button" data-notify-action="${escapeAttr(step.action)}">
+          <span>Email customer</span>
+          <small>${escapeHtml(step.notifyLabel || "Send status update")}</small>
+        </button>
+      </div>
     `;
   }).join("");
 }
@@ -723,6 +768,8 @@ function paymentMethodLabel(value = "") {
 function bindDetail(record, accessories) {
   const form = document.getElementById("staff-review-form");
   const actionButtons = Array.from(form.querySelectorAll("[data-action]"));
+  const notifyButtons = Array.from(form.querySelectorAll("[data-notify-action]"));
+  const workflowButtons = [...actionButtons, ...notifyButtons];
   const allAccessoriesCheck = document.getElementById("all-accessories-check");
   const accessoryInputs = Array.from(form.querySelectorAll("[data-accessory]"));
   const sendFinalQuoteButton = document.getElementById("send-final-quote");
@@ -777,7 +824,16 @@ function bindDetail(record, accessories) {
 
   actionButtons.forEach((button) => {
     button.addEventListener("click", async () => {
-      await handleStaffAction(record, accessories, button.dataset.action, actionButtons);
+      await handleStaffAction(record, accessories, button.dataset.action, workflowButtons, { notifyCustomer: false });
+    });
+  });
+
+  notifyButtons.forEach((button) => {
+    button.addEventListener("click", async () => {
+      await handleStaffAction(record, accessories, button.dataset.notifyAction, workflowButtons, {
+        notifyCustomer: true,
+        notifyOnly: true,
+      });
     });
   });
 
@@ -805,20 +861,28 @@ function updateSuggestedOffer(record, accessories) {
   updateDefaultDecision(record, suggested);
 }
 
-async function handleStaffAction(record, accessories, action, buttons) {
+async function handleStaffAction(record, accessories, action, buttons, options = {}) {
   const review = collectReviewState(accessories);
   const finalOffer = numberOrNull(document.getElementById("custom-offer").value)
     ?? numberOrNull(document.getElementById("suggested-offer")?.value)
     ?? 0;
   const status = staffActionStatus(action);
   if (!status) return;
+  const notifyCustomer = options.notifyCustomer === true;
+  const notifyOnly = options.notifyOnly === true;
+  const step = staffActionStep(action);
 
   const body = {
     recordId: record.id,
     status,
     finalOffer,
     staffNotes: buildStaffNotes(review, action, finalOffer),
+    notifyCustomer,
   };
+  if (notifyOnly) {
+    body.notifyOnly = true;
+    body.notificationType = step?.notifyTemplate || "";
+  }
 
   if (action === "payment") {
     body.action = "payment_sent";
@@ -828,13 +892,13 @@ async function handleStaffAction(record, accessories, action, buttons) {
     body.declineReason = review.reason || "Customer wants this item returned.";
   }
 
-  if (staffActionSendsCustomerEmail(action) && !confirmStaffActionEmail(action)) {
+  if (notifyCustomer && !confirmStaffActionEmail(action)) {
     setStatus("Action canceled. No customer email sent.");
     return;
   }
 
   setDetailBusy(buttons, true);
-  setStatus("Saving item update...");
+  setStatus(notifyOnly ? "Sending customer email..." : "Saving item update...");
 
   try {
     const updated = await updateRecord(body);
@@ -844,25 +908,25 @@ async function handleStaffAction(record, accessories, action, buttons) {
     selectedOrderId = selectedOrder()?.id || selectedOrderId;
     renderQueue();
     renderDetail();
-    setStatus(`Saved: ${status}.`);
+    setStatus(notifyOnly ? "Customer email sent." : `Saved: ${status}.`);
   } catch (error) {
-    setStatus(error.message || "Unable to save item update.", true);
+    setStatus(error.message || (notifyOnly ? "Unable to send customer email." : "Unable to save item update."), true);
   } finally {
     setDetailBusy(buttons, false);
   }
 }
 
 function staffActionStatus(action) {
-  return STAFF_ACTION_STEPS.find((step) => step.action === action)?.status || "";
+  return staffActionStep(action)?.status || "";
 }
 
-function staffActionSendsCustomerEmail(action) {
-  return Boolean(STAFF_ACTION_STEPS.find((step) => step.action === action)?.email);
+function staffActionStep(action) {
+  return STAFF_ACTION_STEPS.find((step) => step.action === action);
 }
 
 function confirmStaffActionEmail(action) {
-  const label = STAFF_ACTION_STEPS.find((step) => step.action === action)?.label || "This action";
-  return window.confirm(`${label} will update the item and email the customer now. Continue?`);
+  const step = staffActionStep(action);
+  return window.confirm(`${step?.notifyLabel || "Email customer"} will send a customer email only. Staff progress will not change unless you use the internal workflow button. Continue?`);
 }
 
 async function handleOrderAction(order, status) {

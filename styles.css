@@ -2296,6 +2296,12 @@ fieldset {
   gap: 10px;
 }
 
+.staff-action-card {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
 .staff-step-action {
   display: flex;
   gap: 9px;
@@ -2310,8 +2316,35 @@ fieldset {
   text-align: left;
 }
 
+.staff-notify-action {
+  display: grid;
+  gap: 2px;
+  min-height: 48px;
+  border: 1px solid rgba(0, 71, 116, 0.18);
+  border-radius: var(--radius);
+  background: #ffffff;
+  color: var(--ink);
+  padding: 9px 10px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.staff-notify-action span {
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.staff-notify-action small {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 760;
+  line-height: 1.2;
+}
+
 .staff-step-action:hover,
-.staff-step-action:focus-visible {
+.staff-step-action:focus-visible,
+.staff-notify-action:hover,
+.staff-notify-action:focus-visible {
   border-color: rgba(213, 33, 39, 0.35);
   box-shadow: 0 0 0 3px rgba(213, 33, 39, 0.1);
 }
@@ -2527,6 +2560,17 @@ fieldset {
 
 .staff-step-action.is-complete .staff-step-copy small {
   color: var(--green);
+}
+
+.staff-actions-note {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(0, 71, 116, 0.12);
+  border-radius: var(--radius);
+  background: #ffffff;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.4;
 }
 
 .danger-action {
