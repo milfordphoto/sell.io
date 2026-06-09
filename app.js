@@ -89,6 +89,30 @@ const PRODUCT_IMAGE_OVERRIDES = {
   },
 };
 
+const MANUFACTURER_LOGO_LABELS = {
+  canon: "Canon",
+  nikon: "Nikon",
+  sony: "Sony",
+  fujifilm: "Fujifilm",
+  fuji: "Fujifilm",
+  olympus: "Olympus",
+  "om system": "OM System",
+  panasonic: "Panasonic",
+  lumix: "Lumix",
+  pentax: "Pentax",
+  leica: "Leica",
+  hasselblad: "Hasselblad",
+  sigma: "Sigma",
+  tamron: "Tamron",
+  tokina: "Tokina",
+  zeiss: "Zeiss",
+  voigtlander: "Voigtlander",
+  rokinon: "Rokinon",
+  samyang: "Samyang",
+  godox: "Godox",
+  profoto: "Profoto",
+};
+
 const INCLUDED_ITEMS = {
   camera: [
     { name: "USB connection cable", value: 15, checked: true },
@@ -401,7 +425,7 @@ function renderGearSearchResults() {
         const image = productImageForOption(option);
         return `
         <button class="gear-search-result" type="button" data-gear-search-key="${escapeAttribute(gearSearchKey(option))}">
-          ${productImageMarkup(image, "gear-search-thumb")}
+          ${productImageMarkup(image, "gear-search-thumb", option.brand)}
           <span class="gear-search-result-copy">
             <strong>${escapeHtml(option.brand)} ${escapeHtml(catalogDisplayName({ name: option.model }, option.category))}</strong>
             <small>${escapeHtml(option.category)}</small>
@@ -512,9 +536,29 @@ function normalizeProductImageText(value = "") {
     .toLowerCase();
 }
 
-function productImageMarkup(image, className) {
-  if (!image?.src) return `<span class="${escapeAttribute(className)} is-placeholder" aria-hidden="true"></span>`;
+function productImageMarkup(image, className, brand = "") {
+  if (!image?.src) return productBrandLogoMarkup(className, brand);
   return `<img class="${escapeAttribute(className)}" src="${escapeAttribute(image.src)}" alt="${escapeAttribute(image.alt || "")}" loading="lazy" />`;
+}
+
+function productBrandLogoMarkup(className, brand = "") {
+  const label = manufacturerLogoLabel(brand);
+  if (!label) return `<span class="${escapeAttribute(className)} is-placeholder" aria-hidden="true"></span>`;
+
+  return `
+    <span class="${escapeAttribute(className)} is-brand-logo brand-logo-${escapeAttribute(brandSlug(label))}" aria-label="${escapeAttribute(label)} logo" role="img">
+      <span>${escapeHtml(label)}</span>
+    </span>
+  `;
+}
+
+function manufacturerLogoLabel(brand = "") {
+  const normalized = normalizeProductImageText(brand);
+  return MANUFACTURER_LOGO_LABELS[normalized] || String(brand || "").trim();
+}
+
+function brandSlug(brand = "") {
+  return normalizeProductImageText(brand).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "manufacturer";
 }
 
 function applyGearSearch() {
@@ -1279,7 +1323,7 @@ function renderCart() {
         const image = productImageFor(item);
         return `
         <article class="cart-item">
-          ${productImageMarkup(image, "product-thumb")}
+          ${productImageMarkup(image, "product-thumb", item.brand)}
           <div class="cart-body">
             <div class="cart-title">
               <strong>${escapeHtml(item.brand)} ${escapeHtml(item.model)}</strong>
@@ -1340,7 +1384,7 @@ function renderQuoteItem(item) {
 
   return `
     <article class="quote-item">
-      ${productImageMarkup(image, "product-thumb")}
+      ${productImageMarkup(image, "product-thumb", item.brand)}
       <div class="quote-body">
         <div class="quote-title">
           <strong>${escapeHtml(item.brand)} ${escapeHtml(item.model)}</strong>

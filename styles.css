@@ -535,6 +535,39 @@ textarea:focus {
     #ffffff;
 }
 
+.gear-search-thumb.is-brand-logo,
+.product-thumb.is-brand-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #111217;
+  font-size: 0.68rem;
+  font-weight: 900;
+  line-height: 1.05;
+  text-align: center;
+}
+
+.gear-search-thumb.is-brand-logo span,
+.product-thumb.is-brand-logo span {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.brand-logo-canon {
+  color: var(--red);
+}
+
+.brand-logo-fujifilm,
+.brand-logo-om-system {
+  color: #245f49;
+}
+
+.brand-logo-sigma,
+.brand-logo-tamron,
+.brand-logo-zeiss {
+  color: #234d7d;
+}
+
 .gear-search-thumb.is-placeholder::after,
 .product-thumb.is-placeholder::after {
   content: "";
