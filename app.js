@@ -1526,7 +1526,7 @@ function renderDoneNextSteps(result = {}) {
       title: "Gear evaluated",
       status: "upcoming",
       statusLabel: "Upcoming",
-      copy: "After the gear arrives or is dropped off, Milford Photo verifies the model, condition, and standard original manufacturer accessories. Most quotes are inspected within 1-3 business days.",
+      copy: "Your gear is typically evaluated within 1-2 business days after it arrives at Milford Photo or is dropped off. When evaluation is complete, you will receive an email with your final quote.",
     },
     {
       stepLabel: "Step 4",
