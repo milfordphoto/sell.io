@@ -599,38 +599,16 @@ function renderIncludedItems() {
   if (!items.length) {
     els.includedItems.innerHTML = `
       <div class="included-copy">
-        <strong>Choose a category to see original manufacturer accessories.</strong>
-        <span>OEM accessories that affect the offer will be listed here before the quote is finalized.</span>
+        <span>Instant price includes standard original manufacturer accessories when applicable.</span>
       </div>
     `;
     return;
   }
   els.includedItems.innerHTML = `
     <div class="included-copy">
-      <strong>Original manufacturer accessories (OEM) assumed in this price.</strong>
-      <span>Uncheck anything that is missing or replaced by a non-OEM item. The offer will update before you submit.</span>
-    </div>
-    <div class="accessory-check-list">
-      ${items.map((item) => `
-        <label class="accessory-check">
-          <input type="checkbox" data-accessory-name="${escapeAttribute(item.name)}" data-accessory-value="${escapeAttribute(item.value)}" ${item.checked ? "checked" : ""} />
-          <span>
-            <strong>${escapeHtml(item.name)}</strong>
-            <small>Original/OEM accessory</small>
-          </span>
-          <em data-accessory-status>${item.checked ? "Included" : `Missing: -${money.format(item.value)}`}</em>
-        </label>
-      `).join("")}
-      <p class="accessory-adjustment-summary" data-accessory-summary>No accessory deductions selected.</p>
+      <span>Instant price includes all standard original manufacturer accessories.</span>
     </div>
   `;
-  els.includedItems.querySelectorAll("input[data-accessory-name]").forEach((input) => {
-    input.addEventListener("change", () => {
-      renderAccessoryAdjustments();
-      scheduleCurrentOffer();
-    });
-  });
-  renderAccessoryAdjustments();
 }
 
 function includedItemsForCategory(category = "") {
@@ -1217,7 +1195,6 @@ function renderQuoteItem(item) {
   const price = item.offerAmount ? money.format(item.offerAmount) : item.status === "declined" ? "$0" : "Review";
   const credit = item.storeCreditAmount ? `${money.format(item.storeCreditAmount)} store credit` : item.message || "Staff follow-up needed";
   const marketCopy = item.marketPrice ? `Market estimate: ${money.format(item.marketPrice)}` : item.message || "";
-  const accessoryLines = item.accessoryAdjustment?.lines?.filter((line) => line && !line.startsWith("Original box")) || [];
 
   return `
     <article class="quote-item">
@@ -1230,7 +1207,6 @@ function renderQuoteItem(item) {
           ${escapeHtml(CONDITION_LABELS[item.condition] || item.condition)} · ${escapeHtml(item.category)}
           ${marketCopy ? `<br />${escapeHtml(marketCopy)}` : ""}
         </div>
-        ${accessoryLines.length ? `<div class="quote-adjustment">${accessoryLines.map((line) => escapeHtml(line)).join("<br />")}</div>` : ""}
       </div>
       <div class="quote-price">
         <strong>${escapeHtml(price)}</strong>
@@ -1325,7 +1301,7 @@ function renderDoneNextSteps(result = {}) {
     : hasLabel
       ? {
           title: "Ship your gear",
-          copy: "Print the prepaid label, pack the gear securely with the included original/OEM accessories, and drop it off with the carrier.",
+          copy: "Print the prepaid label, pack the gear securely, and drop it off with the carrier.",
         }
       : freeLabelExpected
         ? {
@@ -1362,7 +1338,7 @@ function renderDoneNextSteps(result = {}) {
       title: "Gear evaluated",
       status: "upcoming",
       statusLabel: "Upcoming",
-      copy: "After the gear arrives or is dropped off, Milford Photo verifies condition, model, and included original/OEM accessories. Most quotes are inspected within 1-3 business days.",
+      copy: "After the gear arrives or is dropped off, Milford Photo verifies the model, condition, and standard original manufacturer accessories. Most quotes are inspected within 1-3 business days.",
     },
     {
       stepLabel: "Step 4",
