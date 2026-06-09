@@ -1695,22 +1695,40 @@ fieldset {
 
 .done-panel {
   display: grid;
-  gap: 14px;
+  gap: 16px;
   padding: 22px;
   border: 1px solid rgba(20, 122, 80, 0.22);
   border-radius: var(--radius);
   background: rgba(20, 122, 80, 0.08);
 }
 
+.done-panel .done-reference {
+  margin: 0;
+  color: var(--mp-red);
+  font-size: 0.82rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
 .done-panel h2 {
   margin: 0;
-  font-size: clamp(1.7rem, 3vw, 2.4rem);
+  font-size: clamp(1.55rem, 2.5vw, 2.05rem);
+  line-height: 1.08;
 }
 
 .done-panel p {
   margin-bottom: 0;
   color: var(--ink-soft);
   line-height: 1.5;
+}
+
+.done-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
 }
 
 .done-next-steps {
@@ -1821,12 +1839,26 @@ fieldset {
 
 .label-link {
   width: fit-content;
-  border: 1px solid var(--green);
-  background: var(--green);
+  border: 1px solid var(--mp-red);
+  background: var(--mp-red);
   color: #ffffff;
 }
 
+.label-link:hover {
+  background: var(--mp-red-dark);
+}
+
 @media (max-width: 640px) {
+  .done-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .done-actions .secondary-action,
+  .done-actions .label-link {
+    width: 100%;
+  }
+
   .done-roadmap-step {
     grid-template-columns: 1fr;
     gap: 10px;

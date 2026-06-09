@@ -7,7 +7,7 @@
     <meta name="description" content="Milford Photo used equipment quote widget." />
     <meta name="robots" content="noindex,nofollow" />
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="./styles.css?v=20260609-label-expiry" />
+    <link rel="stylesheet" href="./styles.css?v=20260609-print-docs" />
   </head>
   <body>
     <main class="mp-used-app" id="app">
@@ -239,11 +239,14 @@
 
             <section class="form-step" data-step="done" id="done-step">
               <div class="done-panel">
-                <p class="brand-line">Submitted</p>
-                <h2 id="done-title">Milford Photo received the quote</h2>
+                <p class="done-reference" id="done-reference">Quote received</p>
+                <h2 id="done-title">Next steps for your quote</h2>
                 <p id="done-copy"></p>
+                <div class="done-actions" aria-label="Quote documents">
+                  <button class="secondary-action" type="button" id="print-quote">Print packing quote</button>
+                  <a class="label-link" id="label-link" href="#" target="_blank" rel="noreferrer" hidden>Print shipping label</a>
+                </div>
                 <div class="done-next-steps" id="done-next-steps"></div>
-                <a class="label-link" id="label-link" href="#" target="_blank" rel="noreferrer" hidden>Download label</a>
               </div>
             </section>
           </section>
@@ -359,13 +362,13 @@
       </section>
     </div>
 
-    <script src="./catalog-canon.js?v=20260609-label-expiry"></script>
-    <script src="./catalog-nikon.js?v=20260609-label-expiry"></script>
-    <script src="./catalog-sony-fuji-oly.js?v=20260609-label-expiry"></script>
-    <script src="./catalog-panasonic-pentax-third-party.js?v=20260609-label-expiry"></script>
-    <script src="./catalog-leica-hasselblad.js?v=20260609-label-expiry"></script>
-    <script src="./catalog-modern-supplement.js?v=20260609-label-expiry"></script>
-    <script src="./catalog.js?v=20260609-label-expiry"></script>
-    <script src="./app.js?v=20260609-label-expiry"></script>
+    <script src="./catalog-canon.js?v=20260609-print-docs"></script>
+    <script src="./catalog-nikon.js?v=20260609-print-docs"></script>
+    <script src="./catalog-sony-fuji-oly.js?v=20260609-print-docs"></script>
+    <script src="./catalog-panasonic-pentax-third-party.js?v=20260609-print-docs"></script>
+    <script src="./catalog-leica-hasselblad.js?v=20260609-print-docs"></script>
+    <script src="./catalog-modern-supplement.js?v=20260609-print-docs"></script>
+    <script src="./catalog.js?v=20260609-print-docs"></script>
+    <script src="./app.js?v=20260609-print-docs"></script>
   </body>
 </html>

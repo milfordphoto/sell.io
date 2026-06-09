@@ -57,8 +57,8 @@ const STEP_COPY = {
     intro: "Add the customer's contact and delivery details so staff can receive, inspect, and follow up on the quote.",
   },
   done: {
-    title: "Your quote has been submitted",
-    intro: "The status below shows what has been completed, what happens next, and what Milford Photo will do after the gear arrives.",
+    title: "Next steps for your used gear quote",
+    intro: "Print the packing quote, keep the quote number handy, and follow the status below for what happens next.",
   },
 };
 
@@ -174,9 +174,11 @@ const els = {
   parcelWeight: byId("parcel-weight"),
   terms: byId("terms"),
   submitQuote: byId("submit-quote"),
+  doneReference: byId("done-reference"),
   doneTitle: byId("done-title"),
   doneCopy: byId("done-copy"),
   doneNextSteps: byId("done-next-steps"),
+  printQuote: byId("print-quote"),
   labelLink: byId("label-link"),
   quoteRef: byId("quote-ref"),
   currentOfferCard: byId("current-offer-card"),
@@ -285,6 +287,7 @@ function bindEvents() {
   els.addItem.addEventListener("click", addCurrentItem);
   els.getQuote.addEventListener("click", getQuote);
   els.submitForm.addEventListener("submit", submitQuote);
+  els.printQuote.addEventListener("click", printPackingQuote);
 
   document.querySelectorAll("[data-step-target]").forEach((button) => {
     button.addEventListener("click", () => setStep(button.dataset.stepTarget));
@@ -1403,27 +1406,72 @@ function renderSummary() {
 }
 
 function renderDone(result) {
-  els.doneTitle.textContent = `Quote ${result.quoteRef} submitted`;
-  els.doneCopy.textContent = doneIntroFor(result);
+  const copy = doneViewFor(result);
+  const quoteRef = result.quoteRef || state.quote?.quoteId || "";
+  els.doneReference.textContent = quoteRef ? `Quote ${quoteRef}` : "Quote received";
+  els.doneTitle.textContent = copy.panelTitle;
+  els.doneCopy.textContent = copy.panelCopy;
   els.doneNextSteps.innerHTML = renderDoneNextSteps(result);
   if (result.labelUrl) {
     els.labelLink.href = result.labelUrl;
+    els.labelLink.textContent = "Print shipping label";
     els.labelLink.hidden = false;
   } else {
+    els.labelLink.removeAttribute("href");
     els.labelLink.hidden = true;
   }
   renderSummary();
 }
 
-function doneIntroFor(result = {}) {
+function doneViewFor(result = {}) {
   const delivery = selectedRadioValue("delivery") || "ship";
-  if (result.labelUrl) {
-    return "Milford Photo received your quote and your prepaid shipping label is ready. The label and quote are valid for 7 days. Follow the status below to see what has been completed and what happens next.";
-  }
+  const quoteRef = result.quoteRef || state.quote?.quoteId || "your quote";
+  const hasLabel = Boolean(result.labelUrl);
+  const freeLabelExpected = Boolean(result.labelDryRun || state.quote?.routing?.freeLabelEligible);
+  const requiresStaffFirst = Boolean(state.quote?.routing?.requiresStaffBeforeLabel);
+
   if (delivery === "dropoff") {
-    return "Milford Photo received your quote. Follow the status below to see what has been completed and what happens when you bring the gear in.";
+    return {
+      heroTitle: "Bring your gear to Milford Photo",
+      heroIntro: `Quote ${quoteRef} is ready for in-store dropoff. Bring the gear and this quote number to the used department.`,
+      panelTitle: "Bring this quote with your gear",
+      panelCopy: "Print the packing quote or keep the quote number handy. Staff will use it to look up the quote and check in each item at the counter.",
+    };
   }
-  return "Milford Photo received your quote. Follow the status below to see what has been completed, what to do next, and what happens after your gear arrives.";
+
+  if (result.labelUrl) {
+    return {
+      heroTitle: "Print your documents and ship your gear",
+      heroIntro: "Print the packing quote and shipping label. Place the quote inside the box and use the label within 7 days.",
+      panelTitle: "Print these before shipping",
+      panelCopy: "Place the printed packing quote inside the box with your gear so Milford Photo can match the shipment to your quote as soon as it arrives.",
+    };
+  }
+
+  if (freeLabelExpected) {
+    return {
+      heroTitle: "Print your quote, then watch for the label email",
+      heroIntro: "Place the printed quote in the box. Milford Photo will email the prepaid label and packing instructions when the label is ready.",
+      panelTitle: "Print this quote for your box",
+      panelCopy: "Milford Photo received your quote. Print a copy to include with the gear, then use the label from the follow-up email when it arrives. The quote and shipping label are valid for 7 days.",
+    };
+  }
+
+  if (requiresStaffFirst) {
+    return {
+      heroTitle: "Milford Photo is reviewing your quote",
+      heroIntro: "Print a copy for your records. Staff will review the quote and email the next step, usually within 1 business day.",
+      panelTitle: "Quote received for staff review",
+      panelCopy: "This quote needs staff review before shipping instructions are sent. Print a copy for your records and watch your email for the next step.",
+    };
+  }
+
+  return {
+    heroTitle: "Quote received",
+    heroIntro: "Print a copy for your records. Milford Photo will email shipping or dropoff instructions within 1 business day.",
+    panelTitle: "Keep this quote number handy",
+    panelCopy: "Milford Photo received your quote. Print a copy for your records and watch your email for shipping or dropoff instructions.",
+  };
 }
 
 function renderDoneNextSteps(result = {}) {
@@ -1440,13 +1488,13 @@ function renderDoneNextSteps(result = {}) {
       }
     : hasLabel
       ? {
-          title: "Ship your gear",
-          copy: "Print the prepaid label, pack the gear securely, and drop it off with the carrier within 7 days.",
+          title: "Print and ship",
+          copy: "Print the packing quote and prepaid label. Put the quote inside the box, attach the label outside the box, and drop it off with the carrier within 7 days.",
         }
       : freeLabelExpected
         ? {
-            title: "Ship your gear",
-            copy: "Milford Photo will email the prepaid label and packing instructions. The label will be valid for 7 days after it is created.",
+            title: "Print quote and wait for label",
+            copy: "Print the packing quote now and place it in the box. Milford Photo will email the prepaid label and packing instructions when the label is ready.",
           }
         : requiresStaffFirst
           ? {
@@ -1461,7 +1509,7 @@ function renderDoneNextSteps(result = {}) {
   const steps = [
     {
       stepLabel: "Step 1",
-      title: "Receive quote",
+      title: "Quote received",
       status: "complete",
       statusLabel: "Completed",
       copy: `Milford Photo received quote ${quoteRef} and sent a confirmation email.`,
@@ -1539,6 +1587,203 @@ function updateSubmitQuoteButtonLabel() {
   els.submitQuote.textContent = delivery === "dropoff" ? "Finalize quote" : "Ship your gear";
 }
 
+function printPackingQuote() {
+  if (!state.quote || !state.submission) {
+    setStatus("Submit the quote before printing the packing copy.", "error");
+    return;
+  }
+
+  const printUrl = URL.createObjectURL(new Blob([packingQuoteHtml()], { type: "text/html" }));
+  const printWindow = window.open(printUrl, "_blank");
+  if (!printWindow) {
+    URL.revokeObjectURL(printUrl);
+    setStatus("Please allow pop-ups so the packing quote can open for printing.", "error");
+    return;
+  }
+
+  printWindow.focus();
+  window.setTimeout(() => URL.revokeObjectURL(printUrl), 60000);
+}
+
+function packingQuoteHtml() {
+  const quote = state.quote;
+  const submission = state.submission || {};
+  const quoteRef = submission.quoteRef || quote.quoteId || "Pending";
+  const seller = sellerPrintDetails();
+  const delivery = selectedRadioValue("delivery") === "dropoff" ? "Store dropoff" : "Mail-in shipment";
+  const labelStatus = submission.labelUrl
+    ? `Label ready${submission.labelExpiresAt ? ` - valid through ${safeFormatDate(submission.labelExpiresAt)}` : ""}`
+    : state.quote?.routing?.freeLabelEligible
+      ? "Prepaid label pending by email"
+      : "Shipping instructions pending";
+  const items = packingQuoteItems();
+  const submittedDate = safeFormatDate(new Date().toISOString());
+  const quoteExpires = safeFormatDate(quote.expiresAt);
+
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Milford Photo packing quote ${escapeHtml(quoteRef)}</title>
+    <style>
+      * { box-sizing: border-box; }
+      body { margin: 0; padding: 32px; color: #171719; font-family: Arial, Helvetica, sans-serif; line-height: 1.35; }
+      header { display: flex; justify-content: space-between; gap: 24px; padding-bottom: 18px; border-bottom: 3px solid #d52127; }
+      h1 { margin: 0 0 6px; font-size: 30px; }
+      h2 { margin: 0 0 10px; font-size: 18px; }
+      p { margin: 0 0 8px; }
+      table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+      th, td { padding: 10px; border: 1px solid #dde1e8; text-align: left; vertical-align: top; }
+      th { background: #f5f7fa; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+      .brand { color: #d52127; font-size: 12px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+      .quote-ref { text-align: right; font-size: 24px; font-weight: 800; }
+      .notice { margin: 18px 0; padding: 14px 16px; border: 2px solid #d52127; background: #fff5f5; font-size: 17px; font-weight: 700; }
+      .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 18px 0; }
+      .box { padding: 14px; border: 1px solid #dde1e8; border-radius: 8px; }
+      .meta { color: #676c76; font-size: 13px; }
+      .total { font-size: 22px; font-weight: 800; }
+      .small { color: #676c76; font-size: 12px; }
+      .notes { margin-top: 6px; color: #30333a; font-size: 12px; white-space: pre-line; }
+      footer { margin-top: 24px; padding-top: 14px; border-top: 1px solid #dde1e8; color: #676c76; font-size: 12px; }
+      @media print {
+        body { padding: 20px; }
+        .notice { break-inside: avoid; }
+        tr { break-inside: avoid; }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div>
+        <p class="brand">Milford Photo Used Department</p>
+        <h1>Packing quote</h1>
+        <p class="meta">Place this printed quote inside the box with your gear.</p>
+      </div>
+      <div class="quote-ref">${escapeHtml(quoteRef)}</div>
+    </header>
+
+    <div class="notice">Put this page inside the shipment so Milford Photo can match the gear to quote ${escapeHtml(quoteRef)}.</div>
+
+    <section class="grid">
+      <div class="box">
+        <h2>Customer</h2>
+        <p><strong>${escapeHtml(seller.name || "Customer")}</strong></p>
+        <p>${escapeHtml(seller.email || "-")}</p>
+        <p>${escapeHtml(seller.phone || "-")}</p>
+        <p>${escapeHtml(seller.address || "-").replace(/\n/g, "<br />")}</p>
+      </div>
+      <div class="box">
+        <h2>Quote details</h2>
+        <p><strong>Delivery:</strong> ${escapeHtml(delivery)}</p>
+        <p><strong>Submitted:</strong> ${escapeHtml(submittedDate)}</p>
+        <p><strong>Quote valid through:</strong> ${escapeHtml(quoteExpires)}</p>
+        <p><strong>Shipping label:</strong> ${escapeHtml(labelStatus)}</p>
+        ${submission.trackingNumber ? `<p><strong>Tracking:</strong> ${escapeHtml(submission.trackingNumber)}</p>` : ""}
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="box">
+        <h2>Cash offer</h2>
+        <p class="total">${escapeHtml(quote.totals?.cash ? money.format(quote.totals.cash) : "Review")}</p>
+      </div>
+      <div class="box">
+        <h2>Store credit</h2>
+        <p class="total">${escapeHtml(quote.totals?.storeCredit ? money.format(quote.totals.storeCredit) : "-")}</p>
+      </div>
+    </section>
+
+    <section>
+      <h2>Items in this quote</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Item</th>
+            <th>Condition</th>
+            <th>Cash offer</th>
+            <th>Store credit</th>
+            <th>Market estimate</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${items.map(renderPackingQuoteItem).join("")}
+        </tbody>
+      </table>
+    </section>
+
+    <footer>
+      <p>Milford Photo, 22 River Street, Milford, CT 06460 - (203) 882-3415</p>
+      <p>All offers are pending Milford Photo inspection of model, condition, serial number, and original manufacturer accessories.</p>
+    </footer>
+    <script>
+      window.addEventListener("load", () => window.setTimeout(() => window.print(), 250));
+    </script>
+  </body>
+</html>`;
+}
+
+function sellerPrintDetails() {
+  const cityLine = [els.city.value.trim(), els.stateField.value.trim(), els.zip.value.trim()].filter(Boolean).join(", ");
+  return {
+    name: [els.sellerFirstName.value.trim(), els.sellerLastName.value.trim()].filter(Boolean).join(" "),
+    email: els.sellerEmail.value.trim(),
+    phone: els.sellerPhone.value.trim(),
+    address: [els.street.value.trim(), cityLine].filter(Boolean).join("\n"),
+  };
+}
+
+function packingQuoteItems() {
+  const quoteItems = state.quote?.items || [];
+  const count = Math.max(state.cart.length, quoteItems.length);
+  return Array.from({ length: count }, (_, index) => {
+    const cartItem = state.cart[index] || {};
+    const quoteItem = quoteItems[index] || {};
+    const condition = quoteItem.condition || cartItem.condition || "";
+    return {
+      index: index + 1,
+      brand: quoteItem.brand || cartItem.brand || "",
+      model: quoteItem.model || cartItem.model || "",
+      category: quoteItem.category || cartItem.category || "",
+      condition: CONDITION_LABELS[condition] || condition || "-",
+      offerAmount: quoteItem.offerAmount,
+      storeCreditAmount: quoteItem.storeCreditAmount,
+      marketPrice: quoteItem.marketPrice,
+      message: quoteItem.message || "",
+      notes: cartItem.notes || "",
+    };
+  });
+}
+
+function renderPackingQuoteItem(item) {
+  const itemName = [item.brand, item.model].filter(Boolean).join(" ") || "Item";
+  const offer = item.offerAmount ? money.format(item.offerAmount) : item.message || "Review";
+  const storeCredit = item.storeCreditAmount ? money.format(item.storeCreditAmount) : "-";
+  const market = item.marketPrice ? money.format(item.marketPrice) : "-";
+  const itemMeta = [item.category, item.message].filter(Boolean).join(" - ");
+  const notes = item.notes ? `<div class="notes">${escapeHtml(item.notes)}</div>` : "";
+
+  return `
+    <tr>
+      <td>${escapeHtml(item.index)}</td>
+      <td><strong>${escapeHtml(itemName)}</strong>${itemMeta ? `<div class="small">${escapeHtml(itemMeta)}</div>` : ""}${notes}</td>
+      <td>${escapeHtml(item.condition)}</td>
+      <td>${escapeHtml(offer)}</td>
+      <td>${escapeHtml(storeCredit)}</td>
+      <td>${escapeHtml(market)}</td>
+    </tr>
+  `;
+}
+
+function safeFormatDate(value) {
+  if (!value) return "-";
+  try {
+    return formatDate(value);
+  } catch {
+    return String(value);
+  }
+}
+
 function setStep(step) {
   if (step === "quote" && !state.quote) {
     setStatus("Get an offer before moving to the offer step.", "error");
@@ -1563,6 +1808,12 @@ function setStep(step) {
 }
 
 function renderStepCopy(step) {
+  if (step === "done" && state.submission) {
+    const copy = doneViewFor(state.submission);
+    els.appTitle.textContent = copy.heroTitle;
+    els.appIntro.textContent = copy.heroIntro;
+    return;
+  }
   const copy = STEP_COPY[step] || STEP_COPY.gear;
   els.appTitle.textContent = copy.title;
   els.appIntro.textContent = copy.intro;
