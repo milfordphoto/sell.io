@@ -7,7 +7,7 @@
     <meta name="description" content="Milford Photo used equipment quote widget." />
     <meta name="robots" content="noindex,nofollow" />
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="./styles.css?v=20260606-roadmap-red" />
+    <link rel="stylesheet" href="./styles.css?v=20260608-condition-images" />
   </head>
   <body>
     <main class="mp-used-app" id="app">
@@ -16,7 +16,7 @@
           <div>
             <p class="brand-line">Milford Photo Used Department</p>
             <h1 id="app-title">Get an offer for your used camera gear</h1>
-            <p class="intro">
+            <p class="intro" id="app-intro">
               Start with the gear and condition. Milford Photo verifies every offer after the item arrives or is dropped off in-store.
             </p>
           </div>
@@ -88,30 +88,28 @@
 
               <fieldset class="condition-grid">
                 <legend>Condition</legend>
+                <button class="text-action condition-guide-trigger" type="button" id="condition-guide-open">
+                  Help me choose
+                </button>
                 <label class="choice-card">
                   <input type="radio" name="condition" value="like_new" />
                   <strong>Like New</strong>
-                  <span>Very clean, minimal signs of use, fully working.</span>
                 </label>
                 <label class="choice-card">
                   <input type="radio" name="condition" value="excellent" checked />
                   <strong>Excellent</strong>
-                  <span>Light normal use, clean glass or sensor, fully working.</span>
                 </label>
                 <label class="choice-card">
                   <input type="radio" name="condition" value="good" />
                   <strong>Good</strong>
-                  <span>Visible wear, fully usable, no major defects.</span>
                 </label>
                 <label class="choice-card">
                   <input type="radio" name="condition" value="well_used" />
                   <strong>Well Used</strong>
-                  <span>Heavy wear, missing parts, or rough condition.</span>
                 </label>
                 <label class="choice-card">
                   <input type="radio" name="condition" value="heavily_used" />
                   <strong>Heavily Used</strong>
-                  <span>Damaged, incomplete, or uncertain operation.</span>
                 </label>
               </fieldset>
 
@@ -286,16 +284,88 @@
             <div class="status-panel" id="status-panel" role="status" aria-live="polite"></div>
           </aside>
         </div>
+
+        <section class="sell-info-panel" aria-labelledby="sell-info-title">
+          <div class="sell-info-heading">
+            <p class="brand-line">How it works</p>
+            <h2 id="sell-info-title">A simple quote now, a careful inspection later.</h2>
+          </div>
+          <div class="sell-info-grid">
+            <article>
+              <span>1</span>
+              <h3>Get an instant quote</h3>
+              <p>Choose the item and condition. The price assumes standard original manufacturer accessories.</p>
+            </article>
+            <article>
+              <span>2</span>
+              <h3>Send it or bring it in</h3>
+              <p>Ship qualifying quotes with a prepaid label, or bring the gear to Milford Photo.</p>
+            </article>
+            <article>
+              <span>3</span>
+              <h3>Inspection confirms it</h3>
+              <p>Staff verify each item and email a final line-item quote if anything changes.</p>
+            </article>
+          </div>
+
+          <div class="sell-faq">
+            <details>
+              <summary>How long does inspection take?</summary>
+              <p>Most quotes are reviewed within 1-3 business days after the gear arrives or is dropped off.</p>
+            </details>
+            <details>
+              <summary>Can the final quote change?</summary>
+              <p>Yes. Milford Photo verifies condition, exact model, and included original manufacturer accessories before payment.</p>
+            </details>
+            <details>
+              <summary>When do I choose payout?</summary>
+              <p>You choose check, PayPal, or store credit after the final quote is accepted.</p>
+            </details>
+          </div>
+        </section>
       </section>
     </main>
 
-    <script src="./catalog-canon.js?v=20260606-roadmap"></script>
-    <script src="./catalog-nikon.js?v=20260606-roadmap"></script>
-    <script src="./catalog-sony-fuji-oly.js?v=20260606-roadmap"></script>
-    <script src="./catalog-panasonic-pentax-third-party.js?v=20260606-roadmap"></script>
-    <script src="./catalog-leica-hasselblad.js?v=20260606-roadmap"></script>
-    <script src="./catalog-modern-supplement.js?v=20260606-roadmap"></script>
-    <script src="./catalog.js?v=20260606-roadmap"></script>
-    <script src="./app.js?v=20260608-customer-accessory-note"></script>
+    <div class="modal-backdrop" id="condition-guide-modal" hidden>
+      <section class="condition-guide-modal" role="dialog" aria-modal="true" aria-labelledby="condition-guide-title">
+        <button class="modal-close" type="button" id="condition-guide-close" aria-label="Close condition guide">x</button>
+        <p class="brand-line">Condition guide</p>
+        <h2 id="condition-guide-title">Choose the closest condition</h2>
+        <p class="condition-guide-intro">
+          Pick the option that best matches the gear today. Milford Photo will confirm the final condition during inspection.
+        </p>
+        <div class="condition-guide-list">
+          <article>
+            <h3>Like New</h3>
+            <p>Very clean with little to no visible wear. Fully working with clean glass, sensor, and controls.</p>
+          </article>
+          <article>
+            <h3>Excellent</h3>
+            <p>Light normal use. Minor cosmetic marks are okay as long as everything works properly.</p>
+          </article>
+          <article>
+            <h3>Good</h3>
+            <p>Noticeable wear from regular use, but fully usable with no major functional problems.</p>
+          </article>
+          <article>
+            <h3>Well Used</h3>
+            <p>Heavy wear, rough cosmetics, or missing non-critical parts, but still usable.</p>
+          </article>
+          <article>
+            <h3>Heavily Used</h3>
+            <p>Damaged, incomplete, uncertain operation, or needs staff review before a final offer.</p>
+          </article>
+        </div>
+      </section>
+    </div>
+
+    <script src="./catalog-canon.js?v=20260608-condition-images"></script>
+    <script src="./catalog-nikon.js?v=20260608-condition-images"></script>
+    <script src="./catalog-sony-fuji-oly.js?v=20260608-condition-images"></script>
+    <script src="./catalog-panasonic-pentax-third-party.js?v=20260608-condition-images"></script>
+    <script src="./catalog-leica-hasselblad.js?v=20260608-condition-images"></script>
+    <script src="./catalog-modern-supplement.js?v=20260608-condition-images"></script>
+    <script src="./catalog.js?v=20260608-condition-images"></script>
+    <script src="./app.js?v=20260608-condition-images"></script>
   </body>
 </html>

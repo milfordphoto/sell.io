@@ -3,7 +3,7 @@ const API_BASE = resolveApiBase();
 
 const MANUAL_BRAND = "__manual_brand";
 const MANUAL_MODEL = "__manual_model";
-const MANUAL_CATEGORY = "Manual Review / Vintage / Specialty";
+const MANUAL_CATEGORY = "Other / Manual Review";
 const SELECT_CATEGORY = "";
 const SELECT_BRAND = "";
 const SELECT_MODEL = "";
@@ -14,9 +14,6 @@ const FALLBACK_CATEGORIES = [
   "Film Camera",
   "Lens",
   "Flash / Lighting",
-  "Tripod / Support",
-  "Bags & Cases",
-  "Filters",
   "Video / Cinema Gear",
   MANUAL_CATEGORY,
 ];
@@ -26,9 +23,6 @@ const SIMPLE_CATEGORIES = [
   "Film Camera",
   "Lens",
   "Flash / Lighting",
-  "Tripod / Support",
-  "Bags & Cases",
-  "Filters",
   "Video / Cinema Gear",
   MANUAL_CATEGORY,
 ];
@@ -47,6 +41,52 @@ const CONDITION_LABELS = {
   well_used: "Well Used",
   heavily_used: "Heavily Used",
   not_working: "Not Working",
+};
+
+const STEP_COPY = {
+  gear: {
+    title: "Get an offer for your used camera gear",
+    intro: "Start with the gear and condition. Milford Photo verifies every offer after the item arrives or is dropped off in-store.",
+  },
+  quote: {
+    title: "Review your instant offer",
+    intro: "Check the current offer for each item before sending the quote to Milford Photo.",
+  },
+  details: {
+    title: "Send this quote to Milford Photo",
+    intro: "Add the customer's contact and delivery details so staff can receive, inspect, and follow up on the quote.",
+  },
+  done: {
+    title: "Your quote has been submitted",
+    intro: "The status below shows what has been completed, what happens next, and what Milford Photo will do after the gear arrives.",
+  },
+};
+
+const PRODUCT_IMAGE_OVERRIDES = {
+  "canon|digital camera|eos r1": {
+    src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/zKX3tO1Y418zyXvWDdhMyA?w=228&h=228&p=1&a=1&q=display",
+    alt: "Canon EOS R1 mirrorless camera body",
+  },
+  "canon|digital camera|eos r3": {
+    src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/1N9swG-W0VWJMfH94N3hcA?w=228&h=228&p=1&a=1&q=display",
+    alt: "Canon EOS R3 mirrorless camera body",
+  },
+  "canon|digital camera|eos r5": {
+    src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/_JAE4kY4rOGIG92I_Z6tRw?w=228&h=228&p=1&a=1&q=display",
+    alt: "Canon EOS R5 mirrorless camera body",
+  },
+  "canon|lens|rf 28-70mm f/2l usm": {
+    src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/0wK_VW4xvh2EFG3vvyr5lA?w=228&h=228&p=1&a=1&q=display",
+    alt: "Canon RF 28-70mm f/2L USM lens",
+  },
+  "canon|lens|rf 24-70mm f/2.8l is usm": {
+    src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/XqaYHa67tlGK95BTtMIQug?w=228&h=228&p=1&a=1&q=display",
+    alt: "Canon RF 24-70mm f/2.8L IS USM lens",
+  },
+  "canon|lens|rf 70-200mm f/2.8l is usm": {
+    src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/LyWF9ixt27HyPRXeLYug8w?w=228&h=228&p=1&a=1&q=display",
+    alt: "Canon RF 70-200mm f/2.8L IS USM lens",
+  },
 };
 
 const INCLUDED_ITEMS = {
@@ -97,6 +137,8 @@ const state = {
 };
 
 const els = {
+  appTitle: byId("app-title"),
+  appIntro: byId("app-intro"),
   brand: byId("brand"),
   category: byId("category"),
   model: byId("model"),
@@ -149,6 +191,9 @@ const els = {
   summaryLabel: byId("summary-label"),
   cartList: byId("cart-list"),
   statusPanel: byId("status-panel"),
+  conditionGuideOpen: byId("condition-guide-open"),
+  conditionGuideModal: byId("condition-guide-modal"),
+  conditionGuideClose: byId("condition-guide-close"),
 };
 
 function byId(id) {
@@ -232,6 +277,11 @@ function bindEvents() {
       scheduleCurrentOffer();
     }),
   );
+  els.conditionGuideOpen.addEventListener("click", openConditionGuide);
+  els.conditionGuideClose.addEventListener("click", closeConditionGuide);
+  els.conditionGuideModal.addEventListener("click", (event) => {
+    if (event.target === els.conditionGuideModal) closeConditionGuide();
+  });
   els.addItem.addEventListener("click", addCurrentItem);
   els.getQuote.addEventListener("click", getQuote);
   els.submitForm.addEventListener("submit", submitQuote);
@@ -242,6 +292,9 @@ function bindEvents() {
 
   document.querySelectorAll('input[name="delivery"]').forEach((input) => {
     input.addEventListener("change", updateDeliveryFields);
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !els.conditionGuideModal.hidden) closeConditionGuide();
   });
 
   window.addEventListener("resize", resizeParentFrame);
@@ -341,15 +394,35 @@ function renderGearSearchResults() {
 
   els.gearSearchResults.innerHTML = matches
     .map(
-      (option) => `
+      (option) => {
+        const image = productImageForOption(option);
+        return `
         <button class="gear-search-result" type="button" data-gear-search-key="${escapeAttribute(gearSearchKey(option))}">
-          <span>${escapeHtml(option.brand)} ${escapeHtml(catalogDisplayName({ name: option.model }, option.category))}</span>
-          <small>${escapeHtml(option.category)}</small>
+          ${productImageMarkup(image, "gear-search-thumb")}
+          <span class="gear-search-result-copy">
+            <strong>${escapeHtml(option.brand)} ${escapeHtml(catalogDisplayName({ name: option.model }, option.category))}</strong>
+            <small>${escapeHtml(option.category)}</small>
+          </span>
         </button>
-      `,
+      `;
+      },
     )
     .join("");
   els.gearSearchResults.hidden = false;
+}
+
+function openConditionGuide() {
+  els.conditionGuideModal.hidden = false;
+  document.body.classList.add("modal-open");
+  els.conditionGuideClose.focus();
+  resizeParentFrame();
+}
+
+function closeConditionGuide() {
+  els.conditionGuideModal.hidden = true;
+  document.body.classList.remove("modal-open");
+  els.conditionGuideOpen.focus();
+  resizeParentFrame();
 }
 
 function hideGearSearchResults() {
@@ -397,6 +470,48 @@ function normalizeGearSearchText(value = "") {
 
 function gearSearchKey(option) {
   return [option.brand, option.category, option.model].join("|").toLowerCase();
+}
+
+function productImageForOption(option) {
+  return productImageFor({
+    brand: option.brand,
+    category: option.category,
+    model: option.model,
+  });
+}
+
+function productImageFor(item = {}) {
+  const key = productImageKey(item.brand, item.category, item.model);
+  return PRODUCT_IMAGE_OVERRIDES[key] || null;
+}
+
+function productImageKey(brand = "", category = "", model = "") {
+  return [
+    normalizeProductImageText(brand),
+    normalizeProductImageCategory(category),
+    normalizeProductImageText(model),
+  ].join("|");
+}
+
+function normalizeProductImageCategory(category = "") {
+  const text = normalizeProductImageText(category);
+  if (text.includes("lens")) return "lens";
+  if (text.includes("film")) return "film camera";
+  if (text.includes("camera") || text.includes("body")) return "digital camera";
+  return text;
+}
+
+function normalizeProductImageText(value = "") {
+  return String(value)
+    .replace(/[–—]/g, "-")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function productImageMarkup(image, className) {
+  if (!image?.src) return `<span class="${escapeAttribute(className)} is-placeholder" aria-hidden="true"></span>`;
+  return `<img class="${escapeAttribute(className)}" src="${escapeAttribute(image.src)}" alt="${escapeAttribute(image.alt || "")}" loading="lazy" />`;
 }
 
 function applyGearSearch() {
@@ -810,28 +925,40 @@ function safeCatalogItem(brand, category, model) {
 
 function catalogCategoriesForDisplay(brand, displayCategory) {
   const catalogCategories = safeCatalogCategories(brand);
-  if (!displayCategory || displayCategory === MANUAL_CATEGORY) return catalogCategories;
+  if (!displayCategory) return catalogCategories;
+  if (displayCategory === MANUAL_CATEGORY) return catalogCategories.filter(catalogCategoryBelongsToManualReview);
   const matches = catalogCategories.filter((catalogCategory) => categoryMatchesDisplay(catalogCategory, displayCategory));
   return matches.length ? matches : catalogCategories.filter((catalogCategory) => catalogCategory === displayCategory);
 }
 
 function displayCategoryForCatalog(catalogCategory = "") {
+  if (catalogCategoryBelongsToManualReview(catalogCategory)) return MANUAL_CATEGORY;
   return SIMPLE_CATEGORIES.find((displayCategory) => categoryMatchesDisplay(catalogCategory, displayCategory)) || catalogCategory;
 }
 
 function categoryMatchesDisplay(catalogCategory = "", displayCategory = "") {
   const catalog = catalogCategory.toLowerCase();
   const display = displayCategory.toLowerCase();
-  if (displayCategory === MANUAL_CATEGORY) return catalogCategory === MANUAL_CATEGORY;
+  if (displayCategory === MANUAL_CATEGORY) return catalogCategoryBelongsToManualReview(catalogCategory) || catalogCategory === MANUAL_CATEGORY;
+  if (catalogCategoryBelongsToManualReview(catalogCategory)) return false;
   if (display === "lens") return catalog.includes("lens");
   if (display === "film camera") return catalog.includes("camera body") && catalog.includes("film");
   if (display === "digital camera") return catalog.includes("camera body") && !categoryMatchesDisplay(catalogCategory, "Film Camera");
   if (display === "flash / lighting") return catalog.includes("flash") || catalog.includes("speedlight") || catalog.includes("strobe") || catalog.includes("lighting");
-  if (display === "tripod / support") return catalog.includes("tripod") || catalog.includes("monopod") || catalog.includes("support");
-  if (display === "bags & cases") return catalog.includes("bag") || catalog.includes("case");
-  if (display === "filters") return catalog.includes("filter");
   if (display === "video / cinema gear") return catalog.includes("video") || catalog.includes("cinema") || catalog.includes("camcorder");
   return catalog === display;
+}
+
+function catalogCategoryBelongsToManualReview(catalogCategory = "") {
+  const text = String(catalogCategory).toLowerCase();
+  return (
+    text.includes("tripod") ||
+    text.includes("monopod") ||
+    text.includes("support") ||
+    text.includes("bag") ||
+    text.includes("case") ||
+    text.includes("filter")
+  );
 }
 
 function addCurrentItem() {
@@ -864,6 +991,8 @@ function readItemForm(options = {}) {
   const validMounts = mountOptionsForSelectedLens();
   const requiresMountSelection = validMounts.length > 1;
   const mount = requiresMountSelection ? els.lensMount.value.trim() : validMounts[0] || "";
+  const catalogCategory = catalogItem ? catalogCategoryForItem(brand, selectedCategory, catalogItem.name) : selectedCategory;
+  const isManualReviewItem = selectedCategory === MANUAL_CATEGORY || catalogCategoryBelongsToManualReview(catalogCategory);
   const notes = [
     mount ? `Lens mount: ${mount}` : "",
     accessories.length ? `Original manufacturer accessories included for quote: ${accessories.join(", ")}` : "",
@@ -900,7 +1029,7 @@ function readItemForm(options = {}) {
     id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
     brand,
     category: selectedCategory,
-    catalogCategory: catalogItem ? catalogCategoryForItem(brand, selectedCategory, catalogItem.name) : "",
+    catalogCategory: catalogItem ? catalogCategory : "",
     model,
     year: catalogItem?.year || "",
     condition,
@@ -911,8 +1040,8 @@ function readItemForm(options = {}) {
     productFamily: catalogItem?.productFamily || "",
     generation: catalogItem?.generation || "",
     ebayQuery: buildEbayQueryForCatalogItem({ brand, model, mount, catalogItem }),
-    isManual: selectedCategory === MANUAL_CATEGORY,
-    manualReviewRequested: Boolean(catalogItem?.manualReview),
+    isManual: isManualReviewItem,
+    manualReviewRequested: isManualReviewItem || Boolean(catalogItem?.manualReview),
   };
 }
 
@@ -1132,6 +1261,7 @@ function renderCurrentOffer() {
 }
 
 function renderCart() {
+  updateQuoteActionVisibility();
   if (!state.cart.length) {
     els.cartList.innerHTML = `<div class="cart-item"><span class="cart-meta">Add gear to build the quote summary.</span></div>`;
     return;
@@ -1143,16 +1273,20 @@ function renderCart() {
         const quoteItem = state.quote?.items?.[index];
         const price = cartItemPriceLabel(quoteItem);
         const storeCredit = quoteItem?.storeCreditAmount ? `${money.format(quoteItem.storeCreditAmount)} store credit` : "";
+        const image = productImageFor(item);
         return `
         <article class="cart-item">
-          <div class="cart-title">
-            <strong>${escapeHtml(item.brand)} ${escapeHtml(item.model)}</strong>
-            <div class="cart-actions">
-              <span class="cart-price">${escapeHtml(price)}</span>
-              <button class="remove-item" type="button" aria-label="Remove item" data-remove-id="${escapeAttribute(item.id)}">x</button>
+          ${productImageMarkup(image, "product-thumb")}
+          <div class="cart-body">
+            <div class="cart-title">
+              <strong>${escapeHtml(item.brand)} ${escapeHtml(item.model)}</strong>
+              <div class="cart-actions">
+                <span class="cart-price">${escapeHtml(price)}</span>
+                <button class="remove-item" type="button" aria-label="Remove item" data-remove-id="${escapeAttribute(item.id)}">x</button>
+              </div>
             </div>
+            <span class="cart-meta">${escapeHtml(item.category)} · ${escapeHtml(CONDITION_LABELS[item.condition] || item.condition)}${storeCredit ? `<br />${escapeHtml(storeCredit)}` : ""}</span>
           </div>
-          <span class="cart-meta">${escapeHtml(item.category)} · ${escapeHtml(CONDITION_LABELS[item.condition] || item.condition)}${storeCredit ? `<br />${escapeHtml(storeCredit)}` : ""}</span>
         </article>
       `;
       },
@@ -1169,6 +1303,10 @@ function renderCart() {
       scheduleCartQuote();
     });
   });
+}
+
+function updateQuoteActionVisibility() {
+  els.getQuote.hidden = !state.cart.length;
 }
 
 function cartItemPriceLabel(quoteItem) {
@@ -1195,10 +1333,12 @@ function renderQuoteItem(item) {
   const price = item.offerAmount ? money.format(item.offerAmount) : item.status === "declined" ? "$0" : "Review";
   const credit = item.storeCreditAmount ? `${money.format(item.storeCreditAmount)} store credit` : item.message || "Staff follow-up needed";
   const marketCopy = item.marketPrice ? `Market estimate: ${money.format(item.marketPrice)}` : item.message || "";
+  const image = productImageFor(item);
 
   return `
     <article class="quote-item">
-      <div>
+      ${productImageMarkup(image, "product-thumb")}
+      <div class="quote-body">
         <div class="quote-title">
           <strong>${escapeHtml(item.brand)} ${escapeHtml(item.model)}</strong>
           <span class="status-pill ${statusClass}">${escapeHtml(STATUS_LABELS[item.status] || item.status)}</span>
@@ -1404,6 +1544,7 @@ function setStep(step) {
   if (step === "done" && !state.submission) return;
 
   state.activeStep = step;
+  renderStepCopy(step);
   document.querySelectorAll(".form-step").forEach((section) => {
     section.classList.toggle("is-active", section.dataset.step === step);
   });
@@ -1412,6 +1553,12 @@ function setStep(step) {
   });
   clearStatus();
   resizeParentFrame();
+}
+
+function renderStepCopy(step) {
+  const copy = STEP_COPY[step] || STEP_COPY.gear;
+  els.appTitle.textContent = copy.title;
+  els.appIntro.textContent = copy.intro;
 }
 
 function setStatus(message, type = "info") {
