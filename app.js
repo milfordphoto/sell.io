@@ -1210,7 +1210,7 @@ async function submitQuote(event) {
     setStatus(error.message || "Unable to submit the quote right now.", "error");
   } finally {
     els.submitQuote.disabled = false;
-    els.submitQuote.textContent = "Submit quote";
+    updateSubmitQuoteButtonLabel();
   }
 }
 
@@ -1418,7 +1418,7 @@ function renderDone(result) {
 function doneIntroFor(result = {}) {
   const delivery = selectedRadioValue("delivery") || "ship";
   if (result.labelUrl) {
-    return "Milford Photo received your quote and your prepaid shipping label is ready. Follow the status below to see what has been completed and what happens next.";
+    return "Milford Photo received your quote and your prepaid shipping label is ready. The label and quote are valid for 7 days. Follow the status below to see what has been completed and what happens next.";
   }
   if (delivery === "dropoff") {
     return "Milford Photo received your quote. Follow the status below to see what has been completed and what happens when you bring the gear in.";
@@ -1441,12 +1441,12 @@ function renderDoneNextSteps(result = {}) {
     : hasLabel
       ? {
           title: "Ship your gear",
-          copy: "Print the prepaid label, pack the gear securely, and drop it off with the carrier.",
+          copy: "Print the prepaid label, pack the gear securely, and drop it off with the carrier within 7 days.",
         }
       : freeLabelExpected
         ? {
             title: "Ship your gear",
-            copy: "Milford Photo will email the prepaid label and packing instructions. Pack the gear after that email arrives.",
+            copy: "Milford Photo will email the prepaid label and packing instructions. The label will be valid for 7 days after it is created.",
           }
         : requiresStaffFirst
           ? {
@@ -1512,6 +1512,7 @@ function updateDeliveryFields() {
   const delivery = selectedRadioValue("delivery") || "ship";
   const freeLabel = Boolean(state.quote?.routing?.freeLabelEligible);
 
+  updateSubmitQuoteButtonLabel();
   els.addressFields.hidden = false;
   els.parcelFields.hidden = true;
   els.street.required = true;
@@ -1520,9 +1521,9 @@ function updateDeliveryFields() {
   els.zip.required = true;
 
   if (delivery === "dropoff") {
-    els.mailCopy.textContent = "Use a prepaid label when the quote qualifies.";
+    els.mailCopy.textContent = "Use this quote with a Milford Photo specialist.";
   } else if (freeLabel) {
-    els.mailCopy.textContent = "Milford Photo can email a prepaid label after the quote is submitted. No box dimensions needed here.";
+    els.mailCopy.textContent = "Milford Photo can email a prepaid label after the quote is submitted. The label is valid for 7 days.";
   } else if (state.quote?.routing?.requiresStaffBeforeLabel) {
     els.mailCopy.textContent = "Milford Photo will review before sending shipping instructions.";
   } else {
@@ -1530,6 +1531,12 @@ function updateDeliveryFields() {
   }
 
   resizeParentFrame();
+}
+
+function updateSubmitQuoteButtonLabel() {
+  if (!els.submitQuote || els.submitQuote.disabled) return;
+  const delivery = selectedRadioValue("delivery") || "ship";
+  els.submitQuote.textContent = delivery === "dropoff" ? "Finalize quote" : "Ship your gear";
 }
 
 function setStep(step) {
