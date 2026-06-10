@@ -1343,8 +1343,8 @@ async function submitQuote(event) {
       },
     });
 
-    state.submission = data;
-    renderDone(data);
+    state.submission = { ...data, delivery };
+    renderDone(state.submission);
     setStep("done");
   } catch (error) {
     setStatus(error.message || "Unable to submit the quote right now.", "error");
@@ -1552,6 +1552,7 @@ function renderDone(result) {
   els.doneReference.textContent = quoteRef ? `Quote ${quoteRef}` : "Quote received";
   els.doneTitle.textContent = copy.panelTitle;
   els.doneCopy.textContent = copy.panelCopy;
+  els.printQuote.textContent = deliveryForResult(result) === "dropoff" ? "Print dropoff quote" : "Print packing quote";
   els.doneNextSteps.innerHTML = renderDoneNextSteps(result);
   if (result.labelUrl) {
     els.labelLink.href = result.labelUrl;
@@ -1564,8 +1565,12 @@ function renderDone(result) {
   renderSummary();
 }
 
+function deliveryForResult(result = {}) {
+  return result.delivery || selectedRadioValue("delivery") || "ship";
+}
+
 function doneViewFor(result = {}) {
-  const delivery = selectedRadioValue("delivery") || "ship";
+  const delivery = deliveryForResult(result);
   const quoteRef = result.quoteRef || state.quote?.quoteId || "your quote";
   const hasLabel = Boolean(result.labelUrl);
   const freeLabelExpected = Boolean(result.labelDryRun || state.quote?.routing?.freeLabelEligible);
@@ -1576,7 +1581,7 @@ function doneViewFor(result = {}) {
       heroTitle: "Bring your gear to Milford Photo",
       heroIntro: `Quote ${quoteRef} is ready for in-store dropoff. Bring the gear and this quote number to the used department.`,
       panelTitle: "Bring this quote with your gear",
-      panelCopy: "Print the packing quote or keep the quote number handy. Staff will use it to look up the quote and check in each item at the counter.",
+      panelCopy: "Print the dropoff quote or keep the quote number handy. Staff will use it to look up the quote and check in each item at the counter.",
     };
   }
 
@@ -1616,7 +1621,7 @@ function doneViewFor(result = {}) {
 }
 
 function renderDoneNextSteps(result = {}) {
-  const delivery = selectedRadioValue("delivery") || "ship";
+  const delivery = deliveryForResult(result);
   const quoteRef = result.quoteRef || state.quote?.quoteId || "your quote";
   const hasLabel = Boolean(result.labelUrl);
   const freeLabelExpected = Boolean(result.labelDryRun || state.quote?.routing?.freeLabelEligible);
@@ -1730,7 +1735,7 @@ function updateSubmitQuoteButtonLabel() {
 
 function printPackingQuote() {
   if (!state.quote || !state.submission) {
-    setStatus("Submit the quote before printing the packing copy.", "error");
+    setStatus("Submit the quote before printing this copy.", "error");
     return;
   }
 
@@ -1751,7 +1756,18 @@ function packingQuoteHtml() {
   const submission = state.submission || {};
   const quoteRef = submission.quoteRef || quote.quoteId || "Pending";
   const seller = sellerPrintDetails();
-  const delivery = selectedRadioValue("delivery") === "dropoff" ? "Store dropoff" : "Mail-in shipment";
+  const isDropoff = deliveryForResult(submission) === "dropoff";
+  const delivery = isDropoff ? "Store dropoff" : "Mail-in shipment";
+  const documentTitle = isDropoff ? "Dropoff quote" : "Packing quote";
+  const documentIntro = isDropoff
+    ? "Bring this printed quote with your gear to Milford Photo."
+    : "Place this printed quote inside the box with your gear.";
+  const noticeCopy = isDropoff
+    ? `Bring this page with your gear so Milford Photo can match the store dropoff to quote ${quoteRef}.`
+    : `Put this page inside the shipment so Milford Photo can match the gear to quote ${quoteRef}.`;
+  const deliveryDetail = isDropoff
+    ? "Bring the gear and quote number to the used department."
+    : "";
   const labelStatus = submission.labelUrl
     ? `Label ready${submission.labelExpiresAt ? ` - valid through ${safeFormatDate(submission.labelExpiresAt)}` : ""}`
     : state.quote?.routing?.freeLabelEligible
@@ -1765,7 +1781,7 @@ function packingQuoteHtml() {
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>Milford Photo packing quote ${escapeHtml(quoteRef)}</title>
+    <title>Milford Photo ${escapeHtml(documentTitle.toLowerCase())} ${escapeHtml(quoteRef)}</title>
     <style>
       * { box-sizing: border-box; }
       body { margin: 0; padding: 32px; color: #171719; font-family: Arial, Helvetica, sans-serif; line-height: 1.35; }
@@ -1797,13 +1813,13 @@ function packingQuoteHtml() {
     <header>
       <div>
         <p class="brand">Milford Photo Used Department</p>
-        <h1>Packing quote</h1>
-        <p class="meta">Place this printed quote inside the box with your gear.</p>
+        <h1>${escapeHtml(documentTitle)}</h1>
+        <p class="meta">${escapeHtml(documentIntro)}</p>
       </div>
       <div class="quote-ref">${escapeHtml(quoteRef)}</div>
     </header>
 
-    <div class="notice">Put this page inside the shipment so Milford Photo can match the gear to quote ${escapeHtml(quoteRef)}.</div>
+    <div class="notice">${escapeHtml(noticeCopy)}</div>
 
     <section class="grid">
       <div class="box">
@@ -1818,8 +1834,10 @@ function packingQuoteHtml() {
         <p><strong>Delivery:</strong> ${escapeHtml(delivery)}</p>
         <p><strong>Submitted:</strong> ${escapeHtml(submittedDate)}</p>
         <p><strong>Quote valid through:</strong> ${escapeHtml(quoteExpires)}</p>
-        <p><strong>Shipping label:</strong> ${escapeHtml(labelStatus)}</p>
-        ${submission.trackingNumber ? `<p><strong>Tracking:</strong> ${escapeHtml(submission.trackingNumber)}</p>` : ""}
+        ${isDropoff
+          ? `<p><strong>Next step:</strong> ${escapeHtml(deliveryDetail)}</p>`
+          : `<p><strong>Shipping label:</strong> ${escapeHtml(labelStatus)}</p>
+        ${submission.trackingNumber ? `<p><strong>Tracking:</strong> ${escapeHtml(submission.trackingNumber)}</p>` : ""}`}
       </div>
     </section>
 
