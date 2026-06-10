@@ -95,7 +95,7 @@ h1 {
 }
 
 .intro {
-  max-width: 740px;
+  max-width: min(920px, 100%);
   margin-bottom: 0;
   color: var(--muted);
   font-size: 1.08rem;

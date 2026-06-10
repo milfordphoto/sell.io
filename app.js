@@ -54,7 +54,7 @@ const STEP_COPY = {
   },
   details: {
     title: "Send this quote to Milford Photo",
-    intro: "Add your contact and delivery details so Milford Photo can receive, inspect, and follow up on your offer.",
+    intro: "Add contact and delivery details so Milford Photo can receive and inspect your offer.",
   },
   done: {
     title: "Next steps for your used gear quote",
