@@ -1070,6 +1070,7 @@ function resetItemFormForNextItem() {
   document.querySelectorAll('input[name="condition"]').forEach((input) => {
     input.checked = false;
   });
+  toggleConditionOptions(false);
   populateBrands();
   populateModels();
   updateMountField();
