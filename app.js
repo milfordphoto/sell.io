@@ -1374,7 +1374,7 @@ function renderCurrentOffer() {
     els.currentOfferCash.textContent = needsCondition ? "Choose condition" : "Choose gear";
     els.currentOfferCredit.textContent = needsCondition
       ? "Choose a condition to see the item offer."
-      : "Choose a model to preview the item offer.";
+      : "";
     return;
   }
 
