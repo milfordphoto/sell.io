@@ -1366,6 +1366,8 @@ async function apiPost(path, payload) {
 }
 
 function renderCurrentOffer() {
+  if (!els.currentOfferCard || !els.currentOfferCash || !els.currentOfferCredit) return;
+
   els.currentOfferCard.classList.toggle("is-loading", state.currentQuoteLoading);
   els.currentOfferCard.classList.toggle("is-error", Boolean(state.currentQuote?.error));
 
