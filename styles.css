@@ -86,11 +86,12 @@ p {
 }
 
 h1 {
-  max-width: 760px;
+  max-width: none;
   margin-bottom: 12px;
-  font-size: clamp(2rem, 4vw, 4rem);
+  font-size: clamp(2.25rem, 3.2vw, 3.05rem);
   line-height: 1.02;
   letter-spacing: 0;
+  white-space: nowrap;
 }
 
 .intro {
@@ -194,21 +195,13 @@ h1 {
 }
 
 .sell-info-heading {
-  display: flex;
-  gap: 16px;
-  align-items: baseline;
-  justify-content: space-between;
-}
-
-.sell-info-heading .brand-line {
-  min-width: 120px;
-  margin: 0;
+  display: block;
 }
 
 .sell-info-heading h2 {
-  width: min(740px, 100%);
   margin: 0;
-  font-size: clamp(1.4rem, 2.4vw, 2rem);
+  color: var(--ink);
+  font-size: clamp(1.7rem, 2.8vw, 2.4rem);
   line-height: 1.15;
 }
 
@@ -297,10 +290,10 @@ h1 {
 }
 
 .section-heading p {
-  min-width: 54px;
+  min-width: 68px;
   margin: 0;
   color: var(--mp-red);
-  font-size: 0.75rem;
+  font-size: 0.95rem;
   font-weight: 850;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -568,7 +561,7 @@ textarea:focus {
 }
 
 .brand-logo-canon {
-  color: var(--red);
+  color: var(--mp-red);
 }
 
 .brand-logo-fujifilm,
@@ -769,6 +762,129 @@ fieldset {
   line-height: 1.1;
 }
 
+.condition-picker {
+  display: grid;
+  gap: 12px;
+  margin: 0 0 18px;
+}
+
+.condition-picker legend {
+  margin-bottom: 0;
+  font-size: 1rem;
+}
+
+.condition-action-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.condition-picker-toggle {
+  position: relative;
+  display: grid;
+  min-height: 58px;
+  gap: 3px;
+  align-content: center;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #ffffff;
+  color: var(--ink);
+  cursor: pointer;
+  padding: 12px 46px 12px 14px;
+  text-align: left;
+  transition:
+    border-color 0.16s ease,
+    background 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.condition-picker-toggle:hover,
+.condition-picker-toggle:focus-visible {
+  border-color: rgba(213, 33, 39, 0.45);
+  box-shadow: 0 0 0 3px rgba(213, 33, 39, 0.08);
+  outline: none;
+}
+
+.condition-picker-toggle::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 17px;
+  width: 10px;
+  height: 10px;
+  border-right: 2px solid var(--muted);
+  border-bottom: 2px solid var(--muted);
+  transform: translateY(-65%) rotate(45deg);
+  transition: transform 0.16s ease;
+}
+
+.condition-picker-toggle.is-open::after {
+  transform: translateY(-25%) rotate(225deg);
+}
+
+.condition-picker-toggle.has-condition {
+  border-color: rgba(213, 33, 39, 0.52);
+  background: rgba(213, 33, 39, 0.045);
+}
+
+.condition-picker-toggle span {
+  font-size: 1.05rem;
+  font-weight: 860;
+  line-height: 1.2;
+}
+
+.condition-picker-toggle small {
+  color: var(--muted);
+  line-height: 1.3;
+}
+
+.add-item-action {
+  min-width: 150px;
+  white-space: nowrap;
+}
+
+.condition-options {
+  display: grid;
+  gap: 8px;
+}
+
+.condition-options[hidden] {
+  display: none;
+}
+
+.condition-option-card {
+  min-height: 0;
+  grid-template-columns: auto minmax(115px, 0.4fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+}
+
+.condition-option-card input {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.condition-option-card strong {
+  grid-column: 2;
+  grid-row: 1;
+  font-size: 1rem;
+}
+
+.condition-option-card span {
+  grid-column: 3;
+  grid-row: 1;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.35;
+}
+
+.condition-options .condition-guide-trigger {
+  justify-self: start;
+  padding: 2px 0;
+}
+
 .check-grid {
   display: grid;
   gap: 10px;
@@ -909,6 +1025,10 @@ fieldset {
   margin-top: 26px;
 }
 
+.gear-form .form-actions {
+  justify-content: flex-end;
+}
+
 .primary-action,
 .secondary-action,
 .label-link {
@@ -992,9 +1112,11 @@ fieldset {
   gap: 3px;
   margin-top: 14px;
   padding: 13px 14px;
+  border: 1px solid rgba(213, 33, 39, 0.22);
+  border-left: 4px solid var(--mp-red);
   border-radius: var(--radius);
-  background: var(--mp-red);
-  color: #ffffff;
+  background: rgba(213, 33, 39, 0.055);
+  color: var(--ink);
 }
 
 .summary-credit-card[hidden] {
@@ -1002,6 +1124,7 @@ fieldset {
 }
 
 .summary-credit-card span {
+  color: var(--mp-red);
   font-size: 0.75rem;
   font-weight: 850;
   letter-spacing: 0.06em;
@@ -1009,7 +1132,8 @@ fieldset {
 }
 
 .summary-credit-card strong {
-  font-size: 1.8rem;
+  color: var(--ink);
+  font-size: 1.45rem;
   line-height: 1;
 }
 
@@ -1968,6 +2092,10 @@ fieldset {
 }
 
 @media (max-width: 980px) {
+  h1 {
+    white-space: normal;
+  }
+
   .layout {
     grid-template-columns: 1fr;
   }
@@ -2015,6 +2143,19 @@ fieldset {
 
   .condition-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .condition-action-row {
+    grid-template-columns: 1fr;
+  }
+
+  .condition-option-card {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .condition-option-card span {
+    grid-column: 2;
+    grid-row: 2;
   }
 
   .condition-selector legend,

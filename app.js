@@ -45,7 +45,7 @@ const CONDITION_LABELS = {
 
 const STEP_COPY = {
   gear: {
-    title: "Get an offer for your used camera gear",
+    title: "Get an instant offer for your used camera gear",
     intro: "Start with the gear and condition. Milford Photo verifies every offer after the item arrives or is dropped off in-store.",
   },
   quote: {
@@ -221,6 +221,10 @@ const els = {
   summaryLabel: byId("summary-label"),
   cartList: byId("cart-list"),
   statusPanel: byId("status-panel"),
+  conditionPickerToggle: byId("condition-picker-toggle"),
+  conditionPickerLabel: byId("condition-picker-label"),
+  conditionPickerSummary: byId("condition-picker-summary"),
+  conditionOptions: byId("condition-options"),
   conditionGuideOpen: byId("condition-guide-open"),
   conditionGuideModal: byId("condition-guide-modal"),
   conditionGuideClose: byId("condition-guide-close"),
@@ -248,6 +252,7 @@ function init() {
   renderCart();
   renderCurrentOffer();
   renderSummary();
+  updateConditionPicker();
   updateDeliveryFields();
   setStep("gear");
   scheduleCurrentOffer();
@@ -282,6 +287,7 @@ function bindEvents() {
     renderIncludedItems();
     updateMountField();
     updateManualFields();
+    updateConditionPicker();
     scheduleCurrentOffer();
   });
   els.category.addEventListener("change", () => {
@@ -291,22 +297,34 @@ function bindEvents() {
     renderIncludedItems();
     updateMountField();
     updateManualFields();
+    updateConditionPicker();
     scheduleCurrentOffer();
   });
   els.model.addEventListener("change", () => {
     clearGearSearch();
     updateMountField();
     updateManualFields();
+    updateConditionPicker();
     scheduleCurrentOffer();
   });
+  [els.manualBrand, els.manualModel].forEach((input) =>
+    input.addEventListener("input", () => {
+      updateConditionPicker();
+      scheduleCurrentOffer();
+    }),
+  );
   els.lensMount.addEventListener("change", () => {
     scheduleCurrentOffer();
   });
   document.querySelectorAll('input[name="condition"]').forEach((input) =>
     input.addEventListener("change", () => {
+      updateConditionPicker();
       scheduleCurrentOffer();
     }),
   );
+  els.conditionPickerToggle.addEventListener("click", () => {
+    toggleConditionOptions(els.conditionOptions.hidden);
+  });
   els.conditionGuideOpen.addEventListener("click", openConditionGuide);
   els.conditionGuideClose.addEventListener("click", closeConditionGuide);
   els.conditionGuideModal.addEventListener("click", (event) => {
@@ -597,6 +615,7 @@ function applyGearSearchOption(match) {
   renderIncludedItems();
   els.gearSearch.value = match.label;
   hideGearSearchResults();
+  updateConditionPicker();
   scheduleCurrentOffer();
 }
 
@@ -776,14 +795,14 @@ function renderIncludedItems() {
   if (!items.length) {
     els.includedItems.innerHTML = `
       <div class="included-copy">
-        <span>Instant price includes standard original manufacturer accessories when applicable.</span>
+        <span>Instant prices assume standard original manufacturer accessories are included. Missing or non-OEM accessories may change the final quote after inspection.</span>
       </div>
     `;
     return;
   }
   els.includedItems.innerHTML = `
     <div class="included-copy">
-      <span>Instant price includes all standard original manufacturer accessories.</span>
+      <span>Instant prices assume standard original manufacturer accessories are included. Missing or non-OEM accessories may change the final quote after inspection.</span>
     </div>
   `;
 }
@@ -1048,13 +1067,15 @@ function resetItemFormForNextItem() {
   els.category.value = SELECT_CATEGORY;
   els.manualBrand.value = "";
   els.manualModel.value = "";
-  const defaultCondition = document.querySelector('input[name="condition"][value="excellent"]');
-  if (defaultCondition) defaultCondition.checked = true;
+  document.querySelectorAll('input[name="condition"]').forEach((input) => {
+    input.checked = false;
+  });
   populateBrands();
   populateModels();
   updateMountField();
   updateManualFields();
   renderIncludedItems();
+  updateConditionPicker();
   renderCurrentOffer();
   hideGearSearchResults();
   resizeParentFrame();
@@ -1091,6 +1112,7 @@ function readItemForm(options = {}) {
     !selectedCategory ||
     !selectedBrand ||
     !selectedModel ||
+    !condition ||
     !brand ||
     !model ||
     model === MANUAL_MODEL ||
@@ -1103,10 +1125,13 @@ function readItemForm(options = {}) {
           ? "Please select a brand before adding the item."
           : !selectedModel
             ? "Please select a model before adding the item."
-            : requiresMountSelection && (!mount || !validMounts.includes(mount))
-              ? "Please select a valid lens mount before adding the item."
-              : "Please enter the brand and model before adding the item.";
+            : !condition
+              ? "Please choose the item condition before adding it to the quote."
+              : requiresMountSelection && (!mount || !validMounts.includes(mount))
+                ? "Please select a valid lens mount before adding the item."
+                : "Please enter the brand and model before adding the item.";
       setStatus(message, "error");
+      if (!condition && selectedCategory && selectedBrand && selectedModel) toggleConditionOptions(true);
     }
     return null;
   }
@@ -1138,6 +1163,35 @@ function buildEbayQueryForCatalogItem({ brand, model, mount, catalogItem }) {
 
 function selectedRadioValue(name) {
   return document.querySelector(`input[name="${name}"]:checked`)?.value;
+}
+
+function hasSelectedGearBasics() {
+  const selectedCategory = els.category.value;
+  const selectedBrand = els.brand.value;
+  const selectedModel = els.model.value;
+  if (!selectedCategory || !selectedBrand || !selectedModel) return false;
+  if (selectedBrand === MANUAL_BRAND && !els.manualBrand.value.trim()) return false;
+  if (selectedModel === MANUAL_MODEL && !els.manualModel.value.trim()) return false;
+  return true;
+}
+
+function toggleConditionOptions(show) {
+  els.conditionOptions.hidden = !show;
+  els.conditionPickerToggle.setAttribute("aria-expanded", String(show));
+  els.conditionPickerToggle.classList.toggle("is-open", show);
+  resizeParentFrame();
+}
+
+function updateConditionPicker() {
+  const condition = selectedRadioValue("condition");
+  const label = CONDITION_LABELS[condition] || "";
+  els.conditionPickerToggle.classList.toggle("has-condition", Boolean(condition));
+  els.conditionPickerLabel.textContent = label ? `${label} selected` : "Choose condition";
+  els.conditionPickerSummary.textContent = label
+    ? "Change condition or add this item to the quote."
+    : hasSelectedGearBasics()
+      ? "Choose one to see the instant offer."
+      : "Select gear first, then choose condition.";
 }
 
 async function getQuote() {
@@ -1316,8 +1370,11 @@ function renderCurrentOffer() {
   els.currentOfferCard.classList.toggle("is-error", Boolean(state.currentQuote?.error));
 
   if (!state.currentItem) {
-    els.currentOfferCash.textContent = "Choose gear";
-    els.currentOfferCredit.textContent = "Choose a model to preview the item offer.";
+    const needsCondition = hasSelectedGearBasics() && !selectedRadioValue("condition");
+    els.currentOfferCash.textContent = needsCondition ? "Choose condition" : "Choose gear";
+    els.currentOfferCredit.textContent = needsCondition
+      ? "Choose a condition to see the item offer."
+      : "Choose a model to preview the item offer.";
     return;
   }
 
