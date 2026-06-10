@@ -54,7 +54,7 @@ const STEP_COPY = {
   },
   details: {
     title: "Send this quote to Milford Photo",
-    intro: "Add the customer's contact and delivery details so staff can receive, inspect, and follow up on the quote.",
+    intro: "Add your contact and delivery details so Milford Photo can receive, inspect, and follow up on your offer.",
   },
   done: {
     title: "Next steps for your used gear quote",
@@ -62,7 +62,11 @@ const STEP_COPY = {
   },
 };
 
+const SCRAPED_PRODUCT_IMAGE_OVERRIDES =
+  typeof window !== "undefined" && window.MP_PRODUCT_IMAGE_OVERRIDES ? window.MP_PRODUCT_IMAGE_OVERRIDES : {};
+
 const PRODUCT_IMAGE_OVERRIDES = {
+  ...SCRAPED_PRODUCT_IMAGE_OVERRIDES,
   "canon|digital camera|eos r1": {
     src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/zKX3tO1Y418zyXvWDdhMyA?w=228&h=228&p=1&a=1&q=display",
     alt: "Canon EOS R1 mirrorless camera body",
@@ -414,8 +418,19 @@ function gearSearchOptions() {
 function renderGearSearchResults() {
   const query = els.gearSearch.value.trim();
   const matches = matchingGearSearchOptions(query).slice(0, SEARCH_RESULT_LIMIT);
-  if (!query || !matches.length) {
+  if (!query) {
     hideGearSearchResults();
+    return;
+  }
+
+  if (!matches.length) {
+    els.gearSearchResults.innerHTML = `
+      <div class="gear-search-empty">
+        <strong>No instant match found.</strong>
+        <span>Try fewer words, or choose Other / Manual Review from Category if this item should be reviewed by Milford Photo.</span>
+      </div>
+    `;
+    els.gearSearchResults.hidden = false;
     return;
   }
 
@@ -1013,12 +1028,36 @@ function addCurrentItem() {
   if (!item) return false;
   state.cart.push(item);
   state.quote = null;
+  state.submission = null;
   state.cartQuoteLoading = true;
   renderCart();
   renderSummary();
   scheduleCartQuote();
-  setStatus(`${item.brand} ${item.model} added.`, "success");
+  resetItemFormForNextItem();
+  setStatus("Item added to quote.", "success");
   return true;
+}
+
+function resetItemFormForNextItem() {
+  clearTimeout(state.currentQuoteTimer);
+  state.currentQuoteRequest += 1;
+  state.currentItem = null;
+  state.currentQuote = null;
+  state.currentQuoteLoading = false;
+  els.gearSearch.value = "";
+  els.category.value = SELECT_CATEGORY;
+  els.manualBrand.value = "";
+  els.manualModel.value = "";
+  const defaultCondition = document.querySelector('input[name="condition"][value="excellent"]');
+  if (defaultCondition) defaultCondition.checked = true;
+  populateBrands();
+  populateModels();
+  updateMountField();
+  updateManualFields();
+  renderIncludedItems();
+  renderCurrentOffer();
+  hideGearSearchResults();
+  resizeParentFrame();
 }
 
 function readItemForm(options = {}) {
@@ -1278,7 +1317,7 @@ function renderCurrentOffer() {
 
   if (!state.currentItem) {
     els.currentOfferCash.textContent = "Choose gear";
-    els.currentOfferCredit.textContent = "Price appears here before the item is added.";
+    els.currentOfferCredit.textContent = "Choose a model to preview the item offer.";
     return;
   }
 
@@ -1344,6 +1383,7 @@ function renderCart() {
     button.addEventListener("click", () => {
       state.cart = state.cart.filter((item) => item.id !== button.dataset.removeId);
       state.quote = null;
+      state.submission = null;
       state.cartQuoteLoading = true;
       renderCart();
       renderSummary();
@@ -1379,7 +1419,7 @@ function renderQuoteItem(item) {
   const statusClass = item.status === "quoted" ? "quoted" : item.status === "declined" ? "declined" : "review";
   const price = item.offerAmount ? money.format(item.offerAmount) : item.status === "declined" ? "$0" : "Review";
   const credit = item.storeCreditAmount ? `${money.format(item.storeCreditAmount)} store credit` : item.message || "Staff follow-up needed";
-  const marketCopy = item.marketPrice ? `Market estimate: ${money.format(item.marketPrice)}` : item.message || "";
+  const reviewCopy = item.status === "quoted" ? "" : item.message || "";
   const image = productImageFor(item);
 
   return `
@@ -1392,7 +1432,7 @@ function renderQuoteItem(item) {
         </div>
         <div class="quote-meta">
           ${escapeHtml(CONDITION_LABELS[item.condition] || item.condition)} · ${escapeHtml(item.category)}
-          ${marketCopy ? `<br />${escapeHtml(marketCopy)}` : ""}
+          ${reviewCopy ? `<br />${escapeHtml(reviewCopy)}` : ""}
         </div>
       </div>
       <div class="quote-price">
@@ -1419,7 +1459,7 @@ function renderSummary() {
   if (!state.quote) {
     els.quoteRef.textContent = "Draft";
     els.summaryCash.textContent = state.cart.length ? `${state.cart.length} item${state.cart.length === 1 ? "" : "s"}` : "Add gear";
-    els.summarySubtitle.textContent = state.cart.length ? "Ready for server pricing." : "Server-priced offer appears here.";
+    els.summarySubtitle.textContent = state.cart.length ? "Pricing will update automatically." : "Your offer will appear here as you add gear.";
     els.summaryCredit.textContent = "-";
     els.summaryCreditFeature.textContent = "-";
     els.summaryCreditCard.hidden = true;
@@ -1428,7 +1468,7 @@ function renderSummary() {
     return;
   }
 
-  els.quoteRef.textContent = state.quote.quoteId;
+  els.quoteRef.textContent = state.activeStep === "done" && state.submission?.quoteRef ? state.submission.quoteRef : "Draft";
   const declinedOnly = Boolean(state.quote.routing?.declinedOnly);
   els.summaryCash.textContent = declinedOnly ? "Declined" : state.quote.totals.cash ? money.format(state.quote.totals.cash) : "Review";
   els.summarySubtitle.textContent = declinedOnly
@@ -1848,6 +1888,7 @@ function setStep(step) {
     button.classList.toggle("is-active", button.dataset.stepTarget === step);
   });
   clearStatus();
+  renderSummary();
   resizeParentFrame();
 }
 

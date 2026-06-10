@@ -495,6 +495,20 @@ textarea:focus {
   outline: none;
 }
 
+.gear-search-empty {
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.38;
+}
+
+.gear-search-empty strong {
+  color: var(--ink);
+  font-size: 0.96rem;
+}
+
 .gear-search-result-copy {
   display: grid;
   min-width: 0;
@@ -645,6 +659,18 @@ fieldset {
   margin: -4px 0 4px;
 }
 
+.condition-selector legend {
+  grid-column: 1 / span 3;
+  margin-bottom: 2px;
+}
+
+.condition-selector .condition-guide-trigger {
+  grid-column: 4 / -1;
+  justify-self: end;
+  align-self: center;
+  margin: 0 0 2px;
+}
+
 .choice-card {
   display: grid;
   gap: 7px;
@@ -715,6 +741,32 @@ fieldset {
 .staff-condition-grid .choice-card strong {
   grid-column: 1;
   grid-row: 1;
+}
+
+.condition-selector .choice-card {
+  min-height: 46px;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  border-radius: 999px;
+  padding: 10px 12px;
+}
+
+.condition-selector .choice-card:hover {
+  transform: none;
+}
+
+.condition-selector .choice-card input {
+  grid-column: 1;
+  grid-row: 1;
+  justify-self: start;
+}
+
+.condition-selector .choice-card strong {
+  grid-column: 2;
+  grid-row: 1;
+  font-size: 0.9rem;
+  line-height: 1.1;
 }
 
 .check-grid {
@@ -1963,6 +2015,12 @@ fieldset {
 
   .condition-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .condition-selector legend,
+  .condition-selector .condition-guide-trigger {
+    grid-column: 1 / -1;
+    justify-self: start;
   }
 
   .sell-info-grid {
