@@ -922,6 +922,22 @@
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/Lws5AaiE9KjwB0vOThfvYQ?w=228&h=228&p=1&a=1&q=display",
       alt: "Canon RF-S 55-210mm f/5-7.1 IS STM",
     },
+    "elinchrom|flash / strobe|elc 500": {
+      src: "https://www.elinchrom.com/images/prod1000/Elinchrom-ELC500.jpg",
+      alt: "Elinchrom ELC 500",
+    },
+    "elinchrom|flash / strobe|one off camera flash": {
+      src: "https://www.elinchrom.com/images/prod1000/el20932-ONE-kit-002.jpg",
+      alt: "Elinchrom ONE Off Camera Flash",
+    },
+    "elinchrom|flash / strobe|skyport transmitter pro": {
+      src: "https://www.elinchrom.com/images/prod1000/el19366-transmitter-pro-01.jpg",
+      alt: "Elinchrom Skyport Transmitter Pro",
+    },
+    "elinchrom|flash / strobe|three off camera flash": {
+      src: "https://www.elinchrom.com/images/prod500/el20940-44.jpg",
+      alt: "Elinchrom THREE Off Camera Flash",
+    },
     "fujifilm|digital camera|gfx 100": {
       src: "https://fujifilm-x.b-cdn.net/wp-content/uploads/2018/09/gfx100_thum.jpg?width=480&height=480",
       alt: "Fujifilm GFX 100",
@@ -1258,6 +1274,10 @@
       src: "https://www.godox.com/static/upload/image/20220328/1648433972193571.jpg",
       alt: "Godox ML60 LED Light",
     },
+    "godox|flash / strobe|sk400ii studio flash": {
+      src: "https://www.godox.com/static/upload/image/20220117/1642412812142513.jpg",
+      alt: "Godox SK400II Studio Flash",
+    },
     "godox|flash / strobe|tt600 flash": {
       src: "https://www.godox.com/static/upload/image/20251115/1763177999202961.jpg",
       alt: "Godox TT600 Flash",
@@ -1366,13 +1386,53 @@
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/fu6cCpX1_WJ_twmBIPp_ng?w=228&h=228&p=1&a=1&q=display",
       alt: "Laowa 100mm f/2.8 2x Ultra Macro APO",
     },
+    "laowa|lens|10-18mm f/4.5-5.6 fe zoom": {
+      src: "https://www.laowalenses.ca/wp-content/uploads/2018/11/Laowa-10-18mm-sony-FE-Zoom-e1668442664461.jpg",
+      alt: "Laowa 10-18mm f/4.5-5.6 FE Zoom",
+    },
+    "laowa|lens|11mm f/4.5 ff rl": {
+      src: "https://www.laowalenses.ca/wp-content/uploads/2020/08/Laowa-11mm-f4-5-FF-RL.jpg",
+      alt: "Laowa 11mm f/4.5 FF RL",
+    },
+    "laowa|lens|15mm f/2 zero-d": {
+      src: "https://www.laowalenses.ca/wp-content/uploads/2017/12/LAOWA-15mm-f2-02-thumb-e1554228869393.jpg",
+      alt: "Laowa 15mm f/2 Zero-D",
+    },
     "laowa|lens|24mm f/14 2x macro probe": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/2cYtlLlGDw9NEYyaIIIs_g?w=228&h=228&p=1&a=1&q=display",
       alt: "Laowa 24mm f/14 2x Macro Probe",
     },
+    "laowa|lens|25mm f/2.8 2.5-5x ultra macro": {
+      src: "https://static.bhphoto.com/images/images2500x2500/venus_optics_ve2528c_laowa_25mm_f_2_8_2_5_5x_1520602254_1399601.jpg",
+      alt: "Laowa 25mm f/2.8 2.5-5x Ultra Macro",
+    },
+    "laowa|lens|60mm f/2.8 2x ultra macro": {
+      src: "https://www.adorama.com/images/Large/ve6028soa.jpg",
+      alt: "Laowa 60mm f/2.8 2x Ultra Macro",
+    },
+    "laowa|lens|90mm f/2.8 2x ultra macro apo": {
+      src: "https://www.laowalenses.ca/wp-content/uploads/2022/06/Laowa_90mmF282XMacroAPO_2.jpg",
+      alt: "Laowa 90mm f/2.8 2x Ultra Macro APO",
+    },
     "laowa|lens|9mm f/2.8 zero-d": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/E55WvM5jnhFg4GzWjBUYOw?w=228&h=228&p=1&a=1&q=display",
       alt: "Laowa 9mm f/2.8 Zero-D",
+    },
+    "laowa|lens|105mm f/2 smooth trans focus": {
+      src: "https://static.bhphoto.com/images/images2500x2500/venus_optics_ve10520c_laowa_105mm_f_2_smooth_1467296340_1247147.jpg",
+      alt: "Laowa 105mm f/2 Smooth Trans Focus",
+    },
+    "laowa|lens|argus 33mm f/0.95 cf apo": {
+      src: "https://www.laowalenses.ca/wp-content/uploads/2021/08/33mm_Argus_ESIA_award.jpg",
+      alt: "Laowa Argus 33mm f/0.95 CF APO",
+    },
+    "laowa|lens|argus 35mm f/0.95 ff": {
+      src: "https://www.laowalenses.ca/wp-content/uploads/2021/09/3595-Canon-RF-2-scaled-1.jpg",
+      alt: "Laowa Argus 35mm f/0.95 FF",
+    },
+    "laowa|lens|argus 45mm f/0.95 ff": {
+      src: "https://www.laowalenses.ca/wp-content/uploads/2022/04/Argus_45mm.jpg",
+      alt: "Laowa Argus 45mm f/0.95 FF",
     },
     "leica|digital camera|d-lux 8": {
       src: "https://leica-camera.com/sites/default/files/styles/meta_tag_product_image/public/pm-14887-19191_D-Lux-8_front_1920px.png?itok=xaoWstoB",
@@ -2714,6 +2774,18 @@
       src: "https://www.ricoh-imaging.co.jp/english/products/gr/top/img/bod_cam_02.jpg",
       alt: "Ricoh GR",
     },
+    "ricoh|digital camera|gr digital": {
+      src: "https://www.ricoh-imaging.co.jp/english/r_dc/gr/gr_digital/img/img_006.jpg",
+      alt: "Ricoh GR Digital",
+    },
+    "ricoh|digital camera|gr digital ii": {
+      src: "https://www.ricoh-imaging.co.jp/english/r_dc/gr/gr_digital2/img/po1_p1.jpg",
+      alt: "Ricoh GR Digital II",
+    },
+    "ricoh|digital camera|gr digital iii": {
+      src: "https://www.ricoh-imaging.co.jp/english/r_dc/gr/gr_digital3/img/po1_p2.jpg",
+      alt: "Ricoh GR Digital III",
+    },
     "ricoh|digital camera|gr digital iv": {
       src: "https://www.ricoh-imaging.co.jp/english/products/gr-digital4/img/img-main-digital4.jpg",
       alt: "Ricoh GR Digital IV",
@@ -2725,6 +2797,10 @@
     "ricoh|digital camera|gr iii": {
       src: "https://www.ricoh-imaging.co.jp/japan/products/top/img/img-GRIII.jpg",
       alt: "Ricoh GR III",
+    },
+    "ricoh|digital camera|gr iii hdf": {
+      src: "https://us.ricoh-imaging.com/wp-content/uploads/2024/03/grIII-hdf-square.png",
+      alt: "Ricoh GR III HDF",
     },
     "ricoh|digital camera|gr iiix": {
       src: "https://www.ricoh-imaging.co.jp/japan/products/top/img/img-GRIIIx.jpg",
@@ -2929,6 +3005,10 @@
     "sigma|lens|contemporary 23mm f/1.4 dc dn": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/TrwY1_PqinioKATHZhErYA?w=228&h=228&p=1&a=1&q=display",
       alt: "Sigma Contemporary 23mm f/1.4 DC DN",
+    },
+    "sigma|lens|contemporary 24mm f/3.5 dg dn": {
+      src: "https://www.sigma-global.com/lenses/c021_24_35_product_img01.png",
+      alt: "Sigma Contemporary 24mm f/3.5 DG DN",
     },
     "sigma|lens|contemporary 28-45mm f/1.8 dg dn": {
       src: "https://www.sigma-global.com/lenses/a024_28_45_18_product_img01.png",
@@ -3426,6 +3506,30 @@
       src: "https://tamron-americas.com/wp-content/uploads/2026/04/a047-1200-x-1200-wht.webp",
       alt: "Tamron 70-300mm f/4.5-6.3 Di III RXD",
     },
+    "tamron|lens|16-300mm f/3.5-6.3 di ii vc pzd": {
+      src: "https://www.tamron.com/global/consumer/pc_file/file/b016_main.webp",
+      alt: "Tamron 16-300mm f/3.5-6.3 Di II VC PZD",
+    },
+    "tamron|lens|70-180mm f/2.8 di iii vxd (sony e)": {
+      src: "https://www.tamron.com/global/consumer/pc_file/file/a056_main.webp",
+      alt: "Tamron 70-180mm f/2.8 Di III VXD (Sony E)",
+    },
+    "tamron|lens|sp 35mm f/1.8 di vc usd": {
+      src: "https://www.tamron.com/global/consumer/pc_file/file/f012_main.webp",
+      alt: "Tamron SP 35mm f/1.8 Di VC USD",
+    },
+    "tamron|lens|sp 45mm f/1.8 di vc usd": {
+      src: "https://www.tamron.com/global/consumer/pc_file/file/f013_main.webp",
+      alt: "Tamron SP 45mm f/1.8 Di VC USD",
+    },
+    "tamron|lens|sp 70-300mm f/4-5.6 di vc usd g2": {
+      src: "https://www.tamron.com/global/consumer/pc_file/file/a030_main.webp",
+      alt: "Tamron SP 70-300mm f/4-5.6 Di VC USD G2",
+    },
+    "tamron|lens|sp 90mm f/2.8 di macro vc usd g2": {
+      src: "https://www.tamron.com/global/consumer/pc_file/file/f017_main.webp",
+      alt: "Tamron SP 90mm f/2.8 Di Macro VC USD G2",
+    },
     "tamron|lens|sp 15-30mm f/2.8 di vc usd g2": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/mUWvvPBaT0ybmbBH5x07Vw?w=228&h=228&p=1&a=1&q=display",
       alt: "Tamron SP 15-30mm f/2.8 Di VC USD G2",
@@ -3450,9 +3554,33 @@
       src: "https://cdn.shopify.com/s/files/1/0606/1306/7006/products/atx-1116-01.jpg?v=1635874806",
       alt: "Tokina AT-X 11-16mm f/2.8 Pro DX II",
     },
+    "tokina|lens|at-x 11-20mm f/2.8 pro dx": {
+      src: "https://tokinalens.com/images/catalog/product/5aabbd1d5e7df.png?w=1200&fit=max",
+      alt: "Tokina AT-X 11-20mm f/2.8 Pro DX",
+    },
+    "tokina|lens|at-x 12-24mm f/4 pro dx ii": {
+      src: "https://tokinalens.com/images/catalog/product/5ac23ccd0e8b1.png?w=1200&fit=max",
+      alt: "Tokina AT-X 12-24mm f/4 Pro DX II",
+    },
     "tokina|lens|at-x 12-28mm f/4 pro dx": {
       src: "https://cdn.shopify.com/s/files/1/0606/1306/7006/products/atx-1228-01.jpg?v=1635874142",
       alt: "Tokina AT-X 12-28mm f/4 Pro DX",
+    },
+    "tokina|lens|at-x 14-20mm f/2 pro dx": {
+      src: "https://tokinalens.com/images/catalog/product/5d83e169ce3a9.png?w=1200&fit=max",
+      alt: "Tokina AT-X 14-20mm f/2 Pro DX",
+    },
+    "tokina|lens|at-x 16-28mm f/2.8 pro fx": {
+      src: "https://tokinalens.com/images/catalog/product/5a8441f3a246d.png?w=1200&fit=max",
+      alt: "Tokina AT-X 16-28mm f/2.8 Pro FX",
+    },
+    "tokina|lens|at-x 24-70mm f/2.8 pro fx": {
+      src: "https://tokinalens.com/images/catalog/product/5c35ac5f2befb.png?w=1200&fit=max",
+      alt: "Tokina AT-X 24-70mm f/2.8 Pro FX",
+    },
+    "tokina|lens|at-x 100mm f/2.8 pro d macro": {
+      src: "https://tokinalens.com/images/catalog/product/5ab25a8e1e7df.png?w=1200&fit=max",
+      alt: "Tokina AT-X 100mm f/2.8 Pro D Macro",
     },
     "tokina|lens|atx-m 23mm f/1.4 (sony e)": {
       src: "https://cdn.shopify.com/s/files/1/0606/1306/7006/products/atxm-23mm-sony-product-01.jpg?v=1635455598",

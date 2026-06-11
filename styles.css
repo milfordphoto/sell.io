@@ -54,9 +54,7 @@ button {
 .mp-used-app {
   min-height: 100vh;
   padding: 28px 16px;
-  background:
-    linear-gradient(180deg, rgba(213, 33, 39, 0.07), rgba(213, 33, 39, 0) 280px),
-    #ffffff;
+  background: #ffffff;
 }
 
 .shell {
@@ -100,6 +98,119 @@ h1 {
   color: var(--muted);
   font-size: 1.08rem;
   line-height: 1.6;
+}
+
+.quick-steps-panel {
+  display: grid;
+  gap: 18px;
+  margin: 18px 0 0;
+  padding: clamp(18px, 3vw, 28px);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.quick-steps-heading {
+  display: flex;
+  gap: 18px;
+  align-items: end;
+  justify-content: space-between;
+}
+
+.quick-steps-heading h2 {
+  margin: 0;
+  font-size: clamp(1.55rem, 2.4vw, 2.2rem);
+  line-height: 1.12;
+}
+
+.quick-steps-heading p {
+  flex: 0 0 auto;
+  max-width: none;
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+  white-space: nowrap;
+}
+
+.quick-steps-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  border-top: 0;
+}
+
+.quick-steps-grid article {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  min-height: 190px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--soft);
+}
+
+.quick-steps-grid article:first-child {
+  border-left: 1px solid var(--line);
+  padding-left: 18px;
+}
+
+.quick-step-media {
+  display: flex;
+  min-height: 74px;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.quick-step-number {
+  display: inline-grid;
+  margin-top: 2px;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(213, 33, 39, 0.1);
+  color: var(--mp-red);
+  font-size: 0.86rem;
+  font-weight: 850;
+}
+
+.quick-step-icon {
+  width: 72px;
+  height: 72px;
+  padding: 14px;
+  box-sizing: border-box;
+  border-radius: 20px;
+  background: #fff;
+  color: var(--mp-red-dark);
+  box-shadow:
+    inset 0 0 0 1px rgba(213, 33, 39, 0.2),
+    0 8px 20px rgba(22, 28, 38, 0.07);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.quick-step-copy {
+  display: grid;
+  gap: 5px;
+}
+
+.quick-steps-grid h3 {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.2;
+}
+
+.quick-steps-grid p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.94rem;
+  line-height: 1.45;
 }
 
 .policy-panel {
@@ -167,7 +278,7 @@ h1 {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 360px;
   gap: 18px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .work-panel,
@@ -179,7 +290,6 @@ h1 {
 }
 
 .work-panel {
-  min-height: 690px;
   padding: clamp(18px, 3vw, 32px);
 }
 
@@ -262,7 +372,7 @@ h1 {
   cursor: pointer;
   padding: 14px 16px;
   color: var(--ink);
-  font-weight: 850;
+  font-weight: 720;
 }
 
 .sell-faq details[open] summary {
@@ -1032,6 +1142,7 @@ fieldset {
 }
 
 .summary-panel {
+  align-self: stretch;
   position: sticky;
   top: 14px;
   padding: 22px;
@@ -1903,6 +2014,16 @@ fieldset {
   align-items: center;
 }
 
+.done-actions .secondary-action {
+  border-color: var(--mp-red);
+  background: var(--mp-red);
+  color: #ffffff;
+}
+
+.done-actions .secondary-action:hover {
+  background: var(--mp-red-dark);
+}
+
 .done-next-steps {
   display: grid;
   gap: 12px;
@@ -2058,11 +2179,25 @@ fieldset {
     white-space: normal;
   }
 
+  .quick-steps-heading {
+    display: grid;
+    gap: 8px;
+  }
+
+  .quick-steps-heading p {
+    white-space: normal;
+  }
+
+  .quick-steps-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .layout {
     grid-template-columns: 1fr;
   }
 
   .summary-panel {
+    align-self: auto;
     position: static;
   }
 
@@ -2128,6 +2263,34 @@ fieldset {
   .condition-selector .condition-guide-trigger {
     grid-column: 1 / -1;
     justify-self: start;
+  }
+
+  .quick-steps-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .quick-steps-grid article {
+    min-height: 0;
+    padding: 16px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+  }
+
+  .quick-steps-grid article:first-child {
+    border: 1px solid var(--line);
+    padding-left: 16px;
+  }
+
+  .quick-step-media {
+    min-height: 0;
+    justify-content: flex-start;
+  }
+
+  .quick-step-icon {
+    width: 60px;
+    height: 60px;
+    padding: 12px;
+    border-radius: 16px;
   }
 
   .sell-info-grid {

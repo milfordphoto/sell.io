@@ -46,7 +46,7 @@ const CONDITION_LABELS = {
 const STEP_COPY = {
   gear: {
     title: "Get an instant offer for your used camera gear",
-    intro: "Start with the gear and condition. Milford Photo verifies every offer after the item arrives or is dropped off in-store.",
+    intro: "Get a price online, ship it in or bring it to Milford Photo, and choose cash or 10% more in store credit after inspection.",
   },
   quote: {
     title: "Review your instant offer",
