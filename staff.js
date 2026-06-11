@@ -407,7 +407,7 @@ function renderDetail() {
   const finalOffer = numberOrNull(fields["Final Offer"]) ?? calculateOffer(fields, parsed, accessories, baseOffer);
   const paymentMethod = paymentMethodValue(fields);
   const staffMaySetPayment = staffCanSetPaymentMethod(fields, paymentMethod);
-  const defaultDecision = staffDecisionForRecord(record, order, finalOffer, parsed);
+  const defaultDecision = staffDecisionForRecord(record, order, finalOffer, parsed, accessories);
 
   detailEl.innerHTML = `
     <article class="staff-intake">
@@ -437,10 +437,16 @@ function renderDetail() {
               <p>Confirm this specific piece of gear arrived in the box or in-store dropoff.</p>
             </div>
           </div>
-          <label class="staff-check-row">
-            <input type="checkbox" id="received-check" ${parsed.received || staffRecordLooksReceived(fields) ? "checked" : ""} />
-            This item has been received
-          </label>
+          <div class="staff-receive-grid">
+            <label class="staff-check-row">
+              <input type="checkbox" id="received-check" ${!parsed.notReceived && (parsed.received || staffRecordLooksReceived(fields)) ? "checked" : ""} />
+              This item has been received
+            </label>
+            <label class="staff-check-row staff-check-row-warning">
+              <input type="checkbox" id="not-received-check" ${parsed.notReceived ? "checked" : ""} />
+              This item was NOT received
+            </label>
+          </div>
         </section>
 
         <section class="staff-review-section">
@@ -468,6 +474,7 @@ function renderDetail() {
               <p>Changing the grade recalculates the suggested final offer.</p>
             </div>
           </div>
+          ${renderStaffConditionContext(fields)}
           <div class="staff-condition-grid">
             ${Object.keys(CONDITION_MULTIPLIERS).map((condition) => renderCondition(condition, parsed.verifiedCondition || fields.Condition)).join("")}
           </div>
@@ -508,6 +515,8 @@ function renderDetail() {
               </div>
             `}
           </div>
+          ${renderStaffReferencePricing(fields)}
+          ${renderStaffDecisionContext(record, order, defaultDecision)}
           <div class="staff-decision-grid">
             <label class="staff-decision-card">
               <input type="radio" name="item-decision" value="pending" ${defaultDecision === "pending" ? "checked" : ""} />
@@ -725,27 +734,168 @@ function renderCondition(condition, selectedCondition) {
   `;
 }
 
-function staffDecisionForRecord(record, order, finalOffer, parsed = parseStaffNotes(record?.fields?.["Staff Notes"])) {
+function renderStaffConditionContext(fields = {}) {
+  return `
+    <div class="staff-condition-context">
+      <div>
+        <span>${escapeHtml(conditionChoiceLabel(fields))}</span>
+        <strong>${escapeHtml(fields.Condition || "Not listed")}</strong>
+      </div>
+      <p>${escapeHtml(quoteOriginLabel(fields))}</p>
+    </div>
+  `;
+}
+
+function conditionChoiceLabel(fields = {}) {
+  return quoteOriginIsStaff(fields) ? "Counter intake condition" : "Customer selected condition";
+}
+
+function quoteOriginLabel(fields = {}) {
+  if (quoteOriginIsStaff(fields)) return "Created through the staff dashboard counter-intake flow.";
+  if (String(fields.Source || "").toLowerCase().includes("online")) return "Submitted by the customer through the online quote widget.";
+  return "Submitted through the used-gear quote workflow.";
+}
+
+function quoteOriginIsStaff(fields = {}) {
+  const source = String(fields.Source || "").toLowerCase();
+  const notes = String(fields["Staff Notes"] || "").toLowerCase();
+  return source.includes("staff") || notes.includes("staff in-store intake");
+}
+
+function staffDecisionForRecord(record, order, finalOffer, parsed = parseStaffNotes(record?.fields?.["Staff Notes"]), accessories = accessoryListFor(record?.fields || {}), options = {}) {
   const fields = record?.fields || {};
-  if (parsed.customerFinalDecision === "return") return "return";
-  if (parsed.customerFinalDecision === "accept") return "accept";
+  const saved = parseStaffNotes(fields["Staff Notes"]);
+  const customerFinalDecision = parsed.customerFinalDecision || saved.customerFinalDecision;
+  if (customerFinalDecision === "return") return "return";
+  if (customerFinalDecision === "accept") return "accept";
+
+  const reviewNeedsCustomerDecision = reviewRequiresCustomerDecision(fields, parsed, accessories);
+  if (options.reviewChangesOverrideAcceptance && reviewNeedsCustomerDecision) return "pending";
 
   const status = staffWorkflowText(fields);
   if (status.includes("customer accepted") || status.includes("payment")) return "accept";
+
+  if (reviewNeedsCustomerDecision) return "pending";
 
   if (!orderHasReducedFinalOffer(order, record, finalOffer)) return "accept";
   return itemOfferWasReduced(fields, finalOffer) ? "pending" : "accept";
 }
 
-function updateDefaultDecision(record, suggestedOffer) {
+function reviewRequiresCustomerDecision(fields = {}, review = {}, accessories = []) {
+  if (review.notReceived) return true;
+
+  const customerCondition = String(fields.Condition || "").trim();
+  const verifiedCondition = String(review.verifiedCondition || "").trim();
+  if (customerCondition && verifiedCondition && normalizeCondition(customerCondition) !== normalizeCondition(verifiedCondition)) {
+    return true;
+  }
+
+  return accessories.some((item) => review.accessories?.[item.name] === false);
+}
+
+function renderStaffDecisionContext(record, order, selectedDecision = "pending") {
+  const fields = record?.fields || {};
+  const customerDecision = latestCustomerDecision(fields);
+  const finalEmailSent = finalQuoteEmailSent(order);
+  const choiceLabel = customerDecision
+    ? customerDecisionLabel(customerDecision.decision)
+    : finalEmailSent && selectedDecision === "pending"
+      ? "Awaiting customer decision"
+      : "No customer response yet";
+  const choiceCopy = customerDecision
+    ? customerDecisionDetail(customerDecision)
+    : `Current staff selection: ${staffDecisionLabel(selectedDecision)}.`;
+  const emailLabel = finalEmailSent ? "Sent to customer" : "Not sent yet";
+  const emailCopy = customerDecision
+    ? "Customer response is saved from the final quote link."
+    : finalEmailSent
+      ? "Final quote email was sent; the customer can accept this item or ask for it returned."
+      : "Send the final quote email after every item is evaluated to request the customer decision.";
+  const stateClass = customerDecision ? "has-customer-choice" : finalEmailSent ? "is-awaiting" : "is-unsent";
+
+  return `
+    <div class="staff-final-decision-context ${stateClass}" id="staff-final-decision-context" data-email-sent="${finalEmailSent ? "true" : "false"}" data-customer-decision="${escapeAttr(customerDecision?.decision || "")}">
+      <div>
+        <span>Customer choice</span>
+        <strong data-staff-decision-choice>${escapeHtml(choiceLabel)}</strong>
+        <p data-staff-decision-copy>${escapeHtml(choiceCopy)}</p>
+      </div>
+      <div>
+        <span>Final quote email</span>
+        <strong data-staff-email-status>${escapeHtml(emailLabel)}</strong>
+        <p data-staff-email-copy>${escapeHtml(emailCopy)}</p>
+      </div>
+    </div>
+  `;
+}
+
+function latestCustomerDecision(fields = {}) {
+  const decisions = parseCustomerDecisionBlocks(fields["Staff Notes"]);
+  if (!decisions.length) return null;
+  return [...decisions].sort((a, b) => logTimestampValue(b.submitted) - logTimestampValue(a.submitted))[0];
+}
+
+function customerDecisionLabel(decision = "") {
+  const normalized = String(decision || "").toLowerCase();
+  if (normalized === "return") return "Customer wants this item returned";
+  if (normalized === "accept") return "Customer accepted this item";
+  return staffDecisionLabel(normalized);
+}
+
+function customerDecisionDetail(decision = {}) {
+  const details = [];
+  if (decision.submitted) details.push(`Submitted ${formatLogTimestamp(decision.submitted)}`);
+  if (decision.paymentPreference) details.push(`Payout preference: ${decision.paymentPreference}`);
+  return details.length ? `${details.join(". ")}.` : "Saved from the final quote link.";
+}
+
+function staffDecisionLabel(value = "pending") {
+  if (value === "accept") return "Customer accepts this item";
+  if (value === "return") return "Customer wants this item returned";
+  return "Await customer decision";
+}
+
+function refreshStaffDecisionContext(selectedDecision = "pending") {
+  const panel = document.getElementById("staff-final-decision-context");
+  if (!panel || panel.dataset.customerDecision) return;
+  const emailSent = panel.dataset.emailSent === "true";
+  const choiceLabel = emailSent && selectedDecision === "pending"
+    ? "Awaiting customer decision"
+    : "No customer response yet";
+  const emailCopy = emailSent && selectedDecision === "pending"
+    ? "Final quote email was sent; waiting for the customer to choose accept or return."
+    : emailSent
+      ? "Final quote email was sent; the customer can still respond from the final quote link."
+      : "Send the final quote email after every item is evaluated to request the customer decision.";
+
+  const choiceEl = panel.querySelector("[data-staff-decision-choice]");
+  const choiceCopyEl = panel.querySelector("[data-staff-decision-copy]");
+  const emailStatusEl = panel.querySelector("[data-staff-email-status]");
+  const emailCopyEl = panel.querySelector("[data-staff-email-copy]");
+  if (choiceEl) choiceEl.textContent = choiceLabel;
+  if (choiceCopyEl) choiceCopyEl.textContent = `Current staff selection: ${staffDecisionLabel(selectedDecision)}.`;
+  if (emailStatusEl) emailStatusEl.textContent = emailSent ? "Sent to customer" : "Not sent yet";
+  if (emailCopyEl) emailCopyEl.textContent = emailCopy;
+}
+
+function updateDefaultDecision(record, suggestedOffer, review, accessories = []) {
   const decisionInputs = Array.from(document.querySelectorAll("input[name='item-decision']"));
-  if (!decisionInputs.length || decisionInputs.some((input) => input.dataset.userSelected === "true")) return;
+  if (!decisionInputs.length) return;
   const customOffer = numberOrNull(document.getElementById("custom-offer")?.value);
   const finalOffer = customOffer ?? suggestedOffer;
-  const decision = staffDecisionForRecord(record, selectedOrder(), finalOffer);
+  const reviewState = review || collectReviewState(accessories);
+  const decision = staffDecisionForRecord(record, selectedOrder(), finalOffer, reviewState, accessories, { reviewChangesOverrideAcceptance: true });
+  const forcePendingForReviewChange = decision === "pending" && reviewRequiresCustomerDecision(record?.fields || {}, reviewState, accessories);
+  if (!forcePendingForReviewChange && decisionInputs.some((input) => input.dataset.userSelected === "true")) return;
+  if (forcePendingForReviewChange) {
+    decisionInputs.forEach((input) => {
+      delete input.dataset.userSelected;
+    });
+  }
   decisionInputs.forEach((input) => {
     input.checked = input.value === decision;
   });
+  refreshStaffDecisionContext(decision);
 }
 
 function orderHasReducedFinalOffer(order, currentRecord, currentFinalOffer) {
@@ -799,6 +949,9 @@ function bindDetail(record, accessories) {
   const allAccessoriesCheck = document.getElementById("all-accessories-check");
   const accessoryInputs = Array.from(form.querySelectorAll("[data-accessory]"));
   const sendFinalQuoteButton = document.getElementById("send-final-quote");
+  const receivedCheck = document.getElementById("received-check");
+  const notReceivedCheck = document.getElementById("not-received-check");
+  const fields = record.fields || {};
 
   detailEl.querySelectorAll("[data-item-id]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -811,8 +964,18 @@ function bindDetail(record, accessories) {
     openOrderLog(selectedOrder());
   });
 
+  receivedCheck?.addEventListener("change", () => {
+    if (receivedCheck.checked && notReceivedCheck) notReceivedCheck.checked = false;
+    updateSuggestedOffer(record, accessories);
+  });
+
+  notReceivedCheck?.addEventListener("change", () => {
+    if (notReceivedCheck.checked && receivedCheck) receivedCheck.checked = false;
+    updateSuggestedOffer(record, accessories);
+  });
+
   form.querySelectorAll("input, textarea").forEach((input) => {
-    if (input.name === "item-decision") return;
+    if (input.name === "item-decision" || input.id === "received-check" || input.id === "not-received-check") return;
     input.addEventListener("input", () => updateSuggestedOffer(record, accessories));
     input.addEventListener("change", () => updateSuggestedOffer(record, accessories));
   });
@@ -845,8 +1008,11 @@ function bindDetail(record, accessories) {
   form.querySelectorAll("input[name='item-decision']").forEach((input) => {
     input.addEventListener("change", () => {
       input.dataset.userSelected = "true";
+      refreshStaffDecisionContext(input.value);
     });
   });
+
+  syncAutoInspectionNotes(fields, accessories);
 
   actionButtons.forEach((button) => {
     button.addEventListener("click", async () => {
@@ -871,7 +1037,8 @@ function bindDetail(record, accessories) {
 
 function updateSuggestedOffer(record, accessories) {
   const fields = record.fields || {};
-  const suggested = calculateOffer(fields, collectReviewState(accessories), accessories, numberOrNull(fields["Milford Offer"]) ?? 0);
+  const review = collectReviewState(accessories);
+  const suggested = calculateOffer(fields, review, accessories, numberOrNull(fields["Milford Offer"]) ?? 0);
   const suggestedInput = document.getElementById("suggested-offer");
   const customInput = document.getElementById("custom-offer");
   const previousSuggested = numberOrNull(suggestedInput.dataset.suggestedOffer ?? suggestedInput.value);
@@ -885,7 +1052,8 @@ function updateSuggestedOffer(record, accessories) {
   suggestedInput.value = suggested;
   suggestedInput.dataset.suggestedOffer = String(suggested);
   if (!keepCustom) customInput.value = suggested;
-  updateDefaultDecision(record, suggested);
+  updateDefaultDecision(record, suggested, review, accessories);
+  syncAutoInspectionNotes(fields, accessories, review);
 }
 
 async function handleStaffAction(record, accessories, action, buttons, options = {}) {
@@ -1039,6 +1207,7 @@ function showOrderLogModal(order, state = {}) {
     </section>
   `;
   document.body.append(modal);
+  document.body.classList.add("modal-open");
   modal.querySelectorAll("[data-close-order-log]").forEach((button) => {
     button.addEventListener("click", closeOrderLogModal);
   });
@@ -1047,6 +1216,7 @@ function showOrderLogModal(order, state = {}) {
 
 function closeOrderLogModal() {
   document.querySelector(".staff-log-modal")?.remove();
+  document.body.classList.remove("modal-open");
   document.removeEventListener("keydown", handleOrderLogKeydown);
 }
 
@@ -2423,8 +2593,11 @@ function collectReviewState(accessories) {
     if (!(item.name in accessoryState)) accessoryState[item.name] = true;
   });
 
+  const notReceived = Boolean(document.getElementById("not-received-check")?.checked);
+
   return {
-    received: Boolean(document.getElementById("received-check")?.checked),
+    received: !notReceived && Boolean(document.getElementById("received-check")?.checked),
+    notReceived,
     allAccessories: Boolean(document.getElementById("all-accessories-check")?.checked),
     verifiedCondition,
     accessories: accessoryState,
@@ -2447,6 +2620,73 @@ function calculateOffer(fields, review, accessories, fallbackOffer) {
       ? Math.floor(market * conditionMultiplier)
       : fallbackOffer;
   return Math.max(0, Math.floor(conditionOffer - missingTotal));
+}
+
+function syncAutoInspectionNotes(fields = {}, accessories = [], review = collectReviewState(accessories)) {
+  const notesInput = document.getElementById("inspection-notes");
+  if (!notesInput || document.activeElement === notesInput) return;
+
+  const generated = autoInspectionReason(fields, review, accessories);
+  const previousGenerated = notesInput.dataset.autoInspectionReason || "";
+  const current = notesInput.value.trim();
+
+  if (!generated) {
+    if (previousGenerated && current.includes(previousGenerated)) {
+      notesInput.value = removeGeneratedInspectionReason(current, previousGenerated);
+    }
+    notesInput.dataset.autoInspectionReason = "";
+    return;
+  }
+
+  if (!current || current === previousGenerated) {
+    notesInput.value = generated;
+  } else if (previousGenerated && current.includes(previousGenerated)) {
+    notesInput.value = current.replace(previousGenerated, generated).trim();
+  } else if (current !== generated && !current.includes(generated)) {
+    notesInput.value = `${generated}\n${current}`;
+  }
+
+  notesInput.dataset.autoInspectionReason = generated;
+}
+
+function autoInspectionReason(fields = {}, review = {}, accessories = []) {
+  const reasons = [];
+  if (review.notReceived) {
+    reasons.push("Item was marked not received.");
+  }
+
+  const customerCondition = String(fields.Condition || "").trim();
+  const verifiedCondition = String(review.verifiedCondition || "").trim();
+  if (customerCondition && verifiedCondition && normalizeCondition(customerCondition) !== normalizeCondition(verifiedCondition)) {
+    reasons.push(`Customer selected ${customerCondition}; inspection verified ${verifiedCondition}.`);
+  }
+
+  const missingAccessories = accessories
+    .filter((item) => review.accessories?.[item.name] === false)
+    .map((item) => item.name);
+  if (missingAccessories.length) {
+    reasons.push(`${missingAccessories.length === 1 ? "Missing accessory" : "Missing accessories"}: ${formatInlineList(missingAccessories)}.`);
+  }
+
+  return reasons.join(" ");
+}
+
+function removeGeneratedInspectionReason(current = "", generated = "") {
+  if (!generated) return String(current || "").trim();
+  return String(current || "")
+    .replace(generated, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function normalizeCondition(value = "") {
+  return String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function formatInlineList(items = []) {
+  if (items.length <= 1) return items[0] || "";
+  if (items.length === 2) return `${items[0]} and ${items[1]}`;
+  return `${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`;
 }
 
 function staffNoteValue(fields = {}, label = "") {
@@ -2534,10 +2774,44 @@ function statusIncludesAny(status, needles) {
   return needles.some((needle) => status.includes(needle));
 }
 
+function renderStaffReferencePricing(fields = {}) {
+  const links = staffReferenceLinks(fields);
+  return `
+    <div class="staff-reference-panel">
+      <div>
+        <strong>Reference pricing</strong>
+        <span>Compare used-market listings before setting the final offer.</span>
+      </div>
+      <nav class="staff-reference-links" aria-label="Reference pricing searches">
+        ${links.map((link) => `<a href="${escapeAttr(link.href)}">${escapeHtml(link.label)}</a>`).join("")}
+      </nav>
+    </div>
+  `;
+}
+
+function staffReferenceLinks(fields = {}) {
+  const query = staffReferenceQuery(fields);
+  return [
+    { label: "eBay sold", href: ebaySoldListingsUrl(fields) },
+    { label: "MPB", href: marketSearchUrl("https://www.mpb.com/en-us/search", query) },
+    { label: "B&H used", href: marketSearchUrl("https://www.bhphotovideo.com/c/search", `${query} used`) },
+    { label: "KEH", href: marketSearchUrl("https://www.keh.com/shop/search", query) },
+  ];
+}
+
+function staffReferenceQuery(fields = {}) {
+  return [fields["Item Brand"], fields["Item Model"]].filter(Boolean).join(" ").trim() || "camera gear";
+}
+
+function marketSearchUrl(baseUrl, query) {
+  const url = new URL(baseUrl);
+  url.searchParams.set("q", query || "camera gear");
+  return url.toString();
+}
+
 function ebaySoldListingsUrl(fields = {}) {
-  const query = [fields["Item Brand"], fields["Item Model"]].filter(Boolean).join(" ").trim();
   const url = new URL("https://www.ebay.com/sch/i.html");
-  url.searchParams.set("_nkw", query || "camera gear");
+  url.searchParams.set("_nkw", staffReferenceQuery(fields));
   url.searchParams.set("_sacat", "625");
   url.searchParams.set("LH_Complete", "1");
   url.searchParams.set("LH_Sold", "1");
@@ -2551,7 +2825,8 @@ function buildStaffNotes(review, action, finalOffer) {
 
   return [
     "INTAKE REVIEW",
-    `Received: ${review.received ? "Yes" : "No"}`,
+    `Received: ${review.notReceived ? "No - item not received" : review.received ? "Yes" : "No"}`,
+    `Item not received: ${review.notReceived ? "Yes" : "No"}`,
     `Verified condition: ${review.verifiedCondition}`,
     `All recommended accessories included: ${review.allAccessories ? "Yes" : "No"}`,
     "Accessory check:",
@@ -2577,6 +2852,7 @@ function appendOrderNote(notes = "", status) {
 function parseStaffNotes(notes = "") {
   const parsed = {
     received: false,
+    notReceived: false,
     allAccessories: false,
     verifiedCondition: "",
     accessories: {},
@@ -2590,7 +2866,12 @@ function parseStaffNotes(notes = "") {
     const clean = line.trim();
     if (clean === "CUSTOMER FINAL QUOTE DECISION") inCustomerFinalQuoteDecision = true;
     if (clean === "INTAKE REVIEW" || clean === "ORDER UPDATE") inCustomerFinalQuoteDecision = false;
-    if (clean.startsWith("Received:")) parsed.received = clean.includes("Yes");
+    if (clean.startsWith("Received:")) {
+      const receivedText = clean.toLowerCase();
+      parsed.received = clean.includes("Yes") && !receivedText.includes("not received");
+      if (receivedText.includes("not received")) parsed.notReceived = true;
+    }
+    if (clean.startsWith("Item not received:")) parsed.notReceived = clean.includes("Yes");
     if (clean.startsWith("All recommended accessories included:")) parsed.allAccessories = clean.includes("Yes");
     if (clean.startsWith("Verified condition:")) parsed.verifiedCondition = clean.replace("Verified condition:", "").trim();
     if (clean.startsWith("Customer decision:")) {
