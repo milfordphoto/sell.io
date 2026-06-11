@@ -1,4 +1,4 @@
-// Auto-generated from Milford/Dakis exports and conservative manufacturer matches on 2026-06-10.
+// Auto-generated from Milford/Dakis exports and conservative manufacturer matches.
 // Conservative matches only: existing quote catalog key -> product image URL.
 (function () {
   window.MP_PRODUCT_IMAGE_OVERRIDES = Object.freeze({
@@ -330,6 +330,14 @@
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/-CdnPEefTte822fDR2gwng?w=228&h=228&p=1&a=1&q=display",
       alt: "Canon PowerShot V1",
     },
+    "canon|film camera|eos 100": {
+      src: "https://global.canon/ja/c-museum/wp-content/uploads/2015/05/film148_b.jpg",
+      alt: "Canon EOS 100",
+    },
+    "canon|film camera|eos 1000f": {
+      src: "https://global.canon/ja/c-museum/wp-content/uploads/2015/05/film145_b.jpg",
+      alt: "Canon EOS 1000F",
+    },
     "canon|film camera|eos 1n": {
       src: "https://global.canon/ja/c-museum/wp-content/uploads/2015/05/film173_b.jpg",
       alt: "Canon EOS 1N",
@@ -342,9 +350,45 @@
       src: "https://global.canon/ja/c-museum/wp-content/uploads/2015/05/film206_b.jpg",
       alt: "Canon EOS 3",
     },
+    "canon|film camera|eos 30": {
+      src: "https://global.canon/ja/c-museum/wp-content/uploads/2015/05/film224_b.jpg",
+      alt: "Canon EOS 30",
+    },
+    "canon|film camera|eos 300": {
+      src: "https://global.canon/ja/c-museum/wp-content/uploads/2015/05/film214_b.jpg",
+      alt: "Canon EOS 300",
+    },
+    "canon|film camera|eos 300v": {
+      src: "https://global.canon/ja/c-museum/wp-content/uploads/2015/05/film236_b.jpg",
+      alt: "Canon EOS 300V",
+    },
+    "canon|film camera|eos 300x": {
+      src: "https://global.canon/ja/c-museum/wp-content/uploads/2015/05/film248_b.jpg",
+      alt: "Canon EOS 300X",
+    },
+    "canon|film camera|eos 50": {
+      src: "https://global.canon/ja/c-museum/wp-content/uploads/2015/05/film185_b.jpg",
+      alt: "Canon EOS 50",
+    },
+    "canon|film camera|eos 500": {
+      src: "https://global.canon/ja/c-museum/wp-content/uploads/2015/05/film162_b.jpg",
+      alt: "Canon EOS 500",
+    },
+    "canon|film camera|eos 50e": {
+      src: "https://global.canon/ja/c-museum/wp-content/uploads/2015/05/film185_b.jpg",
+      alt: "Canon EOS 50E",
+    },
+    "canon|film camera|eos rebel 2000": {
+      src: "https://global.canon/ja/c-museum/wp-content/uploads/2015/05/film214_b.jpg",
+      alt: "Canon EOS Rebel 2000",
+    },
     "canon|film camera|eos rebel g": {
       src: "https://global.canon/ja/c-museum/wp-content/uploads/2015/05/film190_b.jpg",
       alt: "Canon EOS Rebel G",
+    },
+    "canon|film camera|eos rebel ii": {
+      src: "https://global.canon/ja/c-museum/wp-content/uploads/2015/05/film156_b.jpg",
+      alt: "Canon EOS Rebel II",
     },
     "canon|film camera|eos rebel k2": {
       src: "https://global.canon/ja/c-museum/wp-content/uploads/2015/05/film243_b.jpg",
@@ -438,6 +482,10 @@
       src: "https://global.canon/ja/c-museum/wp-content/uploads/2015/05/ef397_b.jpg",
       alt: "Canon EF 200mm f/2L IS USM",
     },
+    "canon|lens|ef 200-400mm f/4l is usm 1.4x": {
+      src: "https://global.canon/ja/c-museum/wp-content/uploads/2016/03/ef428_b.jpg",
+      alt: "Canon EF 200-400mm f/4L IS USM 1.4x",
+    },
     "canon|lens|ef 20mm f/2.8 usm": {
       src: "https://global.canon/ja/c-museum/wp-content/uploads/2015/06/ef312_s.jpg",
       alt: "Canon EF 20mm f/2.8 USM",
@@ -510,6 +558,22 @@
       src: "https://global.canon/ja/c-museum/wp-content/uploads/2015/05/ef340_b.jpg",
       alt: "Canon EF 300mm f/4L IS USM",
     },
+    "canon|lens|ef 1.4x extender ii": {
+      src: "https://global.canon/ja/c-museum/wp-content/uploads/2015/05/ef363_b.jpg",
+      alt: "Canon EF 1.4x Extender II",
+    },
+    "canon|lens|ef 1.4x extender iii": {
+      src: "https://global.canon/ja/c-museum/wp-content/uploads/2015/05/ef408_b.jpg",
+      alt: "Canon EF 1.4x Extender III",
+    },
+    "canon|lens|ef 2x extender ii": {
+      src: "https://global.canon/ja/c-museum/wp-content/uploads/2015/05/ef364_b.jpg",
+      alt: "Canon EF 2x Extender II",
+    },
+    "canon|lens|ef 2x extender iii": {
+      src: "https://global.canon/ja/c-museum/wp-content/uploads/2015/05/ef409_b.jpg",
+      alt: "Canon EF 2x Extender III",
+    },
     "canon|lens|ef 35mm f/1.4l ii usm": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/qHYeq2lpY127MD3CA4n3Og?w=228&h=228&p=1&a=1&q=display",
       alt: "Canon EF 35mm f/1.4L II USM",
@@ -573,6 +637,10 @@
     "canon|lens|ef 50mm f/1.8 stm": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/Hwx_bi8e3nE07oJhGZYZMg?w=228&h=228&p=1&a=1&q=display",
       alt: "Canon EF 50mm f/1.8 STM",
+    },
+    "canon|lens|ef 50mm f/2.5 macro": {
+      src: "https://global.canon/ja/c-museum/wp-content/uploads/2015/08/ef271_b.jpg",
+      alt: "Canon EF 50mm f/2.5 Macro",
     },
     "canon|lens|ef 600mm f/4l is ii usm": {
       src: "https://global.canon/ja/c-museum/wp-content/uploads/2015/05/ef413_b.jpg",
@@ -641,6 +709,10 @@
     "canon|lens|ef 85mm f/1.8 usm": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/SgW25xwIuxLOaoUUCFwL8g?w=228&h=228&p=1&a=1&q=display",
       alt: "Canon EF 85mm f/1.8 USM",
+    },
+    "canon|lens|ef 135mm f/2.8 softfocus": {
+      src: "https://global.canon/ja/c-museum/wp-content/uploads/2015/05/ef268_b.jpg",
+      alt: "Canon EF 135mm f/2.8 Softfocus",
     },
     "canon|lens|ef-s 10-18mm f/4.5-5.6 is stm": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/20907c50-cee1-0131-7acc-00163e9110c0?w=228&h=228&p=1&a=1&q=display",
@@ -854,9 +926,21 @@
       src: "https://fujifilm-x.b-cdn.net/wp-content/uploads/2018/09/gfx100_thum.jpg?width=480&height=480",
       alt: "Fujifilm GFX 100",
     },
+    "fujifilm|digital camera|gfx 100 ii": {
+      src: "https://fujifilm-x.b-cdn.net/wp-content/uploads/2023/09/wfqs_gfx100-ii_thum.jpg?width=480&height=480",
+      alt: "Fujifilm GFX100 II",
+    },
     "fujifilm|digital camera|gfx 100s": {
       src: "https://fujifilm-x.b-cdn.net/wp-content/uploads/2021/01/gfx100s_thum_egsv.jpg?width=480&height=480",
       alt: "Fujifilm GFX 100S",
+    },
+    "fujifilm|digital camera|gfx 50r": {
+      src: "https://fujifilm-x.b-cdn.net/wp-content/uploads/2018/09/0_thum_gfx50r.jpg?width=480&height=480",
+      alt: "Fujifilm GFX 50R",
+    },
+    "fujifilm|digital camera|gfx 50s": {
+      src: "https://fujifilm-x.b-cdn.net/wp-content/uploads/2017/08/1_thum_gfx_50s.jpg?width=480&height=480",
+      alt: "Fujifilm GFX 50S",
     },
     "fujifilm|digital camera|gfx100rf": {
       src: "https://fujifilm-x.b-cdn.net/wp-content/uploads/2025/03/product-list_gfx100rf.jpg?width=480&height=480",
@@ -1018,9 +1102,17 @@
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/yTlk8zM2G_YJfx4EJriYyQ?w=228&h=228&p=1&a=1&q=display",
       alt: "Fujifilm GF 100-200mm f/5.6 R LM OIS WR",
     },
+    "fujifilm|lens|gf 110mm f/2 r lm wr": {
+      src: "https://fujifilm-x.b-cdn.net/wp-content/uploads/2017/04/4_thum_gf110mmf2-r-lm-wr.jpg?width=480&height=480",
+      alt: "Fujifilm GF 110mm f/2 R LM WR",
+    },
     "fujifilm|lens|gf 20-35mm f/4 r wr": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/0CMWPOs_BgzaCgCs29KRdw?w=228&h=228&p=1&a=1&q=display",
       alt: "Fujifilm GF 20-35mm f/4 R WR",
+    },
+    "fujifilm|lens|gf 23mm f/4 r lm wr": {
+      src: "https://fujifilm-x.b-cdn.net/wp-content/uploads/2017/04/1_thum_gf23mmf4-r-lm-wr.jpg?width=480&height=480",
+      alt: "Fujifilm GF 23mm f/4 R LM WR",
     },
     "fujifilm|lens|gf 250mm f/4 r lm ois wr": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/hTAcu8bUziBKg2XvS71bNw?w=228&h=228&p=1&a=1&q=display",
@@ -1042,9 +1134,17 @@
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/zDB1yIPzMBxilCOP65fteg?w=228&h=228&p=1&a=1&q=display",
       alt: "Fujifilm GF 45-100mm f/4 R LM OIS WR",
     },
+    "fujifilm|lens|gf 45mm f/2.8 r wr": {
+      src: "https://fujifilm-x.b-cdn.net/wp-content/uploads/2017/09/2_thum_gf45mmf2-8-r-wr.jpg?width=480&height=480",
+      alt: "Fujifilm GF 45mm f/2.8 R WR",
+    },
     "fujifilm|lens|gf 50mm f/3.5 r lm wr": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/u5grFuwtJGN_a1o1B7rENA?w=228&h=228&p=1&a=1&q=display",
       alt: "Fujifilm GF 50mm f/3.5 R LM WR",
+    },
+    "fujifilm|lens|gf 63mm f/2.8 r wr": {
+      src: "https://fujifilm-x.b-cdn.net/wp-content/uploads/2017/04/3_thum_gf63mmf2-8-r-wr.jpg?width=480&height=480",
+      alt: "Fujifilm GF 63mm f/2.8 R WR",
     },
     "fujifilm|lens|gf 80mm f/1.7 r wr": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/tayPlwWiJ6QL7XPeAH-IgQ?w=228&h=228&p=1&a=1&q=display",
@@ -1478,6 +1578,10 @@
       src: "https://imaging.nikon.com/imaging/lineup/dslr/img/product_d3500.jpg",
       alt: "Nikon D3500",
     },
+    "nikon|digital camera|d3s": {
+      src: "https://downloadcenter.nikonimglib.com/image/view/545c8e58-51bc-4c3a-b8d8-4c8b0a804e06.jpg",
+      alt: "Nikon D3S",
+    },
     "nikon|digital camera|d3x": {
       src: "https://imaging.nikon.com/imaging/information/products_history/img/2008/product_d3x.jpg",
       alt: "Nikon D3X",
@@ -1742,6 +1846,10 @@
       src: "https://imaging.nikon.com/imaging/information/products_history/img/1997/product_fe10.jpg",
       alt: "Nikon FE10",
     },
+    "nikon|film camera|fe2": {
+      src: "https://imaging.nikon.com/imaging/information/products_history/img/1983/product_fe2.jpg",
+      alt: "Nikon FE2",
+    },
     "nikon|film camera|fm10": {
       src: "https://imaging.nikon.com/imaging/information/products_history/img/1995/product_fm10.jpg",
       alt: "Nikon FM10",
@@ -1781,6 +1889,30 @@
     "nikon|flash / speedlight|sb-910": {
       src: "https://imaging.nikon.com/imaging/information/products_history/img/2011/sb-910.jpg",
       alt: "Nikon SB-910",
+    },
+    "nikon|lens|af 17-35mm f/2.8d ed-if": {
+      src: "https://downloadcenter.nikonimglib.com/image/view/56414b07-73a8-4615-8a6f-6e250a804e06.png",
+      alt: "Nikon AF-S Zoom-Nikkor 17-35mm f/2.8D IF-ED",
+    },
+    "nikon|lens|af 20mm f/2.8d": {
+      src: "https://downloadcenter.nikonimglib.com/image/view/564534e8-3d6c-4f64-883c-66bb0a804e06.png",
+      alt: "Nikon AF Nikkor 20mm f/2.8D",
+    },
+    "nikon|lens|af 24mm f/2.8d": {
+      src: "https://downloadcenter.nikonimglib.com/image/view/56453635-3834-4652-8857-67670a804e06.png",
+      alt: "Nikon AF Nikkor 24mm f/2.8D",
+    },
+    "nikon|lens|af 28mm f/2.8d": {
+      src: "https://downloadcenter.nikonimglib.com/image/view/5645375b-2348-463d-a89a-67dc0a804e06.png",
+      alt: "Nikon AF Nikkor 28mm f/2.8D",
+    },
+    "nikon|lens|af 35mm f/2d": {
+      src: "https://downloadcenter.nikonimglib.com/image/view/56453883-13a8-4582-b4a0-6a2a0a804e06.png",
+      alt: "Nikon AF Nikkor 35mm f/2D",
+    },
+    "nikon|lens|af 50mm f/1.4d": {
+      src: "https://downloadcenter.nikonimglib.com/image/view/564bd3ce-5c34-43cf-b77e-20fa0a804e06.png",
+      alt: "Nikon AF Nikkor 50mm f/1.4D",
     },
     "nikon|lens|af 50mm f/1.8d": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/9bd865e2-e88b-4266-a0df-ef31cc4d79e9?w=228&h=228&p=1&a=1&q=display",
@@ -1894,6 +2026,10 @@
       src: "https://imaging.nikon.com/imaging/information/products_history/img/2012/af-s_70-200mmf_4g_ed_vr.jpg",
       alt: "Nikon AF-S 70-200mm f/4G ED VR",
     },
+    "nikon|lens|af-s 70-300mm f/4.5-5.6g ed vr": {
+      src: "https://downloadcenter.nikonimglib.com/image/view/5642ceab-6dd4-4c2e-8371-354c0a804e06.png",
+      alt: "Nikon AF-S VR Zoom-Nikkor 70-300mm f/4.5-5.6G IF-ED",
+    },
     "nikon|lens|af-s 80-400mm f/4.5-5.6g ed vr": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/c0522f00-688b-0130-87d6-20cf30bab63e?w=228&h=228&p=1&a=1&q=display",
       alt: "Nikon AF-S 80-400mm f/4.5-5.6G ED VR",
@@ -1909,6 +2045,10 @@
     "nikon|lens|af-s dx 16-80mm f/2.8-4e ed vr": {
       src: "https://imaging.nikon.com/imaging/information/products_history/img/2015/af-s_dx_16-80mmf_28-4e_ed_vr.jpg",
       alt: "Nikon AF-S DX 16-80mm f/2.8-4E ED VR",
+    },
+    "nikon|lens|af-s dx 17-55mm f/2.8g ed-if": {
+      src: "https://downloadcenter.nikonimglib.com/image/view/564bcef1-8f18-467b-ae94-1d140a804e06.png",
+      alt: "Nikon AF-S DX Zoom-Nikkor 17-55mm f/2.8G IF-ED",
     },
     "nikon|lens|af-s dx 35mm f/1.8g": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/f1ApdIoOIE2Pm4e3KLGxig?w=228&h=228&p=1&a=1&q=display",
@@ -1933,6 +2073,10 @@
     "nikon|lens|z 100-400mm f/4.5-5.6 vr s": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/N_vzXkUlTtxTEQJxXvTQEw?w=228&h=228&p=1&a=1&q=display",
       alt: "Nikon Z 100-400mm f/4.5-5.6 VR S",
+    },
+    "nikon|lens|z 105mm f/2.8 vr s micro": {
+      src: "https://imaging.nikon.com/imaging/information/products_history/img/2021/z_mc105f28_vr_s.jpg",
+      alt: "Nikon Z MC 105mm f/2.8 VR S",
     },
     "nikon|lens|z 135mm f/1.8 s plena": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/FUgRZthKosiY0s5nfDqYtg?w=228&h=228&p=1&a=1&q=display",
@@ -2498,6 +2642,10 @@
       src: "https://www.ricoh-imaging.co.jp/japan/products/top/img/img-K-5II.jpg",
       alt: "Pentax K-5 II",
     },
+    "pentax|digital camera|k-5 iis": {
+      src: "https://www.ricoh-imaging.co.jp/japan/products/top/img/img-K-5IIs.jpg",
+      alt: "Pentax K-5 IIs",
+    },
     "pentax|digital camera|k-50": {
       src: "https://www.ricoh-imaging.co.jp/japan/products/top/img/img-K-50.jpg",
       alt: "Pentax K-50",
@@ -2854,6 +3002,14 @@
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/lmSDdyqfQW6SUG0twBr0Wg?w=228&h=228&p=1&a=1&q=display",
       alt: "Sony FX30",
     },
+    "sony|digital camera|nex-3": {
+      src: "https://docs.sony.com/images/swt/dvimag/nex3.jpg",
+      alt: "Sony NEX-3",
+    },
+    "sony|digital camera|nex-5": {
+      src: "https://docs.sony.com/images/swt/dvimag/nex5.jpg",
+      alt: "Sony NEX-5",
+    },
     "sony|digital camera|zv-e1": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/Qh9aEJfH6IdDvjG6H17QsQ?w=228&h=228&p=1&a=1&q=display",
       alt: "Sony ZV-E1",
@@ -2866,13 +3022,57 @@
       src: "https://d1ncau8tqf99kp.cloudfront.net/converted/120973_original_local_1200x1050_v3_converted.webp",
       alt: "Sony ZV-E10 II",
     },
+    "sony|digital camera|α200 / dslr-a200": {
+      src: "https://docs.sony.com/images/swt/dvimag/dslra200.jpg",
+      alt: "Sony DSLR-A200",
+    },
+    "sony|digital camera|α300 / dslr-a300": {
+      src: "https://docs.sony.com/images/swt/dvimag/dslra300.jpg",
+      alt: "Sony DSLR-A300",
+    },
+    "sony|digital camera|α33": {
+      src: "https://docs.sony.com/images/swt/dvimag/slta33.jpg",
+      alt: "Sony SLT-A33",
+    },
+    "sony|digital camera|α35": {
+      src: "https://docs.sony.com/images/swt/dvimag/slta35.jpg",
+      alt: "Sony SLT-A35",
+    },
+    "sony|digital camera|α350 / dslr-a350": {
+      src: "https://docs.sony.com/images/swt/dvimag/dslra350.jpg",
+      alt: "Sony DSLR-A350",
+    },
+    "sony|digital camera|α55": {
+      src: "https://docs.sony.com/images/swt/dvimag/slta55v.jpg",
+      alt: "Sony SLT-A55V",
+    },
+    "sony|digital camera|α550 / dslr-a550": {
+      src: "https://docs.sony.com/images/swt/dvimag/dslra550.jpg",
+      alt: "Sony DSLR-A550",
+    },
+    "sony|digital camera|α57": {
+      src: "https://docs.sony.com/images/swt/dvimag/slta57.jpg",
+      alt: "Sony SLT-A57",
+    },
     "sony|digital camera|α6100": {
       src: "https://d1ncau8tqf99kp.cloudfront.net/converted/75027_original_local_1200x1050_v3_converted.webp",
       alt: "Sony α6100",
     },
+    "sony|digital camera|α6300": {
+      src: "https://docs.sony.com/images/swt/dvimag/ilce6300.jpg",
+      alt: "Sony ILCE-6300",
+    },
     "sony|digital camera|α6400": {
       src: "https://d1ncau8tqf99kp.cloudfront.net/converted/101677_original_local_1200x1050_v3_converted.webp",
       alt: "Sony α6400",
+    },
+    "sony|digital camera|α65": {
+      src: "https://docs.sony.com/images/swt/dvimag/slta65v.jpg",
+      alt: "Sony SLT-A65V",
+    },
+    "sony|digital camera|α6500": {
+      src: "https://docs.sony.com/images/swt/dvimag/ilce6500.jpg",
+      alt: "Sony ILCE-6500",
     },
     "sony|digital camera|α6600": {
       src: "https://d1ncau8tqf99kp.cloudfront.net/converted/101617_original_local_1200x1050_v3_converted.webp",
@@ -2882,6 +3082,10 @@
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/RBrzowLQMLK-auNKYtu_qg?w=228&h=228&p=1&a=1&q=display",
       alt: "Sony α6700",
     },
+    "sony|digital camera|α68": {
+      src: "https://docs.sony.com/images/swt/dvimag/ilca68.jpg",
+      alt: "Sony ILCA-68",
+    },
     "sony|digital camera|α7 iii": {
       src: "https://d1ncau8tqf99kp.cloudfront.net/converted/149049_original_local_1200x1050_v3_converted.webp",
       alt: "Sony α7 III",
@@ -2889,6 +3093,14 @@
     "sony|digital camera|α7 iv": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/K7q-ggQGVUIm1M2N1Xdkmg?w=228&h=228&p=1&a=1&q=display",
       alt: "Sony α7 IV",
+    },
+    "sony|digital camera|α77": {
+      src: "https://docs.sony.com/images/swt/dvimag/slta77v.jpg",
+      alt: "Sony SLT-A77V",
+    },
+    "sony|digital camera|α77 ii": {
+      src: "https://docs.sony.com/images/swt/dvimag/ilca77m2.jpg",
+      alt: "Sony ILCA-77M2",
     },
     "sony|digital camera|α7c": {
       src: "https://d1ncau8tqf99kp.cloudfront.net/converted/101407_original_local_1200x1050_v3_converted.webp",
@@ -2902,9 +3114,21 @@
       src: "https://d1ncau8tqf99kp.cloudfront.net/converted/116392_original_local_1200x1050_v3_converted.webp",
       alt: "Sony α7CR",
     },
+    "sony|digital camera|α7r iii": {
+      src: "https://docs.sony.com/images/swt/dvimag/ilce7rm3.jpg",
+      alt: "Sony ILCE-7RM3",
+    },
     "sony|digital camera|α7r v": {
       src: "https://d1ncau8tqf99kp.cloudfront.net/converted/108562_original_local_1200x1050_v3_converted.webp",
       alt: "Sony α7R V",
+    },
+    "sony|digital camera|α7s": {
+      src: "https://docs.sony.com/images/swt/dvimag/ilce7s.jpg",
+      alt: "Sony ILCE-7S",
+    },
+    "sony|digital camera|α7s ii": {
+      src: "https://docs.sony.com/images/swt/dvimag/ilce7sm2.jpg",
+      alt: "Sony ILCE-7SM2",
     },
     "sony|digital camera|α7s iii": {
       src: "https://d1ncau8tqf99kp.cloudfront.net/converted/149047_original_local_1200x1050_v3_converted.webp",
@@ -2917,6 +3141,22 @@
     "sony|digital camera|α9 iii": {
       src: "https://d1ncau8tqf99kp.cloudfront.net/converted/117670_original_local_1200x1050_v3_converted.webp",
       alt: "Sony α9 III",
+    },
+    "sony|digital camera|α900 / dslr-a900": {
+      src: "https://docs.sony.com/images/swt/dvimag/dslra900.jpg",
+      alt: "Sony DSLR-A900",
+    },
+    "sony|digital camera|α99": {
+      src: "https://docs.sony.com/images/swt/dvimag/slta99v.jpg",
+      alt: "Sony SLT-A99V",
+    },
+    "sony|flash|hvl-f20m": {
+      src: "https://docs.sony.com/images/swt/dvimag/hvlf20m.jpg",
+      alt: "Sony HVL-F20M",
+    },
+    "sony|flash|hvl-f32m": {
+      src: "https://docs.sony.com/images/swt/dvimag/hvlf32m.jpg",
+      alt: "Sony HVL-F32M",
     },
     "sony|flash|hvl-f43m": {
       src: "https://d1ncau8tqf99kp.cloudfront.net/converted/90193_original_local_1200x1050_v3_converted.webp",
@@ -2933,6 +3173,10 @@
     "sony|flash|hvl-f60m": {
       src: "https://d1ncau8tqf99kp.cloudfront.net/converted/90211_original_local_1200x1050_v3_converted.webp",
       alt: "Sony HVL-F60M",
+    },
+    "sony|flash|hvl-f60rm": {
+      src: "https://docs.sony.com/images/swt/dvimag/hvlf60rm.jpg",
+      alt: "Sony HVL-F60RM",
     },
     "sony|flash|hvl-f60rm2": {
       src: "https://d1ncau8tqf99kp.cloudfront.net/converted/92622_original_local_1200x1050_v3_converted.webp",
@@ -3117,6 +3361,14 @@
     "sony|lens|fe 90mm f/2.8 macro g oss": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/e5959140-a4a9-0132-5c8a-00163e9110c0?w=228&h=228&p=1&a=1&q=display",
       alt: "Sony FE 90mm f/2.8 Macro G OSS",
+    },
+    "sony|lens|sal 70-200mm f/2.8 g ssm ii": {
+      src: "https://docs.sony.com/images/swt/dvimag/sal70200g2.jpg",
+      alt: "Sony SAL 70-200mm f/2.8 G SSM II",
+    },
+    "sony|lens|sal 70-400mm f/4-5.6 g ssm ii": {
+      src: "https://docs.sony.com/images/swt/dvimag/sal70400g2.jpg",
+      alt: "Sony SAL 70-400mm f/4-5.6 G SSM II",
     },
     "tamron|lens|150-500mm f/5-6.7 di iii vc vxd (sony e)": {
       src: "https://tamron-americas.com/wp-content/uploads/2026/04/a057-1200-x-1200-wht.webp",
