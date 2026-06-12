@@ -13,6 +13,30 @@ const SELECT_BRAND = "";
 const SELECT_MODEL = "";
 const SEARCH_RESULT_LIMIT = 30;
 
+const MANUFACTURER_LOGO_LABELS = {
+  canon: "Canon",
+  nikon: "Nikon",
+  sony: "Sony",
+  fujifilm: "Fujifilm",
+  fuji: "Fujifilm",
+  olympus: "Olympus",
+  "om system": "OM System",
+  panasonic: "Panasonic",
+  lumix: "Lumix",
+  pentax: "Pentax",
+  leica: "Leica",
+  hasselblad: "Hasselblad",
+  sigma: "Sigma",
+  tamron: "Tamron",
+  tokina: "Tokina",
+  zeiss: "Zeiss",
+  voigtlander: "Voigtlander",
+  rokinon: "Rokinon",
+  samyang: "Samyang",
+  godox: "Godox",
+  profoto: "Profoto",
+};
+
 const FALLBACK_CATEGORIES = [
   "Digital Camera",
   "Film Camera",
@@ -202,8 +226,13 @@ let staffIntakeToastHideTimer = null;
 
 const STAFF_INTAKE_PREVIEW_DELAY_MS = 300;
 
-function createStaffIntakeState() {
+function createStaffIntakeState(options = {}) {
   return {
+    mode: options.mode || "new_quote",
+    orderId: options.orderId || "",
+    quoteRef: options.quoteRef || "",
+    sourceRecordId: options.sourceRecordId || "",
+    customer: options.customer || "",
     cart: [],
     currentQuote: null,
     currentQuoteSignature: "",
@@ -253,6 +282,7 @@ async function loadRecords(options = {}) {
     if (options.selectQuoteRef) {
       selectedOrderId = orderIdForQuoteRef(options.selectQuoteRef) || selectedOrderId;
     }
+    if (options.selectRecordId) selectedItemId = options.selectRecordId;
     if (!orders.some((order) => order.id === selectedOrderId)) selectedOrderId = visibleOrders()[0]?.id || orders[0]?.id || null;
     syncSelectedItem();
     loginEl.hidden = true;
@@ -322,6 +352,7 @@ function buildOrders(items) {
         email,
         phone: fields["Seller Phone"] || "",
         address: orderAddress(fields),
+        addressText: orderAddressText(fields),
         submitted: fields["Quote Submitted"],
         items: [],
       });
@@ -419,10 +450,16 @@ function renderDetail() {
       ${renderOrderProgress(order)}
 
       <header class="staff-intake-header">
-        <div>
-          <p class="brand-line">${escapeHtml(fields["Quote Reference"] || record.id)}</p>
+        <div class="staff-item-title-block">
+          <div class="staff-item-kicker">
+            <p class="brand-line">${escapeHtml(fields["Quote Reference"] || record.id)}</p>
+            <span class="staff-item-position">${escapeHtml(itemPositionLabel(order, record))}</span>
+          </div>
           <h2>${escapeHtml(gearTitle(fields))}</h2>
           <p>${escapeHtml(fields.Category || "Gear")} - ${escapeHtml(fields.Condition || "Condition not listed")}</p>
+        </div>
+        <div class="staff-item-image-panel">
+          ${productImageMarkup(productImageForRecord(fields), "staff-item-image", fields["Item Brand"])}
         </div>
         <div class="staff-offer-box">
           <span>Item quote</span>
@@ -518,6 +555,10 @@ function renderDetail() {
               <input type="radio" name="item-decision" value="return" ${defaultDecision === "return" ? "checked" : ""} />
               <span>Customer wants this item returned</span>
             </label>
+            <label class="staff-decision-card staff-decision-card-decline">
+              <input type="radio" name="item-decision" value="not_accepted" ${defaultDecision === "not_accepted" ? "checked" : ""} />
+              <span>Not accepted by Milford Photo</span>
+            </label>
           </div>
           <label class="field">
             <span>Adjustment reason / inspection notes</span>
@@ -571,9 +612,15 @@ function renderOrderHeader(order, currentRecord, currentCashOffer) {
 
 function renderOrderSellerContact(order = {}) {
   const contactRows = [
-    order.address ? `<span>${order.address}</span>` : "",
-    order.email ? escapeHtml(order.email) : "",
-    order.phone ? escapeHtml(formatStaffPhone(order.phone)) : "",
+    order.address && order.addressText
+      ? `<a class="staff-contact-link staff-contact-link-address" href="${escapeAttr(mapsSearchUrl(order.addressText))}" target="_blank" rel="noreferrer">${order.address}</a>`
+      : "",
+    order.email
+      ? `<a class="staff-contact-link" href="mailto:${escapeAttr(String(order.email).trim())}">${escapeHtml(order.email)}</a>`
+      : "",
+    order.phone && staffPhoneHref(order.phone)
+      ? `<a class="staff-contact-link" href="${escapeAttr(staffPhoneHref(order.phone))}">${escapeHtml(formatStaffPhone(order.phone))}</a>`
+      : order.phone ? escapeHtml(formatStaffPhone(order.phone)) : "",
   ].filter(Boolean);
   if (!contactRows.length) return "";
   return `
@@ -591,6 +638,17 @@ function formatStaffPhone(phone = "") {
     : digits;
   if (localDigits.length !== 10) return raw;
   return `(${localDigits.slice(0, 3)}) ${localDigits.slice(3, 6)}-${localDigits.slice(6)}`;
+}
+
+function staffPhoneHref(phone = "") {
+  const digits = String(phone || "").replace(/\D/g, "");
+  if (digits.length === 10) return `tel:+1${digits}`;
+  if (digits.length === 11 && digits.startsWith("1")) return `tel:+${digits}`;
+  return digits ? `tel:${digits}` : "";
+}
+
+function mapsSearchUrl(address = "") {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
 }
 
 function renderOfferAmountSummary(kind, cashAmount) {
@@ -687,7 +745,10 @@ function renderOrderProgress(order) {
       <div class="staff-order-progress-group">
         <div class="staff-progress-heading">
           <strong>Items in this order</strong>
-          <span>Open each item to receive and evaluate it</span>
+          <span class="staff-progress-heading-actions">
+            <span>Open each item to receive and evaluate it</span>
+            <button class="staff-add-item-button" type="button" data-add-order-item="${escapeAttr(order.id)}">ADD ITEM</button>
+          </span>
         </div>
         ${renderItemTabs(order)}
       </div>
@@ -703,7 +764,7 @@ function renderWorkflow(order) {
         return `
           <div class="staff-workflow-step ${state}">
             <span>${index + 1}</span>
-            <strong>${escapeHtml(step.label)}</strong>
+            <strong>${escapeHtml(workflowStepDisplayLabel(step))}</strong>
           </div>
         `;
       }).join("")}
@@ -804,6 +865,8 @@ function staffDecisionForRecord(record, order, finalOffer, parsed = parseStaffNo
   const customerFinalDecision = parsed.customerFinalDecision || saved.customerFinalDecision;
   if (customerFinalDecision === "return") return "return";
   if (customerFinalDecision === "accept") return "accept";
+  const staffDecision = parsed.decision || saved.decision;
+  if (staffDecision === "not_accepted") return "not_accepted";
 
   const reviewNeedsCustomerDecision = reviewRequiresCustomerDecision(fields, parsed, accessories);
   if (options.reviewChangesOverrideAcceptance && reviewNeedsCustomerDecision) return "pending";
@@ -888,6 +951,7 @@ function customerDecisionDetail(decision = {}) {
 function staffDecisionLabel(value = "pending") {
   if (value === "accept") return "Customer accepts this item";
   if (value === "return") return "Customer wants this item returned";
+  if (value === "not_accepted") return "Not accepted by Milford Photo";
   return "Await customer decision";
 }
 
@@ -895,10 +959,15 @@ function refreshStaffDecisionContext(selectedDecision = "pending") {
   const panel = document.getElementById("staff-final-decision-context");
   if (!panel || panel.dataset.customerDecision) return;
   const emailSent = panel.dataset.emailSent === "true";
-  const choiceLabel = emailSent && selectedDecision === "pending"
+  const itemDeclinedByStaff = selectedDecision === "not_accepted";
+  const choiceLabel = itemDeclinedByStaff
+    ? "Not accepted by Milford Photo"
+    : emailSent && selectedDecision === "pending"
     ? "Awaiting customer decision"
     : "No customer response yet";
-  const emailCopy = emailSent && selectedDecision === "pending"
+  const emailCopy = itemDeclinedByStaff
+    ? "Final quote email should show this item for return to the customer."
+    : emailSent && selectedDecision === "pending"
     ? "Final quote email was sent; waiting for the customer to choose accept or return."
     : emailSent
       ? "Final quote email was sent; the customer can still respond from the final quote link."
@@ -996,6 +1065,10 @@ function bindDetail(record, accessories) {
     });
   });
 
+  detailEl.querySelector("[data-add-order-item]")?.addEventListener("click", () => {
+    startAddOrderItem(selectedOrder());
+  });
+
   detailEl.querySelector("[data-order-log]")?.addEventListener("click", () => {
     openOrderLog(selectedOrder());
   });
@@ -1044,6 +1117,7 @@ function bindDetail(record, accessories) {
   form.querySelectorAll("input[name='item-decision']").forEach((input) => {
     input.addEventListener("change", () => {
       input.dataset.userSelected = "true";
+      updateSuggestedOffer(record, accessories);
       refreshStaffDecisionContext(input.value);
     });
   });
@@ -1086,10 +1160,14 @@ function updateSuggestedOffer(record, accessories) {
   const keepCustom = customInput.dataset.customEdited === "true"
     || document.activeElement === customInput
     || customDiffersFromPriorAdjusted;
+  const forceAdjustedOffer = review.decision === "not_accepted";
   suggestedInput.value = originalOffer;
   suggestedInput.dataset.originalOffer = String(originalOffer);
   customInput.dataset.adjustedOffer = String(adjustedOffer);
-  if (!keepCustom) customInput.value = adjustedOffer;
+  if (forceAdjustedOffer || !keepCustom) {
+    customInput.value = adjustedOffer;
+    if (forceAdjustedOffer) customInput.dataset.customEdited = "";
+  }
   const displayedAdjustedOffer = numberOrNull(customInput.value) ?? adjustedOffer;
   updateOfferAmountSummaries(originalOffer, displayedAdjustedOffer);
   updateOrderTotalCard(selectedOrder(), record, displayedAdjustedOffer);
@@ -1107,6 +1185,10 @@ async function handleStaffAction(record, accessories, action, buttons, options =
   const notifyCustomer = options.notifyCustomer === true;
   const notifyOnly = options.notifyOnly === true;
   const step = staffActionStep(action);
+  const orderBeforeUpdate = selectedOrder();
+  const nextItemId = action === "adjusted" && !notifyCustomer && !notifyOnly
+    ? nextOrderItemId(orderBeforeUpdate, record.id)
+    : "";
 
   const body = {
     recordId: record.id,
@@ -1128,6 +1210,9 @@ async function handleStaffAction(record, accessories, action, buttons, options =
   if (action === "return") {
     body.declineReason = review.reason || "Customer wants this item returned.";
   }
+  if (review.decision === "not_accepted") {
+    body.declineReason = review.reason || "Milford cannot accept this item for resale.";
+  }
 
   if (notifyCustomer && !confirmStaffActionEmail(action)) {
     setStatus("Action canceled. No customer email sent.");
@@ -1141,11 +1226,16 @@ async function handleStaffAction(record, accessories, action, buttons, options =
     const updated = await updateRecord(body);
     records = records.map((item) => (item.id === record.id ? updated : item));
     orders = buildOrders(records);
-    selectedItemId = updated.id;
-    selectedOrderId = selectedOrder()?.id || selectedOrderId;
+    selectedOrderId = orderBeforeUpdate?.id || selectedOrderId;
+    selectedItemId = orderItemExists(selectedOrder(), nextItemId) ? nextItemId : updated.id;
     renderQueue();
     renderDetail();
-    setStatus(notifyOnly ? "Customer email sent." : `Saved: ${status}.`);
+    if (nextItemId && selectedItemId === nextItemId) {
+      window.requestAnimationFrame(scrollToStaffItemStart);
+      setStatus(`Saved: ${status}. Opened the next item in this order.`);
+    } else {
+      setStatus(notifyOnly ? "Customer email sent." : `Saved: ${status}.`);
+    }
   } catch (error) {
     setStatus(error.message || (notifyOnly ? "Unable to send customer email." : "Unable to save item update."), true);
   } finally {
@@ -1159,6 +1249,23 @@ function staffActionStatus(action) {
 
 function staffActionStep(action) {
   return STAFF_ACTION_STEPS.find((step) => step.action === action);
+}
+
+function nextOrderItemId(order, currentItemId) {
+  if (!order?.items?.length) return "";
+  const currentIndex = order.items.findIndex((item) => item.id === currentItemId);
+  return currentIndex >= 0 ? order.items[currentIndex + 1]?.id || "" : "";
+}
+
+function orderItemExists(order, itemId) {
+  return Boolean(itemId && order?.items?.some((item) => item.id === itemId));
+}
+
+function scrollToStaffItemStart() {
+  const target = document.querySelector(".staff-intake-header")
+    || document.querySelector(".staff-order-progress")
+    || detailEl;
+  target?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function confirmStaffActionEmail(action) {
@@ -1607,6 +1714,32 @@ function startStaffIntake() {
   setStatus("New in-store quote started.");
 }
 
+function startAddOrderItem(order) {
+  if (!order) return;
+  const record = selectedRecord(order);
+  const fields = record?.fields || {};
+  const quoteRef = fields["Quote Reference"] || order.quoteRefs?.[0] || order.quote || "";
+  if (!quoteRef) {
+    setStatus("This order needs a quote reference before an item can be added.", true);
+    return;
+  }
+  resetStaffIntakePricingRequests();
+  staffIntakeState = createStaffIntakeState({
+    mode: "add_item",
+    orderId: order.id,
+    quoteRef,
+    sourceRecordId: record?.id || "",
+    customer: order.customer || "",
+  });
+  renderQueue();
+  renderStaffIntake();
+  setStatus(`Adding an item to ${quoteRef}.`);
+}
+
+function staffIntakeIsAddingToOrder() {
+  return staffIntakeState.mode === "add_item";
+}
+
 function renderStaffIntake() {
   const heading = staffIntakeHeadingCopy();
   detailEl.innerHTML = `
@@ -1709,7 +1842,7 @@ function renderStaffIntake() {
             <span>2</span>
             <div>
               <h3>Offer preview</h3>
-              <p>Review pricing for the gear in this in-store quote.</p>
+              <p>${staffIntakeIsAddingToOrder() ? "Review pricing for gear being added to this order." : "Review pricing for the gear in this in-store quote."}</p>
             </div>
           </div>
           <div class="staff-intake-cart" id="staff-intake-cart"></div>
@@ -1720,63 +1853,14 @@ function renderStaffIntake() {
           <div class="staff-section-title">
             <span>3</span>
             <div>
-              <h3>Customer details</h3>
-              <p>This creates the quote as an in-store dropoff and opens it in the staff intake queue.</p>
+              <h3>${staffIntakeIsAddingToOrder() ? "Existing order" : "Customer details"}</h3>
+              <p>${staffIntakeIsAddingToOrder() ? "The added item will use this order's seller and delivery details." : "This creates the quote as an in-store dropoff and opens it in the staff intake queue."}</p>
             </div>
           </div>
-          <div class="two-col">
-            <label class="field">
-              <span>Name</span>
-              <input id="staff-intake-seller-name" autocomplete="name" required />
-            </label>
-            <label class="field">
-              <span>Email</span>
-              <input id="staff-intake-seller-email" type="email" autocomplete="email" required />
-            </label>
-          </div>
-          <div class="two-col">
-            <label class="field">
-              <span>Phone</span>
-              <input id="staff-intake-seller-phone" type="tel" autocomplete="tel" />
-            </label>
-            <label class="field">
-              <span>Payout method <small>optional in-store</small></span>
-              <select id="staff-intake-payment-preference">
-                <option value="">Customer chooses after final quote</option>
-                <option value="check">Check</option>
-                <option value="paypal">PayPal</option>
-                <option value="store_credit">Store credit</option>
-              </select>
-            </label>
-          </div>
-          <div class="staff-intake-address-fields">
-            <label class="field">
-              <span>Mailing address <small>optional</small></span>
-              <input id="staff-intake-seller-street" autocomplete="street-address" placeholder="Street address" />
-            </label>
-            <div class="three-col">
-              <label class="field">
-                <span>City</span>
-                <input id="staff-intake-seller-city" autocomplete="address-level2" />
-              </label>
-              <label class="field">
-                <span>State</span>
-                <input id="staff-intake-seller-state" autocomplete="address-level1" maxlength="2" />
-              </label>
-              <label class="field">
-                <span>ZIP</span>
-                <input id="staff-intake-seller-zip" autocomplete="postal-code" />
-              </label>
-            </div>
-            <p>Useful for mailed checks, return shipping, or matching a customer record. Leave blank for quick counter intake.</p>
-          </div>
-          <label class="consent staff-intake-consent">
-            <input id="staff-intake-terms" type="checkbox" required />
-            <span>Customer understands the quote is pending Milford Photo inspection and may be adjusted after verification.</span>
-          </label>
+          ${staffIntakeIsAddingToOrder() ? renderAddItemOrderContext() : renderNewQuoteCustomerFields()}
           <div class="form-actions staff-intake-actions">
-            <button class="secondary-action" type="button" id="staff-intake-cancel">Back to queue</button>
-            <button class="primary-action" type="submit" id="staff-intake-submit">Create quote and open intake</button>
+            <button class="secondary-action" type="button" id="staff-intake-cancel">${staffIntakeIsAddingToOrder() ? "Back to order" : "Back to queue"}</button>
+            <button class="primary-action" type="submit" id="staff-intake-submit">${staffIntakeIsAddingToOrder() ? "Add item to order" : "Create quote and open intake"}</button>
           </div>
         </section>
       </form>
@@ -1789,6 +1873,21 @@ function renderStaffIntake() {
 
 function staffIntakeHeadingCopy() {
   const count = staffIntakeState.cart.length;
+  if (staffIntakeIsAddingToOrder()) {
+    const quoteRef = staffIntakeState.quoteRef || "this order";
+    if (!count) {
+      return {
+        title: "Add item to order",
+        subtitle: `Attach gear that arrived with ${quoteRef} but was not on the original quote.`,
+        button: "Add item",
+      };
+    }
+    return {
+      title: "Add another item",
+      subtitle: `${count} item${count === 1 ? "" : "s"} ready to attach to ${quoteRef}.`,
+      button: "Add another item",
+    };
+  }
   if (!count) {
     return {
       title: "Start a new quote",
@@ -1813,6 +1912,71 @@ function updateStaffIntakeHeading() {
   title.textContent = heading.title;
   subtitle.textContent = heading.subtitle;
   addButton.textContent = heading.button;
+}
+
+function renderNewQuoteCustomerFields() {
+  return `
+    <div class="two-col">
+      <label class="field">
+        <span>Name</span>
+        <input id="staff-intake-seller-name" autocomplete="name" required />
+      </label>
+      <label class="field">
+        <span>Email</span>
+        <input id="staff-intake-seller-email" type="email" autocomplete="email" required />
+      </label>
+    </div>
+    <div class="two-col">
+      <label class="field">
+        <span>Phone</span>
+        <input id="staff-intake-seller-phone" type="tel" autocomplete="tel" />
+      </label>
+      <label class="field">
+        <span>Payout method <small>optional in-store</small></span>
+        <select id="staff-intake-payment-preference">
+          <option value="">Customer chooses after final quote</option>
+          <option value="check">Check</option>
+          <option value="paypal">PayPal</option>
+          <option value="store_credit">Store credit</option>
+        </select>
+      </label>
+    </div>
+    <div class="staff-intake-address-fields">
+      <label class="field">
+        <span>Mailing address <small>optional</small></span>
+        <input id="staff-intake-seller-street" autocomplete="street-address" placeholder="Street address" />
+      </label>
+      <div class="three-col">
+        <label class="field">
+          <span>City</span>
+          <input id="staff-intake-seller-city" autocomplete="address-level2" />
+        </label>
+        <label class="field">
+          <span>State</span>
+          <input id="staff-intake-seller-state" autocomplete="address-level1" maxlength="2" />
+        </label>
+        <label class="field">
+          <span>ZIP</span>
+          <input id="staff-intake-seller-zip" autocomplete="postal-code" />
+        </label>
+      </div>
+      <p>Useful for mailed checks, return shipping, or matching a customer record. Leave blank for quick counter intake.</p>
+    </div>
+    <label class="consent staff-intake-consent">
+      <input id="staff-intake-terms" type="checkbox" required />
+      <span>Customer understands the quote is pending Milford Photo inspection and may be adjusted after verification.</span>
+    </label>
+  `;
+}
+
+function renderAddItemOrderContext() {
+  return `
+    <div class="staff-add-item-context">
+      <span>Adding to quote</span>
+      <strong>${escapeHtml(staffIntakeState.quoteRef || "Existing order")}</strong>
+      <small>${escapeHtml(staffIntakeState.customer || "Customer details will be copied from this order.")}</small>
+    </div>
+  `;
 }
 
 function bindStaffIntake() {
@@ -1885,11 +2049,11 @@ function bindStaffIntake() {
   });
   document.getElementById("staff-intake-add-item").addEventListener("click", addStaffIntakeItem);
   document.getElementById("staff-intake-cancel").addEventListener("click", () => {
-    selectedOrderId = visibleOrders()[0]?.id || orders[0]?.id || null;
+    selectedOrderId = staffIntakeState.orderId || visibleOrders()[0]?.id || orders[0]?.id || null;
     syncSelectedItem();
     renderQueue();
     renderDetail();
-    setStatus("Back to the queue.");
+    setStatus(staffIntakeIsAddingToOrder() ? "Back to the order." : "Back to the queue.");
   });
   form.addEventListener("submit", submitStaffIntakeQuote);
 }
@@ -1940,12 +2104,18 @@ function renderStaffIntakeGearSearchResults() {
 
   results.innerHTML = matches
     .map(
-      (option) => `
+      (option) => {
+        const image = productImageForOption(option);
+        return `
         <button class="gear-search-result" type="button" data-gear-search-key="${escapeAttr(gearSearchKey(option))}">
-          <span>${escapeHtml(option.brand)} ${escapeHtml(catalogDisplayName({ name: option.model }, option.category))}</span>
-          <small>${escapeHtml(option.category)}</small>
+          ${productImageMarkup(image, "gear-search-thumb", option.brand)}
+          <span class="gear-search-result-copy">
+            <strong>${escapeHtml(option.brand)} ${escapeHtml(catalogDisplayName({ name: option.model }, option.category))}</strong>
+            <small>${escapeHtml(option.category)}</small>
+          </span>
         </button>
-      `,
+      `;
+      },
     )
     .join("");
   results.hidden = false;
@@ -1998,6 +2168,78 @@ function normalizeGearSearchText(value = "") {
 
 function gearSearchKey(option) {
   return [option.brand, option.category, option.model].join("|").toLowerCase();
+}
+
+function productImageForOption(option) {
+  return productImageFor({
+    brand: option.brand,
+    category: option.category,
+    model: option.model,
+  });
+}
+
+function productImageForRecord(fields = {}) {
+  return productImageFor({
+    brand: fields["Item Brand"],
+    category: fields.Category,
+    model: fields["Item Model"],
+  });
+}
+
+function productImageFor(item = {}) {
+  const overrides =
+    typeof window !== "undefined" && window.MP_PRODUCT_IMAGE_OVERRIDES ? window.MP_PRODUCT_IMAGE_OVERRIDES : {};
+  const key = productImageKey(item.brand, item.category, item.model);
+  return overrides[key] || null;
+}
+
+function productImageKey(brand = "", category = "", model = "") {
+  return [
+    normalizeProductImageText(brand),
+    normalizeProductImageCategory(category),
+    normalizeProductImageText(model),
+  ].join("|");
+}
+
+function normalizeProductImageCategory(category = "") {
+  const text = normalizeProductImageText(category);
+  if (text.includes("lens")) return "lens";
+  if (text.includes("film")) return "film camera";
+  if (text.includes("camera") || text.includes("body")) return "digital camera";
+  return text;
+}
+
+function normalizeProductImageText(value = "") {
+  return String(value)
+    .replace(/[–—]/g, "-")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function productImageMarkup(image, className, brand = "") {
+  if (!image?.src) return productBrandLogoMarkup(className, brand);
+  return `<img class="${escapeAttr(className)}" src="${escapeAttr(image.src)}" alt="${escapeAttr(image.alt || "")}" loading="lazy" />`;
+}
+
+function productBrandLogoMarkup(className, brand = "") {
+  const label = manufacturerLogoLabel(brand);
+  if (!label) return `<span class="${escapeAttr(className)} is-placeholder" aria-hidden="true"></span>`;
+
+  return `
+    <span class="${escapeAttr(className)} is-brand-logo brand-logo-${escapeAttr(brandSlug(label))}" aria-label="${escapeAttr(label)} logo" role="img">
+      <span>${escapeHtml(label)}</span>
+    </span>
+  `;
+}
+
+function manufacturerLogoLabel(brand = "") {
+  const normalized = normalizeProductImageText(brand);
+  return MANUFACTURER_LOGO_LABELS[normalized] || String(brand || "").trim();
+}
+
+function brandSlug(brand = "") {
+  return normalizeProductImageText(brand).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "manufacturer";
 }
 
 function applyStaffIntakeGearSearch() {
@@ -2357,34 +2599,47 @@ async function submitStaffIntakeQuote(event) {
   event.preventDefault();
   const items = staffIntakeCartItems();
   if (!items.length) {
-    setStatus("Add at least one item to the quote before creating it.", true);
+    setStatus(staffIntakeIsAddingToOrder() ? "Add at least one item before adding it to the order." : "Add at least one item to the quote before creating it.", true);
     return;
   }
   const signature = quoteItemsSignature(items);
   const submitButton = document.getElementById("staff-intake-submit");
-  const sellerName = document.getElementById("staff-intake-seller-name").value.trim();
-  const sellerEmail = document.getElementById("staff-intake-seller-email").value.trim();
-  const sellerPhone = document.getElementById("staff-intake-seller-phone").value.trim();
-  const sellerStreet = document.getElementById("staff-intake-seller-street").value.trim();
-  const sellerCity = document.getElementById("staff-intake-seller-city").value.trim();
-  const sellerState = document.getElementById("staff-intake-seller-state").value.trim();
-  const sellerZip = document.getElementById("staff-intake-seller-zip").value.trim();
-  const terms = document.getElementById("staff-intake-terms");
-
-  if (!sellerName || !sellerEmail) {
-    setStatus("Customer name and email are required before creating the quote.", true);
-    return;
-  }
-  if (!terms.checked) {
-    setStatus("Confirm that the customer understands the inspection terms.", true);
-    return;
-  }
 
   submitButton.disabled = true;
-  submitButton.textContent = "Creating...";
-  setStatus("Creating in-store quote...");
+  submitButton.textContent = staffIntakeIsAddingToOrder() ? "Adding..." : "Creating...";
+  setStatus(staffIntakeIsAddingToOrder() ? "Adding item to order..." : "Creating in-store quote...");
 
   try {
+    if (staffIntakeIsAddingToOrder()) {
+      const result = await staffPost("/api/staff/add-item", {
+        quoteRef: staffIntakeState.quoteRef,
+        sourceRecordId: staffIntakeState.sourceRecordId,
+        items: items.map(quoteItemPayload),
+      }, { staff: true });
+      const firstRecordId = result.records?.[0]?.id || "";
+      await loadRecords({ selectQuoteRef: result.quoteRef || staffIntakeState.quoteRef, selectRecordId: firstRecordId });
+      setStatus(`${items.length} item${items.length === 1 ? "" : "s"} added to ${result.quoteRef || staffIntakeState.quoteRef}.`);
+      return;
+    }
+
+    const sellerName = document.getElementById("staff-intake-seller-name").value.trim();
+    const sellerEmail = document.getElementById("staff-intake-seller-email").value.trim();
+    const sellerPhone = document.getElementById("staff-intake-seller-phone").value.trim();
+    const sellerStreet = document.getElementById("staff-intake-seller-street").value.trim();
+    const sellerCity = document.getElementById("staff-intake-seller-city").value.trim();
+    const sellerState = document.getElementById("staff-intake-seller-state").value.trim();
+    const sellerZip = document.getElementById("staff-intake-seller-zip").value.trim();
+    const terms = document.getElementById("staff-intake-terms");
+
+    if (!sellerName || !sellerEmail) {
+      setStatus("Customer name and email are required before creating the quote.", true);
+      return;
+    }
+    if (!terms.checked) {
+      setStatus("Confirm that the customer understands the inspection terms.", true);
+      return;
+    }
+
     let quote = staffIntakeState.cartQuote;
     if (!quote?.quoteToken || staffIntakeState.cartQuoteSignature !== signature) {
       quote = await priceStaffIntakeCart({ announce: false, throwOnError: true });
@@ -2412,10 +2667,10 @@ async function submitStaffIntakeQuote(event) {
     await loadRecords({ selectQuoteRef: result.quoteRef });
     setStatus(`In-store quote ${result.quoteRef} created and opened.`);
   } catch (error) {
-    setStatus(error.message || "Unable to create the in-store quote.", true);
+    setStatus(error.message || (staffIntakeIsAddingToOrder() ? "Unable to add item to this order." : "Unable to create the in-store quote."), true);
   } finally {
     submitButton.disabled = false;
-    submitButton.textContent = "Create quote and open intake";
+    submitButton.textContent = staffIntakeIsAddingToOrder() ? "Add item to order" : "Create quote and open intake";
   }
 }
 
@@ -2656,6 +2911,7 @@ function collectReviewState(accessories) {
 }
 
 function calculateOffer(fields, review, accessories, fallbackOffer) {
+  if (review.decision === "not_accepted") return 0;
   const market = numberOrNull(fields["eBay Median Price"]);
   const condition = review.verifiedCondition || fields.Condition || "Excellent";
   const conditionMultiplier = condition in CONDITION_MULTIPLIERS ? CONDITION_MULTIPLIERS[condition] : 0.6;
@@ -2706,6 +2962,9 @@ function autoInspectionReason(fields = {}, review = {}, accessories = []) {
   const reasons = [];
   if (review.notReceived) {
     reasons.push("Item was marked not received.");
+  }
+  if (review.decision === "not_accepted") {
+    reasons.push("Milford cannot accept this item for resale.");
   }
 
   const missingAccessories = accessories
@@ -3011,7 +3270,7 @@ function workflowState(order) {
   const completed = new Set(["initial"]);
   if (statuses.some((status) => status.includes("label") || status.includes("accepted") || status.includes("shipped") || status.includes("received") || status.includes("inspection") || status.includes("evaluated") || status.includes("final") || status.includes("payment") || status.includes("return"))) completed.add("shipped");
   if (statuses.some((status) => status.includes("received") || status.includes("inspection") || status.includes("evaluated") || status.includes("final") || status.includes("accepted item") || status.includes("customer accepted") || status.includes("payment") || status.includes("return"))) completed.add("received");
-  if (statuses.every((status) => status.includes("evaluated") || status.includes("final") || status.includes("accepted item") || status.includes("customer accepted") || status.includes("payment") || status.includes("return") || status.includes("declined"))) completed.add("evaluated");
+  if (allItemsEvaluated(statuses)) completed.add("evaluated");
   if (statuses.some((status) => status.includes("final quote") || status.includes("accepted item") || status.includes("customer accepted") || status.includes("payment") || status.includes("return"))) completed.add("final");
   if (statuses.some((status) => status.includes("accepted item") || status.includes("return item") || status.includes("customer accepted") || status.includes("payment"))) completed.add("customer");
   if (statuses.some((status) => status.includes("payment"))) completed.add("payout");
@@ -3019,6 +3278,27 @@ function workflowState(order) {
 
   const current = WORKFLOW_STEPS.find((step) => !completed.has(step.key)) || WORKFLOW_STEPS[WORKFLOW_STEPS.length - 1];
   return { completed, current, isComplete: completed.size >= WORKFLOW_STEPS.length };
+}
+
+function workflowStepDisplayLabel(step) {
+  if (step.key === "evaluated") return "Evaluated";
+  return step.label;
+}
+
+function allItemsEvaluated(statuses) {
+  return statuses.length > 0 && statuses.every(itemIsEvaluatedStatus);
+}
+
+function itemIsEvaluatedStatus(status) {
+  return statusIncludesAny(status, [
+    "evaluated",
+    "final",
+    "accepted item",
+    "customer accepted",
+    "payment",
+    "return",
+    "declined",
+  ]);
 }
 
 function quoteReferenceCounts(items) {
@@ -3558,6 +3838,13 @@ function selectedRecord(order = selectedOrder()) {
   return order.items.find((item) => item.id === selectedItemId) || order.items[0] || null;
 }
 
+function itemPositionLabel(order, record) {
+  const total = order?.items?.length || 0;
+  if (!total) return "Item 0 of 0";
+  const index = order.items.findIndex((item) => item.id === record?.id);
+  return `Item ${index >= 0 ? index + 1 : 1} of ${total}`;
+}
+
 function sortNewestFirst(a, b) {
   const dateA = new Date(a.fields?.["Quote Submitted"] || 0).getTime();
   const dateB = new Date(b.fields?.["Quote Submitted"] || 0).getTime();
@@ -3578,6 +3865,13 @@ function orderAddress(fields) {
     fields["Seller Street"],
     [fields["Seller City"], fields["Seller State"], fields["Seller ZIP"]].filter(Boolean).join(", "),
   ].filter(Boolean).map(escapeHtml).join("<br>");
+}
+
+function orderAddressText(fields) {
+  return [
+    fields["Seller Street"],
+    [fields["Seller City"], fields["Seller State"], fields["Seller ZIP"]].filter(Boolean).join(", "),
+  ].filter(Boolean).join(", ");
 }
 
 function moneyOrDash(value) {

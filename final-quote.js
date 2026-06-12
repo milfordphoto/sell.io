@@ -119,6 +119,7 @@ function renderItem(record, index) {
   const condition = verifiedConditionFor(fields) || fields.Condition || "Condition not listed";
   const status = fields.Status || "Final quote ready";
   const reasons = adjustmentReasons(fields, originalOffer, finalOffer);
+  const staffNotAccepted = staffDecisionFromNotes(fields) === "not_accepted";
   const accepted = state.decisions[record.id] === "accept";
   const returned = state.decisions[record.id] === "return";
 
@@ -133,18 +134,18 @@ function renderItem(record, index) {
           </div>
         </div>
         <div class="final-item-actions" role="group" aria-label="${escapeAttribute(title)} decision">
-          <label class="final-choice-card final-choice-card-compact final-choice-card-sell">
-            <input type="radio" name="decision-${escapeAttribute(record.id)}" value="accept" ${accepted ? "checked" : ""} />
+          <label class="final-choice-card final-choice-card-compact final-choice-card-sell ${staffNotAccepted ? "is-disabled" : ""}">
+            <input type="radio" name="decision-${escapeAttribute(record.id)}" value="accept" ${accepted ? "checked" : ""} ${staffNotAccepted ? "disabled" : ""} />
             <span>
               <strong>Sell this item</strong>
-              <small>Include in payout.</small>
+              <small>${staffNotAccepted ? "Not available for this item." : "Include in payout."}</small>
             </span>
           </label>
           <label class="final-choice-card final-choice-card-compact final-choice-card-return">
             <input type="radio" name="decision-${escapeAttribute(record.id)}" value="return" ${returned ? "checked" : ""} />
             <span>
               <strong>Return this item</strong>
-              <small>Prepare for return shipping.</small>
+              <small>${staffNotAccepted ? "Milford cannot accept this item." : "Prepare for return shipping."}</small>
             </span>
           </label>
         </div>
@@ -370,7 +371,14 @@ function existingDecision(record) {
   if (!line) return "";
   const decision = line.replace("Customer decision:", "").trim();
   if (decision === "accept" || decision === "return") return decision;
+  if (decision === "not_accepted") return "return";
   return "";
+}
+
+function staffDecisionFromNotes(fields = {}) {
+  const notes = String(fields["Staff Notes"] || "");
+  const line = notes.split("\n").find((item) => item.trim().startsWith("Customer decision:"));
+  return line ? line.replace("Customer decision:", "").trim() : "";
 }
 
 function itemTitle(fields) {

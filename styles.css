@@ -1734,6 +1734,11 @@ fieldset {
   padding: 13px;
 }
 
+.final-choice-card.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
 .final-choice-card:has(input:checked) {
   border-color: rgba(213, 33, 39, 0.75);
   background: rgba(213, 33, 39, 0.06);
@@ -2750,6 +2755,22 @@ fieldset {
   overflow-wrap: anywhere;
 }
 
+.staff-contact-link {
+  color: var(--ink-soft);
+  text-decoration: underline;
+  text-decoration-color: rgba(35, 77, 125, 0.28);
+  text-underline-offset: 3px;
+}
+
+.staff-contact-link:hover {
+  color: var(--mp-red);
+  text-decoration-color: currentColor;
+}
+
+.staff-contact-link-address {
+  display: inline-block;
+}
+
 .staff-order-kicker {
   display: flex;
   flex-wrap: wrap;
@@ -2837,6 +2858,37 @@ fieldset {
 .staff-progress-heading span {
   color: var(--muted);
   font-size: 0.82rem;
+}
+
+.staff-progress-heading-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.staff-progress-heading-actions span {
+  color: var(--muted);
+}
+
+.staff-add-item-button {
+  min-height: 32px;
+  border: 1px solid rgba(28, 68, 116, 0.22);
+  border-radius: var(--radius);
+  background: #ffffff;
+  color: var(--blue);
+  cursor: pointer;
+  padding: 7px 11px;
+  font-size: 0.72rem;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+}
+
+.staff-add-item-button:hover,
+.staff-add-item-button:focus-visible {
+  border-color: rgba(28, 68, 116, 0.45);
+  background: rgba(28, 68, 116, 0.08);
 }
 
 .staff-workflow {
@@ -2954,13 +3006,56 @@ fieldset {
   border-bottom-color: var(--mp-red-dark);
 }
 
+.staff-add-item-context {
+  display: grid;
+  gap: 5px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 15px;
+  background: var(--soft);
+}
+
+.staff-add-item-context span,
+.staff-add-item-context small {
+  color: var(--muted);
+}
+
+.staff-add-item-context span {
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 .staff-intake-header {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 190px;
+  grid-template-columns: minmax(0, 1fr) 148px 190px;
   gap: 18px;
   align-items: start;
   padding-bottom: 22px;
   border-bottom: 1px solid var(--line);
+}
+
+.staff-item-title-block {
+  min-width: 0;
+}
+
+.staff-item-kicker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: baseline;
+  margin: 0 0 10px;
+}
+
+.staff-item-kicker .brand-line {
+  margin: 0;
+}
+
+.staff-item-position {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 850;
 }
 
 .staff-intake-header h2 {
@@ -2972,6 +3067,59 @@ fieldset {
 .staff-intake-header p:not(.brand-line) {
   color: var(--muted);
   line-height: 1.45;
+}
+
+.staff-item-image-panel {
+  display: grid;
+  place-items: center;
+  min-height: 148px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(180deg, rgba(248, 250, 252, 0.86), rgba(255, 255, 255, 0.96)),
+    #ffffff;
+  padding: 12px;
+}
+
+.staff-item-image {
+  display: block;
+  width: 124px;
+  height: 124px;
+  object-fit: contain;
+}
+
+.staff-item-image.is-placeholder {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background:
+    linear-gradient(135deg, rgba(35, 77, 125, 0.08), rgba(213, 33, 39, 0.04)),
+    #ffffff;
+}
+
+.staff-item-image.is-placeholder::after {
+  content: "";
+  display: block;
+  width: 40px;
+  height: 28px;
+  margin: 47px auto;
+  border: 3px solid rgba(103, 108, 118, 0.45);
+  border-radius: 7px;
+}
+
+.staff-item-image.is-brand-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #111217;
+  font-size: 1rem;
+  font-weight: 900;
+  line-height: 1.05;
+  text-align: center;
+}
+
+.staff-item-image.is-brand-logo span {
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 .staff-offer-box {
@@ -3676,7 +3824,7 @@ fieldset {
 
 .staff-decision-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
 }
 
@@ -3695,6 +3843,10 @@ fieldset {
 .staff-decision-card:has(input:checked) {
   border-color: var(--mp-red);
   background: rgba(213, 33, 39, 0.05);
+}
+
+.staff-decision-card-decline {
+  border-color: rgba(213, 33, 39, 0.26);
 }
 
 .staff-order-decision {
@@ -3882,6 +4034,10 @@ fieldset {
 
   .staff-final-decision-context {
     grid-template-columns: 1fr;
+  }
+
+  .staff-item-image-panel {
+    justify-items: start;
   }
 
   .staff-workflow {
