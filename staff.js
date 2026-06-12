@@ -780,8 +780,9 @@ function renderItemTabs(order) {
         const statusClass = itemStatusClass(item);
         return `
           <button class="staff-item-tab ${statusClass} ${item.id === selectedItemId ? "is-active" : ""}" type="button" data-item-id="${escapeAttr(item.id)}">
-            <span>${index + 1}</span>
-            ${escapeHtml(shortGearTitle(fields))}
+            <span class="staff-item-tab-number">${index + 1}</span>
+            ${productImageMarkup(productImageForRecord(fields), "staff-item-tab-image", fields["Item Brand"])}
+            <span class="staff-item-tab-name">${escapeHtml(shortGearTitle(fields))}</span>
           </button>
         `;
       }).join("")}

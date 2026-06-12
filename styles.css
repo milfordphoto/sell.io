@@ -2958,8 +2958,8 @@ fieldset {
 
 .staff-item-tab {
   display: inline-flex;
-  min-width: 170px;
-  max-width: 240px;
+  min-width: 210px;
+  max-width: 270px;
   min-height: 52px;
   gap: 8px;
   align-items: center;
@@ -2976,7 +2976,7 @@ fieldset {
   line-height: 1.15;
 }
 
-.staff-item-tab span {
+.staff-item-tab-number {
   display: inline-grid;
   width: 24px;
   height: 24px;
@@ -2986,6 +2986,52 @@ fieldset {
   background: var(--soft);
   color: var(--ink);
   font-size: 0.78rem;
+}
+
+.staff-item-tab-image {
+  display: block;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  object-fit: contain;
+}
+
+.staff-item-tab-image.is-placeholder {
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background:
+    linear-gradient(135deg, rgba(35, 77, 125, 0.08), rgba(213, 33, 39, 0.04)),
+    #ffffff;
+}
+
+.staff-item-tab-image.is-placeholder::after {
+  content: "";
+  display: block;
+  width: 15px;
+  height: 11px;
+  margin: 12px auto;
+  border: 2px solid rgba(103, 108, 118, 0.45);
+  border-radius: 3px;
+}
+
+.staff-item-tab-image.is-brand-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #111217;
+  font-size: 0.52rem;
+  font-weight: 900;
+  line-height: 1.05;
+  text-align: center;
+}
+
+.staff-item-tab-image.is-brand-logo span {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.staff-item-tab-name {
+  min-width: 0;
 }
 
 .staff-item-tab.is-active {
