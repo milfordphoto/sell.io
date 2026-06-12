@@ -3073,12 +3073,6 @@ fieldset {
   display: grid;
   place-items: center;
   min-height: 148px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background:
-    linear-gradient(180deg, rgba(248, 250, 252, 0.86), rgba(255, 255, 255, 0.96)),
-    #ffffff;
-  padding: 12px;
 }
 
 .staff-item-image {
