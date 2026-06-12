@@ -934,9 +934,37 @@
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/Lws5AaiE9KjwB0vOThfvYQ?w=228&h=228&p=1&a=1&q=display",
       alt: "Canon RF-S 55-210mm f/5-7.1 IS STM",
     },
+    "canon|flash / speedlite|speedlite 270ex": {
+      src: "https://s7d1.scene7.com/is/image/canon/3806B002_speedlite-270ex_primary",
+      alt: "Canon Speedlite 270EX",
+    },
+    "canon|flash / speedlite|speedlite 270ex ii": {
+      src: "https://s7d1.scene7.com/is/image/canon/5247B002_speedlite-270ex-ii_primary",
+      alt: "Canon Speedlite 270EX II",
+    },
+    "canon|flash / speedlite|speedlite 320ex": {
+      src: "https://s7d1.scene7.com/is/image/canon/5246B002_speedlite-320ex_primary-1",
+      alt: "Canon Speedlite 320EX",
+    },
+    "canon|flash / speedlite|speedlite 430ex ii": {
+      src: "https://s7d1.scene7.com/is/image/canon/2805B002_speedlite-430ex-ii_primary",
+      alt: "Canon Speedlite 430EX II",
+    },
+    "canon|flash / speedlite|speedlite 430ex iii-rt": {
+      src: "https://s7d1.scene7.com/is/image/canon/0585C003_speedlite-430ex-iii-rt_primary",
+      alt: "Canon Speedlite 430EX III-RT",
+    },
     "canon|flash / speedlite|speedlite 470ex-ai": {
       src: "https://cdn.media.amplience.net/i/canon/02-TheFront-Stand",
       alt: "Canon Speedlite 470EX-AI",
+    },
+    "canon|flash / speedlite|speedlite 600ex-rt": {
+      src: "https://s7d1.scene7.com/is/image/canon/5296B002_speedlite-600ex-rt_primary",
+      alt: "Canon Speedlite 600EX-RT",
+    },
+    "canon|flash / speedlite|speedlite 600ex ii-rt": {
+      src: "https://s7d1.scene7.com/is/image/canon/1177C002_speedlite-600ex-ii-rt_primary",
+      alt: "Canon Speedlite 600EX II-RT",
     },
     "canon|flash / speedlite|speedlite el-5": {
       src: "https://cdn.media.amplience.net/i/canon/speedlite-el-5-front-stand_range_f3d015d358c64694aaa6db0b362f9073.png",
