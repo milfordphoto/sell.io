@@ -102,6 +102,10 @@
       src: "https://global.canon/ja/c-museum/wp-content/uploads/2015/08/dslr793_b.jpg",
       alt: "Canon EOS 400D / Digital Rebel XTi",
     },
+    "canon|digital camera|eos 4000d / rebel t100": {
+      src: "https://s7d1.scene7.com/is/image/canon/2628C001_eos-rebel-t100_primary",
+      alt: "Canon EOS 4000D / Rebel T100",
+    },
     "canon|digital camera|eos 40d": {
       src: "https://global.canon/ja/c-museum/wp-content/uploads/2015/08/dslr795_b.jpg",
       alt: "Canon EOS 40D",
@@ -921,6 +925,10 @@
     "canon|lens|rf-s 10-18mm f/4.5-6.3 is stm": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/xUgepAewbBOH6afrWZCtaw?w=228&h=228&p=1&a=1&q=display",
       alt: "Canon RF-S 10-18mm f/4.5-6.3 IS STM",
+    },
+    "canon|lens|rf-s 14-30mm f/4-6.3 is stm pz": {
+      src: "https://s7d1.scene7.com/is/image/canon/6916C005_RF-S14-30mm-F4-6.3-IS-STM-PZ_primary",
+      alt: "Canon RF-S 14-30mm f/4-6.3 IS STM PZ",
     },
     "canon|lens|rf-s 18-150mm f/3.5-6.3 is stm": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/uTHV4FCL8zquI2TnKnVcUw?w=228&h=228&p=1&a=1&q=display",
