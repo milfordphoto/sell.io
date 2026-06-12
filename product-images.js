@@ -790,6 +790,10 @@
       src: "https://global.canon/ja/c-museum/wp-content/uploads/2022/09/rf509_b.jpg",
       alt: "Canon RF 14-35mm f/4L IS USM",
     },
+    "canon|lens|rf 14mm f/1.4l vcm": {
+      src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/EpchTc8BsErLaUnbgyUNKg?w=228&h=228&p=1&a=1&q=display",
+      alt: "Canon RF 14mm f/1.4L VCM",
+    },
     "canon|lens|rf 15-35mm f/2.8l is usm": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/9qjV3lcVl4qWfEDFuRWdPA?w=228&h=228&p=1&a=1&q=display",
       alt: "Canon RF 15-35mm f/2.8L IS USM",
@@ -797,6 +801,10 @@
     "canon|lens|rf 16mm f/2.8 stm": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/Yk6sUxvoy35cB1TyORSULg?w=228&h=228&p=1&a=1&q=display",
       alt: "Canon RF 16mm f/2.8 STM",
+    },
+    "canon|lens|rf 20-50mm f/4l is usm pz": {
+      src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/tVBi-Xz-76SzNeqFD9brCQ?w=228&h=228&p=1&a=1&q=display",
+      alt: "Canon RF 20-50mm f/4L IS USM PZ",
     },
     "canon|lens|rf 200-800mm f/6.3-9 is usm": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/nZC4zzHjgM2KVpWRhK7o6g?w=228&h=228&p=1&a=1&q=display",
@@ -902,6 +910,10 @@
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/b0nu2aQ76vSQT0zQEAMaEA?w=228&h=228&p=1&a=1&q=display",
       alt: "Canon RF 85mm f/1.2L USM DS",
     },
+    "canon|lens|rf 85mm f/1.4l vcm": {
+      src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/sQYC13M5pvTyNQf5po1B5g?w=228&h=228&p=1&a=1&q=display",
+      alt: "Canon RF 85mm f/1.4L VCM",
+    },
     "canon|lens|rf 85mm f/2 is macro stm": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/v4E2C3dN_0X4HHYdpvTixw?w=228&h=228&p=1&a=1&q=display",
       alt: "Canon RF 85mm f/2 IS Macro STM",
@@ -961,6 +973,10 @@
     "fujifilm|digital camera|gfx 50s": {
       src: "https://fujifilm-x.b-cdn.net/wp-content/uploads/2017/08/1_thum_gfx_50s.jpg?width=480&height=480",
       alt: "Fujifilm GFX 50S",
+    },
+    "fujifilm|digital camera|gfx 50s ii": {
+      src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/G4QfwyYboOrV63FnOXkKjw?w=228&h=228&p=1&a=1&q=display",
+      alt: "Fujifilm GFX 50S II",
     },
     "fujifilm|digital camera|gfx100rf": {
       src: "https://fujifilm-x.b-cdn.net/wp-content/uploads/2025/03/product-list_gfx100rf.jpg?width=480&height=480",
@@ -1177,6 +1193,10 @@
     "fujifilm|lens|xf 10-24mm f/4 r ois wr": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/BgizvY1hV566Sxj-RsewVw?w=228&h=228&p=1&a=1&q=display",
       alt: "Fujifilm XF 10-24mm f/4 R OIS WR",
+    },
+    "fujifilm|lens|xf 100-400mm f/4.5-5.6 r lm ois wr": {
+      src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/wYER2F8KUcjW5-S0JriPag?w=228&h=228&p=1&a=1&q=display",
+      alt: "Fujifilm XF 100-400mm f/4.5-5.6 R LM OIS WR",
     },
     "fujifilm|lens|xf 14mm f/2.8 r": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/d3a26bd0-da6e-012f-87bf-20cf30bab63e?w=228&h=228&p=1&a=1&q=display",
@@ -2386,6 +2406,10 @@
       src: "https://nala.explore.omsystem.com/media/catalog/product/e/-/e-m10-mark-iv-14-42mm-kit-silver-hero-02.webp?width=1000&height=1000&optimize=medium&fit=bounds",
       alt: "Olympus / OM System E-M10 Mark IV",
     },
+    "olympus / om system|digital camera|e-m1x": {
+      src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/R3QAQnyHD16Nx3Lczi7VCA?w=228&h=228&p=1&a=1&q=display",
+      alt: "Olympus OM-D E-M1X",
+    },
     "olympus / om system|digital camera|e-m5": {
       src: "https://learnandsupport.getolympus.com/sites/default/files/styles/thumb_200px/public/2018-04/e-m5.jpg?itok=TeyqTFJl",
       alt: "Olympus / OM System E-M5",
@@ -2457,6 +2481,10 @@
     "olympus / om system|digital camera|pen-f": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/YX2nTvT3C7FgprJUcNOQYg?w=228&h=228&p=1&a=1&q=display",
       alt: "Olympus / OM System PEN-F",
+    },
+    "olympus / om system|lens|m.zuiko 100-400mm f/5-6.3 is": {
+      src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/PSOlvEk7HLtY-08ImC8Hww?w=228&h=228&p=1&a=1&q=display",
+      alt: "Olympus M.Zuiko 100-400mm f/5-6.3 IS",
     },
     "olympus / om system|lens|m.zuiko 12-100mm f/4 is pro": {
       src: "https://nala.explore.omsystem.com/media/catalog/product/1/2/12-100mm_f4.0_is_pro-om.webp?width=800&height=&optimize=medium&fit=bounds",
@@ -3174,6 +3202,10 @@
       src: "https://docs.sony.com/images/swt/dvimag/nex5.jpg",
       alt: "Sony NEX-5",
     },
+    "sony|digital camera|nex-6": {
+      src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/35c03360-df1b-012f-87c8-20cf30bab63e?w=228&h=228&p=1&a=1&q=display",
+      alt: "Sony NEX-6",
+    },
     "sony|digital camera|zv-e1": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/Qh9aEJfH6IdDvjG6H17QsQ?w=228&h=228&p=1&a=1&q=display",
       alt: "Sony ZV-E1",
@@ -3277,6 +3309,10 @@
     "sony|digital camera|α7cr": {
       src: "https://d1ncau8tqf99kp.cloudfront.net/converted/116392_original_local_1200x1050_v3_converted.webp",
       alt: "Sony α7CR",
+    },
+    "sony|digital camera|α7r ii": {
+      src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/RfTvhR5UpyPOMOcVDJX-Fg?w=228&h=228&p=1&a=1&q=display",
+      alt: "Sony α7R II",
     },
     "sony|digital camera|α7r iii": {
       src: "https://docs.sony.com/images/swt/dvimag/ilce7rm3.jpg",
