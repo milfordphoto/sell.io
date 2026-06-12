@@ -942,6 +942,18 @@
       src: "https://cdn.media.amplience.net/i/canon/speedlite-el-5-front-stand_range_f3d015d358c64694aaa6db0b362f9073.png",
       alt: "Canon Speedlite EL-5",
     },
+    "canon|flash / speedlite|speedlite el-1": {
+      src: "https://cdn.media.amplience.net/i/canon/el-1_spec_gallery-1__a4160de73dc24d9ab87e9a036186347a",
+      alt: "Canon Speedlite EL-1",
+    },
+    "canon|flash / speedlite|speedlite el-10": {
+      src: "https://cdn.media.amplience.net/i/canon/speedlite-el-10_range_page_0ac08a2b55784feb929cb6ec432ced13",
+      alt: "Canon Speedlite EL-10",
+    },
+    "canon|flash / speedlite|speedlite el-100": {
+      src: "https://s7d1.scene7.com/is/image/canon/3249C010_speedlite-el-100-refurbished_primary?fmt=webp-alpha&wid=380",
+      alt: "Canon Speedlite EL-100",
+    },
     "elinchrom|flash / strobe|elc 500": {
       src: "https://www.elinchrom.com/images/prod1000/Elinchrom-ELC500.jpg",
       alt: "Elinchrom ELC 500",
