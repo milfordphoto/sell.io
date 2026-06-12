@@ -934,6 +934,14 @@
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/Lws5AaiE9KjwB0vOThfvYQ?w=228&h=228&p=1&a=1&q=display",
       alt: "Canon RF-S 55-210mm f/5-7.1 IS STM",
     },
+    "canon|flash / speedlite|speedlite 470ex-ai": {
+      src: "https://cdn.media.amplience.net/i/canon/02-TheFront-Stand",
+      alt: "Canon Speedlite 470EX-AI",
+    },
+    "canon|flash / speedlite|speedlite el-5": {
+      src: "https://cdn.media.amplience.net/i/canon/speedlite-el-5-front-stand_range_f3d015d358c64694aaa6db0b362f9073.png",
+      alt: "Canon Speedlite EL-5",
+    },
     "elinchrom|flash / strobe|elc 500": {
       src: "https://www.elinchrom.com/images/prod1000/Elinchrom-ELC500.jpg",
       alt: "Elinchrom ELC 500",
@@ -3218,6 +3226,10 @@
       src: "https://d1ncau8tqf99kp.cloudfront.net/converted/120973_original_local_1200x1050_v3_converted.webp",
       alt: "Sony ZV-E10 II",
     },
+    "sony|digital camera|α100 / dslr-a100": {
+      src: "https://docs.sony.com/images/swt/dvimag/dslra100.jpg",
+      alt: "Sony DSLR-A100",
+    },
     "sony|digital camera|α200 / dslr-a200": {
       src: "https://docs.sony.com/images/swt/dvimag/dslra200.jpg",
       alt: "Sony DSLR-A200",
@@ -3281,6 +3293,10 @@
     "sony|digital camera|α68": {
       src: "https://docs.sony.com/images/swt/dvimag/ilca68.jpg",
       alt: "Sony ILCA-68",
+    },
+    "sony|digital camera|α700 / dslr-a700": {
+      src: "https://docs.sony.com/images/swt/dvimag/dslra700.jpg",
+      alt: "Sony DSLR-A700",
     },
     "sony|digital camera|α7 iii": {
       src: "https://d1ncau8tqf99kp.cloudfront.net/converted/149049_original_local_1200x1050_v3_converted.webp",
