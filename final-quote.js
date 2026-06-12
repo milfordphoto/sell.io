@@ -118,7 +118,7 @@ function renderItem(record, index) {
   const offerChanged = originalOffer !== null && originalOffer !== finalOffer;
   const condition = verifiedConditionFor(fields) || fields.Condition || "Condition not listed";
   const status = fields.Status || "Final quote ready";
-  const reason = adjustmentReason(fields, originalOffer, finalOffer);
+  const reasons = adjustmentReasons(fields, originalOffer, finalOffer);
   const accepted = state.decisions[record.id] === "accept";
   const returned = state.decisions[record.id] === "return";
 
@@ -154,9 +154,12 @@ function renderItem(record, index) {
           ${offerChanged ? `<small>Original online offer ${formatMoney(originalOffer)}</small>` : ""}
         </div>
       </div>
-      ${reason ? `
+      ${reasons.length ? `
         <div class="final-adjustment">
-          <strong>Inspection note:</strong> ${escapeHtml(reason)}
+          <strong>Why this item changed</strong>
+          <ul>
+            ${reasons.map((reason) => `<li>${escapeHtml(reason)}</li>`).join("")}
+          </ul>
         </div>
       ` : ""}
     </article>
@@ -382,12 +385,12 @@ function verifiedConditionFor(fields) {
   return String(fields["Verified Condition"] || "").trim() || inspectionDetailsFromNotes(fields["Staff Notes"]).verifiedCondition;
 }
 
-function adjustmentReason(fields, originalOfferAmount, finalOfferAmount) {
+function adjustmentReasons(fields, originalOfferAmount, finalOfferAmount) {
   const publicReasons = meaningfulInspectionReason(fields["Adjustment Reasons"]);
-  if (publicReasons) return publicReasons;
+  if (publicReasons) return uniqueReasons(inspectionReasonLines(publicReasons).map(punctuateSentence));
 
   const inspection = inspectionDetailsFromNotes(fields["Staff Notes"]);
-  return itemAdjustmentReasons(fields, inspection, originalOfferAmount, finalOfferAmount).join(" ");
+  return itemAdjustmentReasons(fields, inspection, originalOfferAmount, finalOfferAmount);
 }
 
 function inspectionDetailsFromNotes(notes = "") {
@@ -397,6 +400,8 @@ function inspectionDetailsFromNotes(notes = "") {
     reason: "",
   };
   let inAccessoryCheck = false;
+  let inReasonNotes = false;
+  const reasonLines = [];
 
   String(notes || "").split("\n").forEach((line) => {
     const clean = line.trim();
@@ -406,9 +411,17 @@ function inspectionDetailsFromNotes(notes = "") {
       return;
     }
 
+    if (inReasonNotes && staffNoteLineStartsNewField(clean)) {
+      inReasonNotes = false;
+    } else if (inReasonNotes) {
+      reasonLines.push(clean);
+      return;
+    }
+
     if (lower === "accessory check:") {
       parsed.accessories = {};
       inAccessoryCheck = true;
+      inReasonNotes = false;
       return;
     }
 
@@ -430,11 +443,14 @@ function inspectionDetailsFromNotes(notes = "") {
       parsed.verifiedCondition = clean.replace(/verified condition:/i, "").trim();
     }
     if (lower.startsWith("reason / notes:")) {
-      parsed.reason = clean.replace(/reason \/ notes:/i, "").trim();
+      const firstReasonLine = clean.replace(/reason \/ notes:/i, "").trim();
+      reasonLines.length = 0;
+      if (firstReasonLine) reasonLines.push(firstReasonLine);
+      inReasonNotes = true;
     }
   });
 
-  parsed.reason = meaningfulInspectionReason(parsed.reason);
+  parsed.reason = meaningfulInspectionReason(reasonLines.join("\n"));
   return parsed;
 }
 
@@ -454,7 +470,11 @@ function itemAdjustmentReasons(fields, inspection, originalOfferAmount, finalOff
     reasons.push(`Condition adjusted from ${originalCondition} to ${verifiedCondition}.`);
   }
 
-  if (inspection.reason) reasons.push(punctuateSentence(inspection.reason));
+  inspectionReasonLines(inspection.reason)
+    .map(punctuateSentence)
+    .filter((reason) => !reasons.some((existing) => sameReason(existing, reason)))
+    .filter((reason) => !legacyAutoReason(reason, originalCondition, verifiedCondition, missingAccessories))
+    .forEach((reason) => reasons.push(reason));
 
   if (!reasons.length && originalOfferAmount !== null && Number(finalOfferAmount || 0) !== Number(originalOfferAmount || 0)) {
     reasons.push(
@@ -467,6 +487,53 @@ function itemAdjustmentReasons(fields, inspection, originalOfferAmount, finalOff
   return [...new Set(reasons)];
 }
 
+function inspectionReasonLines(reason = "") {
+  return String(reason || "")
+    .split(/\r?\n/)
+    .flatMap((line) => {
+      const clean = stripReasonBullet(line);
+      if (!clean) return [];
+      return clean.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [clean];
+    })
+    .map(stripReasonBullet)
+    .filter(Boolean);
+}
+
+function stripReasonBullet(value = "") {
+  return String(value || "").trim().replace(/^[-*•]\s+/, "").trim();
+}
+
+function sameReason(left = "", right = "") {
+  return normalizeReason(left) === normalizeReason(right);
+}
+
+function normalizeReason(value = "") {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/^[-*•]\s+/, "")
+    .replace(/[.!?]+$/g, "")
+    .replace(/\s+/g, " ");
+}
+
+function uniqueReasons(reasons = []) {
+  const seen = new Set();
+  return reasons.filter((reason) => {
+    const key = normalizeReason(reason);
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function legacyAutoReason(reason, originalCondition, verifiedCondition, missingAccessories = []) {
+  if (originalCondition && verifiedCondition && sameReason(reason, `Customer selected ${originalCondition}; inspection verified ${verifiedCondition}.`)) {
+    return true;
+  }
+  if (!missingAccessories.length) return false;
+  return sameReason(reason, `${missingAccessories.length === 1 ? "Missing accessory" : "Missing accessories"}: ${joinHumanList(missingAccessories)}.`);
+}
+
 function meaningfulInspectionReason(reason = "") {
   const clean = String(reason || "").trim();
   const normalized = clean.toLowerCase().replace(/\.$/, "");
@@ -475,6 +542,10 @@ function meaningfulInspectionReason(reason = "") {
   if (normalized === "created through staff in-store intake") return "";
   if (normalized.startsWith("created through staff")) return "";
   return clean;
+}
+
+function staffNoteLineStartsNewField(clean = "") {
+  return /^(INTAKE REVIEW|ORDER UPDATE|CUSTOMER FINAL QUOTE DECISION|Received:|Item not received:|All recommended accessories included:|Verified condition:|Accessory check:|Customer decision:|Final offer:|Last staff action:|Updated:)/i.test(clean);
 }
 
 function sameCustomerText(left = "", right = "") {

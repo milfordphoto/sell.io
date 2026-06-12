@@ -4,6 +4,7 @@ const TEST_EMPLOYEE = "employee";
 const TEST_PASSWORD = "password";
 const STAFF_SECRET = CONFIG.staffSecret || TEST_PASSWORD;
 const SHOW_DEMO_ORDERS = new URLSearchParams(window.location.search).get("showDemo") === "1";
+const STORE_CREDIT_BONUS = 0.1;
 const MANUAL_BRAND = "__manual_brand";
 const MANUAL_MODEL = "__manual_model";
 const MANUAL_CATEGORY = "Manual Review / Vintage / Specialty";
@@ -404,14 +405,16 @@ function renderDetail() {
   const accessories = accessoryListFor(fields);
   const parsed = parseStaffNotes(fields["Staff Notes"]);
   const baseOffer = numberOrNull(fields["Milford Offer"]) ?? 0;
-  const finalOffer = numberOrNull(fields["Final Offer"]) ?? calculateOffer(fields, parsed, accessories, baseOffer);
+  const calculatedAdjustedOffer = calculateOffer(fields, parsed, accessories, baseOffer);
+  const adjustedOffer = reviewRequiresCustomerDecision(fields, parsed, accessories)
+    ? calculatedAdjustedOffer
+    : numberOrNull(fields["Final Offer"]) ?? calculatedAdjustedOffer;
   const paymentMethod = paymentMethodValue(fields);
-  const staffMaySetPayment = staffCanSetPaymentMethod(fields, paymentMethod);
-  const defaultDecision = staffDecisionForRecord(record, order, finalOffer, parsed, accessories);
+  const defaultDecision = staffDecisionForRecord(record, order, adjustedOffer, parsed, accessories);
 
   detailEl.innerHTML = `
     <article class="staff-intake">
-      ${renderOrderHeader(order)}
+      ${renderOrderHeader(order, record, adjustedOffer)}
       ${renderOrderInfoGrid(order, fields, baseOffer, paymentMethod)}
       ${renderOrderProgress(order)}
 
@@ -423,7 +426,7 @@ function renderDetail() {
         </div>
         <div class="staff-offer-box">
           <span>Item quote</span>
-          <strong>$${formatMoney(finalOffer)}</strong>
+          <strong>$${formatMoney(adjustedOffer)}</strong>
           <small>${escapeHtml(fields.Status || "New")}</small>
         </div>
       </header>
@@ -471,7 +474,7 @@ function renderDetail() {
             <span>3</span>
             <div>
               <h3>Verify condition</h3>
-              <p>Changing the grade recalculates the suggested final offer.</p>
+              <p>Changing the grade recalculates the adjusted offer.</p>
             </div>
           </div>
           ${renderStaffConditionContext(fields)}
@@ -490,30 +493,15 @@ function renderDetail() {
           </div>
           <div class="staff-adjust-grid">
             <label class="field">
-              <span>Suggested final offer</span>
-              <input id="suggested-offer" type="number" min="0" step="1" value="${finalOffer}" readonly />
+              <span>Instant quote offer</span>
+              <input id="suggested-offer" type="number" min="0" step="1" value="${baseOffer}" readonly />
+              ${renderOfferAmountSummary("instant", baseOffer)}
             </label>
             <label class="field">
-              <span>Custom final offer</span>
-              <input id="custom-offer" type="number" min="0" step="1" value="${finalOffer}" />
+              <span>Adjusted offer</span>
+              <input id="custom-offer" type="number" min="0" step="1" value="${adjustedOffer}" />
+              ${renderOfferAmountSummary("adjusted", adjustedOffer)}
             </label>
-            ${staffMaySetPayment ? `
-              <label class="field">
-                <span>Payout method</span>
-                <select id="payment-method">
-                  <option value="" ${!paymentMethod ? "selected" : ""}>Customer chooses after final quote</option>
-                  <option value="check" ${paymentMethod === "check" ? "selected" : ""}>Check</option>
-                  <option value="paypal" ${paymentMethod === "paypal" ? "selected" : ""}>PayPal</option>
-                  <option value="store_credit" ${paymentMethod === "store_credit" ? "selected" : ""}>Store credit</option>
-                </select>
-              </label>
-            ` : `
-              <div class="staff-payout-info">
-                <span>Payout method</span>
-                <strong>Customer chooses after final quote</strong>
-                <small>Online customers choose check, PayPal, or store credit when they accept the final quote.</small>
-              </div>
-            `}
           </div>
           ${renderStaffReferencePricing(fields)}
           ${renderStaffDecisionContext(record, order, defaultDecision)}
@@ -558,7 +546,8 @@ function renderDetail() {
   bindDetail(record, accessories);
 }
 
-function renderOrderHeader(order) {
+function renderOrderHeader(order, currentRecord, currentCashOffer) {
+  const totals = orderOfferTotals(order, currentRecord, currentCashOffer);
   return `
     <section class="staff-order-header">
       <div>
@@ -568,26 +557,73 @@ function renderOrderHeader(order) {
         </p>
         <h2>${escapeHtml(order.customer)}</h2>
         <p>${escapeHtml(order.items.length)} item${order.items.length === 1 ? "" : "s"} in this order${order.synthetic && order.items.length > 1 ? " - grouped for testing from same customer/address/time window" : ""}</p>
+        ${renderOrderSellerContact(order)}
       </div>
-      <div class="staff-order-total">
-        <span>Final order total</span>
-        <strong>$${formatMoney(order.totals.final || order.totals.original)}</strong>
-        <small>Original quote: $${formatMoney(order.totals.original)}</small>
+      <div class="staff-order-total" id="staff-order-total-card">
+        <span>Order offer total</span>
+        <strong data-order-cash-total>$${formatMoney(totals.cash)} cash</strong>
+        <small data-order-store-credit-total>$${formatMoney(totals.storeCredit)} store credit</small>
+        <small data-order-original-total>Original quote: $${formatMoney(totals.original)}</small>
       </div>
     </section>
   `;
 }
 
+function renderOrderSellerContact(order = {}) {
+  const contactRows = [
+    order.address ? `<span>${order.address}</span>` : "",
+    order.email ? escapeHtml(order.email) : "",
+    order.phone ? escapeHtml(formatStaffPhone(order.phone)) : "",
+  ].filter(Boolean);
+  if (!contactRows.length) return "";
+  return `
+    <div class="staff-order-contact" aria-label="Seller contact">
+      ${contactRows.map((row) => `<p>${row}</p>`).join("")}
+    </div>
+  `;
+}
+
+function formatStaffPhone(phone = "") {
+  const raw = String(phone || "").trim();
+  const digits = raw.replace(/\D/g, "");
+  const localDigits = digits.length === 11 && digits.startsWith("1")
+    ? digits.slice(1)
+    : digits;
+  if (localDigits.length !== 10) return raw;
+  return `(${localDigits.slice(0, 3)}) ${localDigits.slice(3, 6)}-${localDigits.slice(6)}`;
+}
+
+function renderOfferAmountSummary(kind, cashAmount) {
+  const cash = numberOrNull(cashAmount) ?? 0;
+  return `
+    <small class="staff-offer-amount-summary" data-offer-summary="${escapeAttr(kind)}">
+      <span data-offer-cash>$${escapeHtml(formatMoney(cash))} cash</span>
+      <span data-offer-store-credit>$${escapeHtml(formatMoney(storeCreditOffer(cash)))} store credit</span>
+    </small>
+  `;
+}
+
+function updateOfferAmountSummaries(instantCash, adjustedCash) {
+  setOfferAmountSummary("instant", instantCash);
+  setOfferAmountSummary("adjusted", adjustedCash);
+}
+
+function setOfferAmountSummary(kind, cashAmount) {
+  const summary = document.querySelector(`[data-offer-summary="${kind}"]`);
+  if (!summary) return;
+  const cash = numberOrNull(cashAmount) ?? 0;
+  const cashEl = summary.querySelector("[data-offer-cash]");
+  const storeCreditEl = summary.querySelector("[data-offer-store-credit]");
+  if (cashEl) cashEl.textContent = `$${formatMoney(cash)} cash`;
+  if (storeCreditEl) storeCreditEl.textContent = `$${formatMoney(storeCreditOffer(cash))} store credit`;
+}
+
 function renderOrderInfoGrid(order, fields, baseOffer, paymentMethod) {
+  const delivery = staffDeliveryFromFields(fields);
+  const isDropoff = delivery === "In-store drop-off";
+  const logisticsTitle = isDropoff ? "Dropoff / payout" : "Shipping";
   return `
     <div class="staff-info-grid staff-order-info-grid">
-      <section>
-        <h3>Seller</h3>
-        <p>${escapeHtml(order.customer || "-")}</p>
-        <p class="seller-address">${order.address || "-"}</p>
-        <p>${escapeHtml(order.email || "-")}</p>
-        <p>${escapeHtml(order.phone || "-")}</p>
-      </section>
       <section>
         <h3>Original quote</h3>
         <p>Selected item cash offer: <strong>$${formatMoney(baseOffer)}</strong></p>
@@ -596,11 +632,11 @@ function renderOrderInfoGrid(order, fields, baseOffer, paymentMethod) {
         <p>Quote source: ${escapeHtml(quoteSourceLabel(fields))}</p>
         <p>Pricing basis: ${escapeHtml(staffNoteValue(fields, "Pricing basis") || "-")}</p>
         <p>Price last reviewed: ${escapeHtml(staffNoteValue(fields, "Price last reviewed") || "-")}</p>
-        <p><a href="${escapeAttr(ebaySoldListingsUrl(fields))}" target="_blank" rel="noreferrer">Search eBay sold listings</a></p>
         <p>Expires: ${formatDate(fields["Quote Expires"]) || "-"}</p>
       </section>
       <section>
-        <h3>Shipping</h3>
+        <h3>${logisticsTitle}</h3>
+        ${delivery ? `<p>Delivery: ${escapeHtml(delivery)}</p>` : ""}
         <p>Incoming tracking: ${escapeHtml(incomingTrackingNumber(fields))}</p>
         <p>Outgoing tracking: ${escapeHtml(outgoingTrackingNumber(fields))}</p>
         <p>${fields["Shippo Label URL"] ? `<a href="${escapeAttr(fields["Shippo Label URL"])}" target="_blank" rel="noreferrer">Open inbound label</a>` : "No inbound label link"}</p>
@@ -1038,21 +1074,26 @@ function bindDetail(record, accessories) {
 function updateSuggestedOffer(record, accessories) {
   const fields = record.fields || {};
   const review = collectReviewState(accessories);
-  const suggested = calculateOffer(fields, review, accessories, numberOrNull(fields["Milford Offer"]) ?? 0);
+  const originalOffer = numberOrNull(fields["Milford Offer"]) ?? 0;
+  const adjustedOffer = calculateOffer(fields, review, accessories, originalOffer);
   const suggestedInput = document.getElementById("suggested-offer");
   const customInput = document.getElementById("custom-offer");
-  const previousSuggested = numberOrNull(suggestedInput.dataset.suggestedOffer ?? suggestedInput.value);
+  const previousAdjusted = numberOrNull(customInput.dataset.adjustedOffer ?? customInput.value);
   const currentCustom = numberOrNull(customInput.value);
-  const customDiffersFromPriorSuggestion = previousSuggested !== null
+  const customDiffersFromPriorAdjusted = previousAdjusted !== null
     && currentCustom !== null
-    && currentCustom !== previousSuggested;
+    && currentCustom !== previousAdjusted;
   const keepCustom = customInput.dataset.customEdited === "true"
     || document.activeElement === customInput
-    || customDiffersFromPriorSuggestion;
-  suggestedInput.value = suggested;
-  suggestedInput.dataset.suggestedOffer = String(suggested);
-  if (!keepCustom) customInput.value = suggested;
-  updateDefaultDecision(record, suggested, review, accessories);
+    || customDiffersFromPriorAdjusted;
+  suggestedInput.value = originalOffer;
+  suggestedInput.dataset.originalOffer = String(originalOffer);
+  customInput.dataset.adjustedOffer = String(adjustedOffer);
+  if (!keepCustom) customInput.value = adjustedOffer;
+  const displayedAdjustedOffer = numberOrNull(customInput.value) ?? adjustedOffer;
+  updateOfferAmountSummaries(originalOffer, displayedAdjustedOffer);
+  updateOrderTotalCard(selectedOrder(), record, displayedAdjustedOffer);
+  updateDefaultDecision(record, displayedAdjustedOffer, review, accessories);
   syncAutoInspectionNotes(fields, accessories, review);
 }
 
@@ -1531,13 +1572,21 @@ function renderPricingReviewRows() {
       <td>${escapeHtml(row.pricingBasis || row.source || "-")}</td>
       <td>${escapeHtml(row.priceLastReviewed || "-")}</td>
       <td>
-        <a href="${escapeAttr(row.links?.mpb || "#")}">MPB</a>
-        <a href="${escapeAttr(row.links?.ebaySold || "#")}">eBay sold</a>
-        <a href="${escapeAttr(row.links?.keh || "#")}">KEH</a>
-        <a href="${escapeAttr(row.links?.bhUsed || "#")}">B&H</a>
+        ${pricingReviewReferenceLinks(row).map((link) => `<a href="${escapeAttr(link.href)}" target="_blank" rel="noreferrer">${escapeHtml(link.label)}</a>`).join("")}
       </td>
     </tr>
   `).join("") || `<tr><td colspan="7">No matching pricing rows.</td></tr>`;
+}
+
+function pricingReviewReferenceLinks(row = {}) {
+  const fields = { "Item Brand": row.brand, "Item Model": row.model };
+  const query = staffReferenceQuery(fields);
+  return [
+    { label: "MPB", href: marketSearchUrl("https://www.mpb.com/en-us/search", query) },
+    { label: "eBay sold", href: ebaySoldListingsUrl(fields) },
+    { label: "KEH", href: marketSearchUrl("https://www.keh.com/shop/search", query) },
+    { label: "B&H", href: marketSearchUrl("https://www.bhphotovideo.com/c/search", `${query} used`) },
+  ];
 }
 
 function pricingReviewSort(sort) {
@@ -2638,10 +2687,14 @@ function syncAutoInspectionNotes(fields = {}, accessories = [], review = collect
     return;
   }
 
-  if (!current || current === previousGenerated) {
+  const legacyGenerated = legacyAutoInspectionReason(fields, review, accessories);
+
+  if (!current || current === previousGenerated || current === legacyGenerated) {
     notesInput.value = generated;
   } else if (previousGenerated && current.includes(previousGenerated)) {
     notesInput.value = current.replace(previousGenerated, generated).trim();
+  } else if (legacyGenerated && current.includes(legacyGenerated)) {
+    notesInput.value = current.replace(legacyGenerated, generated).trim();
   } else if (current !== generated && !current.includes(generated)) {
     notesInput.value = `${generated}\n${current}`;
   }
@@ -2650,6 +2703,28 @@ function syncAutoInspectionNotes(fields = {}, accessories = [], review = collect
 }
 
 function autoInspectionReason(fields = {}, review = {}, accessories = []) {
+  const reasons = [];
+  if (review.notReceived) {
+    reasons.push("Item was marked not received.");
+  }
+
+  const missingAccessories = accessories
+    .filter((item) => review.accessories?.[item.name] === false)
+    .map((item) => item.name);
+  if (missingAccessories.length) {
+    reasons.push(`Adjusted for missing ${formatInlineList(missingAccessories)}.`);
+  }
+
+  const customerCondition = String(fields.Condition || "").trim();
+  const verifiedCondition = String(review.verifiedCondition || "").trim();
+  if (customerCondition && verifiedCondition && normalizeCondition(customerCondition) !== normalizeCondition(verifiedCondition)) {
+    reasons.push(`Condition adjusted from ${customerCondition} to ${verifiedCondition}.`);
+  }
+
+  return reasons.map((reason) => `- ${reason}`).join("\n");
+}
+
+function legacyAutoInspectionReason(fields = {}, review = {}, accessories = []) {
   const reasons = [];
   if (review.notReceived) {
     reasons.push("Item was marked not received.");
@@ -2783,7 +2858,7 @@ function renderStaffReferencePricing(fields = {}) {
         <span>Compare used-market listings before setting the final offer.</span>
       </div>
       <nav class="staff-reference-links" aria-label="Reference pricing searches">
-        ${links.map((link) => `<a href="${escapeAttr(link.href)}">${escapeHtml(link.label)}</a>`).join("")}
+        ${links.map((link) => `<a href="${escapeAttr(link.href)}" target="_blank" rel="noreferrer">${escapeHtml(link.label)}</a>`).join("")}
       </nav>
     </div>
   `;
@@ -2800,7 +2875,13 @@ function staffReferenceLinks(fields = {}) {
 }
 
 function staffReferenceQuery(fields = {}) {
-  return [fields["Item Brand"], fields["Item Model"]].filter(Boolean).join(" ").trim() || "camera gear";
+  const product = [fields["Item Brand"], fields["Item Model"]]
+    .filter(Boolean)
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .replace(/"/g, "")
+    .trim();
+  return product ? `"${product}"` : "camera gear";
 }
 
 function marketSearchUrl(baseUrl, query) {
@@ -2861,11 +2942,30 @@ function parseStaffNotes(notes = "") {
     reason: "",
   };
   let inCustomerFinalQuoteDecision = false;
+  let inAccessoryCheck = false;
+  let inReasonNotes = false;
+  const reasonLines = [];
 
   notes.split("\n").forEach((line) => {
     const clean = line.trim();
-    if (clean === "CUSTOMER FINAL QUOTE DECISION") inCustomerFinalQuoteDecision = true;
-    if (clean === "INTAKE REVIEW" || clean === "ORDER UPDATE") inCustomerFinalQuoteDecision = false;
+    if (!clean) {
+      inAccessoryCheck = false;
+      return;
+    }
+    if (clean === "CUSTOMER FINAL QUOTE DECISION") {
+      inCustomerFinalQuoteDecision = true;
+      inReasonNotes = false;
+    }
+    if (clean === "INTAKE REVIEW" || clean === "ORDER UPDATE") {
+      inCustomerFinalQuoteDecision = false;
+      inReasonNotes = false;
+    }
+    if (inReasonNotes && staffNoteLineStartsNewField(clean)) {
+      inReasonNotes = false;
+    } else if (inReasonNotes) {
+      reasonLines.push(clean);
+      return;
+    }
     if (clean.startsWith("Received:")) {
       const receivedText = clean.toLowerCase();
       parsed.received = clean.includes("Yes") && !receivedText.includes("not received");
@@ -2878,14 +2978,32 @@ function parseStaffNotes(notes = "") {
       parsed.decision = clean.replace("Customer decision:", "").trim() || "pending";
       if (inCustomerFinalQuoteDecision) parsed.customerFinalDecision = parsed.decision;
     }
-    if (clean.startsWith("- ")) {
+    if (clean === "Accessory check:") {
+      inAccessoryCheck = true;
+      return;
+    }
+    if (inAccessoryCheck && clean.startsWith("- ")) {
       const [name, state] = clean.slice(2).split(":").map((part) => part.trim());
       if (name) parsed.accessories[name] = state !== "missing";
+      return;
     }
-    if (clean.startsWith("Reason / notes:")) parsed.reason = clean.replace("Reason / notes:", "").trim();
+    if (inAccessoryCheck && !clean.startsWith("- ")) {
+      inAccessoryCheck = false;
+    }
+    if (clean.startsWith("Reason / notes:")) {
+      const firstReasonLine = clean.replace("Reason / notes:", "").trim();
+      reasonLines.length = 0;
+      if (firstReasonLine) reasonLines.push(firstReasonLine);
+      inReasonNotes = true;
+    }
   });
 
+  parsed.reason = reasonLines.join("\n").trim();
   return parsed;
+}
+
+function staffNoteLineStartsNewField(clean = "") {
+  return /^(INTAKE REVIEW|ORDER UPDATE|CUSTOMER FINAL QUOTE DECISION|Received:|Item not received:|All recommended accessories included:|Verified condition:|Accessory check:|Customer decision:|Final offer:|Last staff action:|Updated:)/i.test(clean);
 }
 
 function workflowState(order) {
@@ -2952,6 +3070,48 @@ function orderTotals(order) {
     totals.final += numberOrNull(item.fields?.["Final Offer"]) ?? numberOrNull(item.fields?.["Milford Offer"]) ?? 0;
     return totals;
   }, { original: 0, final: 0 });
+}
+
+function orderOfferTotals(order, currentRecord, currentCashOffer) {
+  const currentOffer = numberOrNull(currentCashOffer);
+  const totals = (order?.items || []).reduce((summary, item) => {
+    const original = numberOrNull(item.fields?.["Milford Offer"]) ?? 0;
+    const cash = item.id === currentRecord?.id && currentOffer !== null
+      ? currentOffer
+      : adjustedCashOfferForRecord(item);
+    summary.original += original;
+    summary.cash += cash;
+    return summary;
+  }, { original: 0, cash: 0 });
+  totals.storeCredit = storeCreditOffer(totals.cash);
+  return totals;
+}
+
+function adjustedCashOfferForRecord(record) {
+  const fields = record?.fields || {};
+  const original = numberOrNull(fields["Milford Offer"]) ?? 0;
+  const review = parseStaffNotes(fields["Staff Notes"]);
+  const accessories = accessoryListFor(fields);
+  const calculated = calculateOffer(fields, review, accessories, original);
+  return reviewRequiresCustomerDecision(fields, review, accessories)
+    ? calculated
+    : numberOrNull(fields["Final Offer"]) ?? calculated;
+}
+
+function storeCreditOffer(cashAmount) {
+  return Math.round((Number(cashAmount) || 0) * (1 + STORE_CREDIT_BONUS));
+}
+
+function updateOrderTotalCard(order, currentRecord, currentCashOffer) {
+  const card = document.getElementById("staff-order-total-card");
+  if (!card || !order) return;
+  const totals = orderOfferTotals(order, currentRecord, currentCashOffer);
+  const cashEl = card.querySelector("[data-order-cash-total]");
+  const storeCreditEl = card.querySelector("[data-order-store-credit-total]");
+  const originalEl = card.querySelector("[data-order-original-total]");
+  if (cashEl) cashEl.textContent = `$${formatMoney(totals.cash)} cash`;
+  if (storeCreditEl) storeCreditEl.textContent = `$${formatMoney(totals.storeCredit)} store credit`;
+  if (originalEl) originalEl.textContent = `Original quote: $${formatMoney(totals.original)}`;
 }
 
 function accessoryListFor(fields) {
