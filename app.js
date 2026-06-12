@@ -651,7 +651,28 @@ function renderMountOptions() {
 }
 
 function needsLensMount() {
-  return mountOptionsForSelectedLens().length > 1;
+  return shouldRequireLensMountForBrand(els.brand.value, els.category.value, mountOptionsForSelectedLens());
+}
+
+function shouldRequireLensMountForBrand(brand = "", category = "", mounts = []) {
+  if (!category.toLowerCase().includes("lens") || !mounts.length) return false;
+  if (mounts.length > 1) return true;
+  return isThirdPartyLensBrand(brand);
+}
+
+function isThirdPartyLensBrand(brand = "") {
+  const normalized = brand.toLowerCase();
+  return [
+    "laowa",
+    "rokinon",
+    "samyang",
+    "sigma",
+    "tamron",
+    "tokina",
+    "viltrox",
+    "voigtlander",
+    "zeiss",
+  ].some((name) => normalized.includes(name));
 }
 
 function mountOptionsForSelectedLens() {
@@ -1097,7 +1118,7 @@ function readItemForm(options = {}) {
   const accessories = selectedIncludedAccessoriesForCategory(selectedCategory);
   const missingAccessories = missingIncludedAccessoriesForCategory(selectedCategory);
   const validMounts = mountOptionsForSelectedLens();
-  const requiresMountSelection = validMounts.length > 1;
+  const requiresMountSelection = shouldRequireLensMountForBrand(brand, selectedCategory, validMounts);
   const mount = requiresMountSelection ? els.lensMount.value.trim() : validMounts[0] || "";
   const catalogCategory = catalogItem ? catalogCategoryForItem(brand, selectedCategory, catalogItem.name) : selectedCategory;
   const isManualReviewItem = selectedCategory === MANUAL_CATEGORY || catalogCategoryBelongsToManualReview(catalogCategory);

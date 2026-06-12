@@ -3654,69 +3654,185 @@
       src: "https://docs.sony.com/images/swt/dvimag/sal70400g2.jpg",
       alt: "Sony SAL 70-400mm f/4-5.6 G SSM II",
     },
-    "tamron|lens|150-500mm f/5-6.7 di iii vc vxd (sony e)": {
-      src: "https://tamron-americas.com/wp-content/uploads/2026/04/a057-1200-x-1200-wht.webp",
-      alt: "Tamron 150-500mm f/5-6.7 Di III VC VXD",
+    "tamron|lens|11-20mm f/2.8 di iii-a rxd": {
+      src: "https://tamron-americas.com/wp-content/uploads/2026/04/b060-1200-x-1200-wht.webp",
+      alt: "Tamron 11-20mm f/2.8 Di III-A RXD",
+    },
+    "tamron|lens|16-30mm f/2.8 di iii vxd g2": {
+      src: "https://tamron-americas.com/wp-content/uploads/2026/04/a064-1200-x-1200-wht.webp",
+      alt: "Tamron 16-30mm f/2.8 Di III VXD G2",
+    },
+    "tamron|lens|17-28mm f/2.8 di iii rxd": {
+      src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/JXyYnLWSU-sJyMtqS6PA4w?w=228&h=228&p=1&a=1&q=display",
+      alt: "Tamron 17-28mm f/2.8 Di III RXD",
     },
     "tamron|lens|17-28mm f/2.8 di iii rxd (sony e)": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/JXyYnLWSU-sJyMtqS6PA4w?w=228&h=228&p=1&a=1&q=display",
       alt: "Tamron 17-28mm f/2.8 Di III RXD (Sony E)",
     },
+    "tamron|lens|17-50mm f/4 di iii vxd": {
+      src: "https://tamron-americas.com/wp-content/uploads/2026/04/a068-1200-x-1200-wht.webp",
+      alt: "Tamron 17-50mm f/4 Di III VXD",
+    },
     "tamron|lens|17-50mm f/4 di iii vxd (sony e)": {
       src: "https://tamron-americas.com/wp-content/uploads/2026/04/a068-1200-x-1200-wht.webp",
       alt: "Tamron 17-50mm f/4 Di III VXD",
+    },
+    "tamron|lens|17-70mm f/2.8 di iii-a vc rxd": {
+      src: "https://tamron-americas.com/wp-content/uploads/2026/04/b070-1200-x-1200-wht.webp",
+      alt: "Tamron 17-70mm f/2.8 Di III-A VC RXD",
+    },
+    "tamron|lens|18-300mm f/3.5-6.3 di iii-a vc vxd": {
+      src: "https://tamron-americas.com/wp-content/uploads/2026/04/b061-1200-x-1200-wht.webp",
+      alt: "Tamron 18-300mm f/3.5-6.3 Di III-A VC VXD",
     },
     "tamron|lens|18-400mm f/3.5-6.3 di ii vc hld": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/By-3Waa-fdq15mnb_WIQ9A?w=228&h=228&p=1&a=1&q=display",
       alt: "Tamron 18-400mm f/3.5-6.3 Di II VC HLD",
     },
-    "tamron|lens|20-40mm f/2.8 di iii vxd (sony e)": {
-      src: "https://tamron-americas.com/wp-content/uploads/2026/04/a062-1200-x-1200-wht.webp",
-      alt: "Tamron 20-40mm f/2.8 Di III VXD",
+    "tamron|lens|20mm f/2.8 di iii osd m1:2": {
+      src: "https://tamron-americas.com/wp-content/uploads/2026/04/f050-1200-x-1200-wht.webp",
+      alt: "Tamron 20mm f/2.8 Di III OSD M1:2",
     },
     "tamron|lens|20mm f/2.8 di iii osd m1:2 (sony e)": {
       src: "https://tamron-americas.com/wp-content/uploads/2026/04/f050-1200-x-1200-wht.webp",
       alt: "Tamron 20mm f/2.8 Di III OSD M1:2 (Sony E)",
     },
+    "tamron|lens|20-40mm f/2.8 di iii vxd": {
+      src: "https://tamron-americas.com/wp-content/uploads/2026/04/a062-1200-x-1200-wht.webp",
+      alt: "Tamron 20-40mm f/2.8 Di III VXD",
+    },
+    "tamron|lens|20-40mm f/2.8 di iii vxd (sony e)": {
+      src: "https://tamron-americas.com/wp-content/uploads/2026/04/a062-1200-x-1200-wht.webp",
+      alt: "Tamron 20-40mm f/2.8 Di III VXD",
+    },
+    "tamron|lens|24mm f/2.8 di iii osd m1:2": {
+      src: "https://tamron-americas.com/wp-content/uploads/2026/04/f051-1200-x-1200-wht.webp",
+      alt: "Tamron 24mm f/2.8 Di III OSD M1:2",
+    },
     "tamron|lens|24mm f/2.8 di iii osd m1:2 (sony e)": {
       src: "https://tamron-americas.com/wp-content/uploads/2026/04/f051-1200-x-1200-wht.webp",
       alt: "Tamron 24mm f/2.8 Di III OSD M1:2 (Sony E)",
     },
-    "tamron|lens|28-200mm f/2.8-5.6 di iii rxd (sony e)": {
-      src: "https://tamron-americas.com/wp-content/uploads/2026/04/a071-1200-x-1200-wht.webp",
-      alt: "Tamron 28-200mm f/2.8-5.6 Di III RXD",
+    "tamron|lens|25-200mm f/2.8-5.6 di iii vxd g2": {
+      src: "https://tamron-americas.com/wp-content/uploads/2026/04/a075-1200-x-1200-wht.webp",
+      alt: "Tamron 25-200mm f/2.8-5.6 Di III VXD G2",
+    },
+    "tamron|lens|28-75mm f/2.8 di iii rxd": {
+      src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/OvPE7IQYKVNxyFOxqcyFpw?w=228&h=228&p=1&a=1&q=display",
+      alt: "Tamron 28-75mm f/2.8 Di III RXD",
     },
     "tamron|lens|28-75mm f/2.8 di iii rxd (sony e)": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/OvPE7IQYKVNxyFOxqcyFpw?w=228&h=228&p=1&a=1&q=display",
       alt: "Tamron 28-75mm f/2.8 Di III RXD (Sony E)",
     },
+    "tamron|lens|28-75mm f/2.8 di iii vxd g2": {
+      src: "https://tamron-americas.com/wp-content/uploads/2026/04/a063-1200-x-1200-wht.webp",
+      alt: "Tamron 28-75mm f/2.8 Di III VXD G2",
+    },
     "tamron|lens|28-75mm f/2.8 di iii vxd g2 (sony e)": {
       src: "https://tamron-americas.com/wp-content/uploads/2026/04/a063-1200-x-1200-wht.webp",
       alt: "Tamron 28-75mm f/2.8 Di III VXD G2",
     },
-    "tamron|lens|35-150mm f/2-2.8 di iii vxd (sony e)": {
-      src: "https://tamron-americas.com/wp-content/uploads/2026/04/a058-1200-x-1200-wht.webp",
-      alt: "Tamron 35-150mm f/2-2.8 Di III VXD",
+    "tamron|lens|28-200mm f/2.8-5.6 di iii rxd": {
+      src: "https://tamron-americas.com/wp-content/uploads/2026/04/a071-1200-x-1200-wht.webp",
+      alt: "Tamron 28-200mm f/2.8-5.6 Di III RXD",
+    },
+    "tamron|lens|28-200mm f/2.8-5.6 di iii rxd (sony e)": {
+      src: "https://tamron-americas.com/wp-content/uploads/2026/04/a071-1200-x-1200-wht.webp",
+      alt: "Tamron 28-200mm f/2.8-5.6 Di III RXD",
+    },
+    "tamron|lens|28-300mm f/4-7.1 di iii vc vxd": {
+      src: "https://tamron-americas.com/wp-content/uploads/2026/04/a074-1200-x-1200-wht.webp",
+      alt: "Tamron 28-300mm f/4-7.1 Di III VC VXD",
+    },
+    "tamron|lens|35mm f/2.8 di iii osd m1:2": {
+      src: "https://tamron-americas.com/wp-content/uploads/2026/04/f053-1200-x-1200-wht.webp",
+      alt: "Tamron 35mm f/2.8 Di III OSD M1:2",
     },
     "tamron|lens|35mm f/2.8 di iii osd m1:2 (sony e)": {
       src: "https://tamron-americas.com/wp-content/uploads/2026/04/f053-1200-x-1200-wht.webp",
       alt: "Tamron 35mm f/2.8 Di III OSD M1:2 (Sony E)",
     },
+    "tamron|lens|35-100mm f/2.8 di iii vxd": {
+      src: "https://tamron-americas.com/wp-content/uploads/2026/04/a078-1200-x-1200-wht.webp",
+      alt: "Tamron 35-100mm f/2.8 Di III VXD",
+    },
+    "tamron|lens|35-150mm f/2-2.8 di iii vxd": {
+      src: "https://tamron-americas.com/wp-content/uploads/2026/04/a058-1200-x-1200-wht.webp",
+      alt: "Tamron 35-150mm f/2-2.8 Di III VXD",
+    },
+    "tamron|lens|35-150mm f/2-2.8 di iii vxd (sony e)": {
+      src: "https://tamron-americas.com/wp-content/uploads/2026/04/a058-1200-x-1200-wht.webp",
+      alt: "Tamron 35-150mm f/2-2.8 Di III VXD",
+    },
+    "tamron|lens|50-300mm f/4.5-6.3 di iii vc vxd": {
+      src: "https://tamron-americas.com/wp-content/uploads/2026/04/a069-1200-x-1200-wht.webp",
+      alt: "Tamron 50-300mm f/4.5-6.3 Di III VC VXD",
+    },
+    "tamron|lens|50-400mm f/4.5-6.3 di iii vc vxd": {
+      src: "https://tamron-americas.com/wp-content/uploads/2026/04/a067-1200-x-1200-wht.webp",
+      alt: "Tamron 50-400mm f/4.5-6.3 Di III VC VXD",
+    },
     "tamron|lens|50-400mm f/4.5-6.3 di iii vc vxd (sony e)": {
       src: "https://tamron-americas.com/wp-content/uploads/2026/04/a067-1200-x-1200-wht.webp",
       alt: "Tamron 50-400mm f/4.5-6.3 Di III VC VXD",
+    },
+    "tamron|lens|70-180mm f/2.8 di iii vxd": {
+      src: "https://www.tamron.com/global/consumer/pc_file/file/a056_main.webp",
+      alt: "Tamron 70-180mm f/2.8 Di III VXD",
+    },
+    "tamron|lens|70-180mm f/2.8 di iii vxd (sony e)": {
+      src: "https://www.tamron.com/global/consumer/pc_file/file/a056_main.webp",
+      alt: "Tamron 70-180mm f/2.8 Di III VXD (Sony E)",
+    },
+    "tamron|lens|70-180mm f/2.8 di iii vc vxd g2": {
+      src: "https://tamron-americas.com/wp-content/uploads/2026/04/a065-1200-x-1200-wht.webp",
+      alt: "Tamron 70-180mm f/2.8 Di III VC VXD G2",
+    },
+    "tamron|lens|70-300mm f/4.5-6.3 di iii rxd": {
+      src: "https://tamron-americas.com/wp-content/uploads/2026/04/a047-1200-x-1200-wht.webp",
+      alt: "Tamron 70-300mm f/4.5-6.3 Di III RXD",
     },
     "tamron|lens|70-300mm f/4.5-6.3 di iii rxd (sony e)": {
       src: "https://tamron-americas.com/wp-content/uploads/2026/04/a047-1200-x-1200-wht.webp",
       alt: "Tamron 70-300mm f/4.5-6.3 Di III RXD",
     },
+    "tamron|lens|90mm f/2.8 di iii vxd macro": {
+      src: "https://tamron-americas.com/wp-content/uploads/2026/04/f072-1200-x-1200-wht.webp",
+      alt: "Tamron 90mm f/2.8 Di III VXD Macro",
+    },
+    "tamron|lens|150-500mm f/5-6.7 di iii vc vxd": {
+      src: "https://tamron-americas.com/wp-content/uploads/2026/04/a057-1200-x-1200-wht.webp",
+      alt: "Tamron 150-500mm f/5-6.7 Di III VC VXD",
+    },
+    "tamron|lens|150-500mm f/5-6.7 di iii vc vxd (sony e)": {
+      src: "https://tamron-americas.com/wp-content/uploads/2026/04/a057-1200-x-1200-wht.webp",
+      alt: "Tamron 150-500mm f/5-6.7 Di III VC VXD",
+    },
     "tamron|lens|16-300mm f/3.5-6.3 di ii vc pzd": {
       src: "https://www.tamron.com/global/consumer/pc_file/file/b016_main.webp",
       alt: "Tamron 16-300mm f/3.5-6.3 Di II VC PZD",
     },
-    "tamron|lens|70-180mm f/2.8 di iii vxd (sony e)": {
-      src: "https://www.tamron.com/global/consumer/pc_file/file/a056_main.webp",
-      alt: "Tamron 70-180mm f/2.8 Di III VXD (Sony E)",
+    "tamron|lens|sp 15-30mm f/2.8 di vc usd": {
+      src: "https://www.tamron.com/global/consumer/pc_file/file/a012_main.webp",
+      alt: "Tamron SP 15-30mm f/2.8 Di VC USD",
+    },
+    "tamron|lens|sp 15-30mm f/2.8 di vc usd g2": {
+      src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/mUWvvPBaT0ybmbBH5x07Vw?w=228&h=228&p=1&a=1&q=display",
+      alt: "Tamron SP 15-30mm f/2.8 Di VC USD G2",
+    },
+    "tamron|lens|sp 24-70mm f/2.8 di vc usd": {
+      src: "https://www.tamron.com/global/consumer/pc_file/file/a007_main.webp",
+      alt: "Tamron SP 24-70mm f/2.8 Di VC USD",
+    },
+    "tamron|lens|sp 24-70mm f/2.8 di vc usd g2": {
+      src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/zDaxw1ZYc7sl0WUVGPi6ag?w=228&h=228&p=1&a=1&q=display",
+      alt: "Tamron SP 24-70mm f/2.8 Di VC USD G2",
+    },
+    "tamron|lens|sp 35mm f/1.4 di usd": {
+      src: "https://www.tamron.com/global/consumer/pc_file/file/f045_main.webp",
+      alt: "Tamron SP 35mm f/1.4 Di USD",
     },
     "tamron|lens|sp 35mm f/1.8 di vc usd": {
       src: "https://www.tamron.com/global/consumer/pc_file/file/f012_main.webp",
@@ -3726,6 +3842,14 @@
       src: "https://www.tamron.com/global/consumer/pc_file/file/f013_main.webp",
       alt: "Tamron SP 45mm f/1.8 Di VC USD",
     },
+    "tamron|lens|sp 70-200mm f/2.8 di vc usd": {
+      src: "https://www.tamron.com/global/consumer/pc_file/file/a009_main.webp",
+      alt: "Tamron SP 70-200mm f/2.8 Di VC USD",
+    },
+    "tamron|lens|sp 70-200mm f/2.8 di vc usd g2": {
+      src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/iDVE2fLd8GRIlk7LU3jvtA?w=228&h=228&p=1&a=1&q=display",
+      alt: "Tamron SP 70-200mm f/2.8 Di VC USD G2",
+    },
     "tamron|lens|sp 70-300mm f/4-5.6 di vc usd g2": {
       src: "https://www.tamron.com/global/consumer/pc_file/file/a030_main.webp",
       alt: "Tamron SP 70-300mm f/4-5.6 Di VC USD G2",
@@ -3734,25 +3858,53 @@
       src: "https://www.tamron.com/global/consumer/pc_file/file/f017_main.webp",
       alt: "Tamron SP 90mm f/2.8 Di Macro VC USD G2",
     },
-    "tamron|lens|sp 15-30mm f/2.8 di vc usd g2": {
-      src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/mUWvvPBaT0ybmbBH5x07Vw?w=228&h=228&p=1&a=1&q=display",
-      alt: "Tamron SP 15-30mm f/2.8 Di VC USD G2",
+    "tamron|lens|sp 150-600mm f/5-6.3 di vc usd": {
+      src: "https://www.tamron.com/global/consumer/pc_file/file/a011_main.webp",
+      alt: "Tamron SP 150-600mm f/5-6.3 Di VC USD",
     },
     "tamron|lens|sp 150-600mm f/5-6.3 di vc usd g2": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/hPCD0x19HcN364mAFh-znw?w=228&h=228&p=1&a=1&q=display",
       alt: "Tamron SP 150-600mm f/5-6.3 Di VC USD G2",
     },
-    "tamron|lens|sp 24-70mm f/2.8 di vc usd g2": {
-      src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/zDaxw1ZYc7sl0WUVGPi6ag?w=228&h=228&p=1&a=1&q=display",
-      alt: "Tamron SP 24-70mm f/2.8 Di VC USD G2",
-    },
-    "tamron|lens|sp 70-200mm f/2.8 di vc usd g2": {
-      src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/iDVE2fLd8GRIlk7LU3jvtA?w=228&h=228&p=1&a=1&q=display",
-      alt: "Tamron SP 70-200mm f/2.8 Di VC USD G2",
-    },
     "tamron|lens|sp 85mm f/1.8 di vc usd": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/jvwL1CrodZsLYlOusVc1dg?w=228&h=228&p=1&a=1&q=display",
       alt: "Tamron SP 85mm f/1.8 Di VC USD",
+    },
+    "tamron|lens|sp af 10-24mm f/3.5-4.5 di ii ld aspherical (if)": {
+      src: "https://www.tamron.com/global/consumer/pc_file/file/b001_main.webp",
+      alt: "Tamron SP AF 10-24mm f/3.5-4.5 Di II LD Aspherical (IF)",
+    },
+    "tamron|lens|sp af 60mm f/2 di ii ld (if) 1:1 macro": {
+      src: "https://www.tamron.com/global/consumer/pc_file/file/g005_main.webp",
+      alt: "Tamron SP AF 60mm f/2 Di II LD (IF) 1:1 Macro",
+    },
+    "tamron|lens|10-24mm f/3.5-4.5 di ii vc hld": {
+      src: "https://www.tamron.com/global/consumer/pc_file/file/b023_main.webp",
+      alt: "Tamron 10-24mm f/3.5-4.5 Di II VC HLD",
+    },
+    "tamron|lens|17-35mm f/2.8-4 di osd": {
+      src: "https://www.tamron.com/global/consumer/pc_file/file/a037_main.webp",
+      alt: "Tamron 17-35mm f/2.8-4 Di OSD",
+    },
+    "tamron|lens|28-300mm f/3.5-6.3 di vc pzd": {
+      src: "https://www.tamron.com/global/consumer/pc_file/file/a010_main.webp",
+      alt: "Tamron 28-300mm f/3.5-6.3 Di VC PZD",
+    },
+    "tamron|lens|35-150mm f/2.8-4 di vc osd": {
+      src: "https://www.tamron.com/global/consumer/pc_file/file/a043_main.webp",
+      alt: "Tamron 35-150mm f/2.8-4 Di VC OSD",
+    },
+    "tamron|lens|70-210mm f/4 di vc usd": {
+      src: "https://www.tamron.com/global/consumer/pc_file/file/a034_main.webp",
+      alt: "Tamron 70-210mm f/4 Di VC USD",
+    },
+    "tamron|lens|100-400mm f/4.5-6.3 di vc usd": {
+      src: "https://www.tamron.com/global/consumer/pc_file/file/a035_main.webp",
+      alt: "Tamron 100-400mm f/4.5-6.3 Di VC USD",
+    },
+    "tamron|lens|af 70-300mm f/4-5.6 di ld macro 1:2": {
+      src: "https://www.tamron.com/global/consumer/pc_file/file/a005_main.webp",
+      alt: "Tamron AF 70-300mm f/4-5.6 Di LD Macro 1:2",
     },
     "tokina|lens|at-x 11-16mm f/2.8 pro dx ii": {
       src: "https://cdn.shopify.com/s/files/1/0606/1306/7006/products/atx-1116-01.jpg?v=1635874806",
