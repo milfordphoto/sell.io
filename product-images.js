@@ -926,6 +926,10 @@
       src: "https://www.elinchrom.com/images/prod1000/Elinchrom-ELC500.jpg",
       alt: "Elinchrom ELC 500",
     },
+    "elinchrom|flash / strobe|elb 500 ttl": {
+      src: "https://elinchrom.com/images/prod1000/el10232-ELB500TTL.jpg",
+      alt: "Elinchrom ELB 500 TTL",
+    },
     "elinchrom|flash / strobe|one off camera flash": {
       src: "https://www.elinchrom.com/images/prod1000/el20932-ONE-kit-002.jpg",
       alt: "Elinchrom ONE Off Camera Flash",
@@ -1938,9 +1942,17 @@
       src: "https://imaging.nikon.com/imaging/lineup/speedlights/img/sb-5000.jpg",
       alt: "Nikon SB-5000",
     },
+    "nikon|flash / speedlight|sb-600": {
+      src: "https://downloadcenter.nikonimglib.com/image/view/5514ab73-0f64-4ba7-ae9d-78a80a804e06.png",
+      alt: "Nikon SB-600",
+    },
     "nikon|flash / speedlight|sb-700": {
       src: "https://imaging.nikon.com/imaging/lineup/speedlights/img/sb-700.jpg",
       alt: "Nikon SB-700",
+    },
+    "nikon|flash / speedlight|sb-800": {
+      src: "https://downloadcenter.nikonimglib.com/image/view/5513cdde-184c-4fec-b063-7b360a804e06.png",
+      alt: "Nikon SB-800",
     },
     "nikon|flash / speedlight|sb-900": {
       src: "https://imaging.nikon.com/imaging/information/products_history/img/2008/sb-900.jpg",
@@ -1949,6 +1961,10 @@
     "nikon|flash / speedlight|sb-910": {
       src: "https://imaging.nikon.com/imaging/information/products_history/img/2011/sb-910.jpg",
       alt: "Nikon SB-910",
+    },
+    "nikon|flash / speedlight|sb-r200": {
+      src: "https://downloadcenter.nikonimglib.com/image/view/5514b703-c198-4e6e-9af4-0a100a804e06.png",
+      alt: "Nikon SB-R200",
     },
     "nikon|lens|af 17-35mm f/2.8d ed-if": {
       src: "https://downloadcenter.nikonimglib.com/image/view/56414b07-73a8-4615-8a6f-6e250a804e06.png",
@@ -1977,6 +1993,14 @@
     "nikon|lens|af 50mm f/1.8d": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/9bd865e2-e88b-4266-a0df-ef31cc4d79e9?w=228&h=228&p=1&a=1&q=display",
       alt: "Nikon AF 50mm f/1.8D",
+    },
+    "nikon|lens|af 85mm f/1.4d": {
+      src: "https://downloadcenter.nikonimglib.com/image/view/564bd66c-4408-4c46-8e8e-25480a804e06.png",
+      alt: "Nikon AF 85mm f/1.4D",
+    },
+    "nikon|lens|af dc 135mm f/2d": {
+      src: "https://downloadcenter.nikonimglib.com/image/view/564aab44-0118-4dbe-9c66-0d160a804e06.png",
+      alt: "Nikon AF DC 135mm f/2D",
     },
     "nikon|lens|af-p 70-300mm f/4.5-5.6e ed vr": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/EPNfdk4Al4pJbsSx3w8lTw?w=228&h=228&p=1&a=1&q=display",
@@ -2130,6 +2154,14 @@
       src: "https://imaging.nikon.com/imaging/information/products_history/img/2006/af-s_vr_micro-nikkor_105mmf_28_if.jpg",
       alt: "Nikon AF-S VR 105mm f/2.8G IF-ED Micro",
     },
+    "nikon|lens|tc-14e iii 1.4x teleconverter": {
+      src: "https://downloadcenter.nikonimglib.com/image/view/546edc21-9924-4ab8-b0ac-0bb40a804e06.png",
+      alt: "Nikon TC-14E III 1.4x Teleconverter",
+    },
+    "nikon|lens|tc-20e iii 2.0x teleconverter": {
+      src: "https://downloadcenter.nikonimglib.com/image/view/564bd9c0-06e8-44ff-a9e2-2bc70a804e06.png",
+      alt: "Nikon TC-20E III 2.0x Teleconverter",
+    },
     "nikon|lens|z 100-400mm f/4.5-5.6 vr s": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/N_vzXkUlTtxTEQJxXvTQEw?w=228&h=228&p=1&a=1&q=display",
       alt: "Nikon Z 100-400mm f/4.5-5.6 VR S",
@@ -2278,9 +2310,25 @@
       src: "https://cdn.shopify.com/s/files/1/0249/3048/4298/products/Air10_FR_Sony_NEW_L_1500x_57242a1d-89d9-41a2-8393-8a23c6c52471.jpg?v=1576632530",
       alt: "Nissin Air 10s Commander",
     },
+    "nissin|flash / speedlight|di700a": {
+      src: "https://static.wixstatic.com/media/3d8c0a_cb028219555b41b89ad7cea838871da6~mv2_d_1785_2964_s_2.png/v1/fill/w_340,h_565,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/NISSIN_Di700A_FC_L.png",
+      alt: "Nissin Di700A",
+    },
+    "nissin|flash / speedlight|i40": {
+      src: "https://static.wixstatic.com/media/3d8c0a_a136389dc2024f79a89ed81bcc6d56c3~mv2_d_1991_2534_s_2.png/v1/fill/w_340,h_433,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/i40_FC_L.png",
+      alt: "Nissin i40",
+    },
+    "nissin|flash / speedlight|i60a": {
+      src: "https://static.wixstatic.com/media/3d8c0a_e21fc5be15be403f9ceacbb51353364d~mv2_d_1500_1853_s_2.png/v1/fill/w_340,h_420,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/i60A_Metal_FC_L_v3.png",
+      alt: "Nissin i60A",
+    },
     "nissin|flash / speedlight|mg10": {
       src: "https://cdn.shopify.com/s/files/1/0249/3048/4298/products/MG10_back_shutter_180-transparency.png?v=1676054502",
       alt: "Nissin MG10",
+    },
+    "nissin|flash / speedlight|mg8000 extreme": {
+      src: "https://static.wixstatic.com/media/3d8c0a_52dfde442b0b4c4e864d521b0e74dc69~mv2_d_1232_1940_s_2.png/v1/fill/w_286,h_450,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/MG8000_FC_L.png",
+      alt: "Nissin MG8000 Extreme",
     },
     "olympus / om system|digital camera|e-1": {
       src: "https://learnandsupport.getolympus.com/sites/default/files/styles/thumb_200px/public/2018-04/e-1.jpg?itok=SGNUlu8M",
@@ -2598,6 +2646,22 @@
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/yYqWHy4R7eVkKtLwnHfbpg?w=228&h=228&p=1&a=1&q=display",
       alt: "Panasonic Lumix G 25mm f/1.7",
     },
+    "panasonic|lens|lumix g 100-400mm f/4-6.3 ii": {
+      src: "https://shop.panasonic.com/cdn/shop/files/H-RSA100400.jpg?v=1779301279&width=600",
+      alt: "Panasonic Lumix G 100-400mm f/4-6.3 II",
+    },
+    "panasonic|lens|lumix g 42.5mm f/1.2 nocticron": {
+      src: "https://shop.panasonic.com/cdn/shop/products/qrogdi8zjvqiav47iot8.jpg?v=1779299415&width=600",
+      alt: "Panasonic Lumix G 42.5mm f/1.2 Nocticron",
+    },
+    "panasonic|lens|lumix g 45-200mm f/4-5.6 ii": {
+      src: "https://shop.panasonic.com/cdn/shop/products/b85trovjkqw1uopolcze.jpg?v=1779299433&width=600",
+      alt: "Panasonic Lumix G 45-200mm f/4-5.6 II",
+    },
+    "panasonic|lens|lumix g 7-14mm f/4": {
+      src: "https://shop.panasonic.com/cdn/shop/products/y8f6tmleuif9jr5bp912.jpg?v=1779299453&width=600",
+      alt: "Panasonic Lumix G 7-14mm f/4",
+    },
     "panasonic|lens|lumix g 8mm f/3.5 fisheye": {
       src: "https://cdn.shopify.com/s/files/1/0724/5371/8324/products/smjkjsoh9na5pyxa3y1c.jpg?v=1779299452",
       alt: "Panasonic Lumix G 8mm f/3.5 Fisheye",
@@ -2622,6 +2686,14 @@
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/OEXVCmRnRf2NPyi1LHicTg?w=228&h=228&p=1&a=1&q=display",
       alt: "Panasonic Lumix S 24mm f/1.8",
     },
+    "panasonic|lens|lumix s 24-105mm f/4 macro ois": {
+      src: "https://shop.panasonic.com/cdn/shop/files/S-R24105.jpg?v=1779301608&width=600",
+      alt: "Panasonic Lumix S 24-105mm f/4 Macro OIS",
+    },
+    "panasonic|lens|lumix s 28-200mm f/4-7.1 macro ois": {
+      src: "https://shop.panasonic.com/cdn/shop/files/S-R28200_carousel.jpg?v=1779303764&width=600",
+      alt: "Panasonic Lumix S 28-200mm f/4-7.1 Macro OIS",
+    },
     "panasonic|lens|lumix s 35mm f/1.8": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/zaDZaSjBAAqUcZjro9l0Uw?w=228&h=228&p=1&a=1&q=display",
       alt: "Panasonic Lumix S 35mm f/1.8",
@@ -2642,9 +2714,21 @@
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/TAB8tUXIFZge0Sx0_3wGQw?w=228&h=228&p=1&a=1&q=display",
       alt: "Panasonic Lumix S PRO 24-70mm f/2.8",
     },
+    "panasonic|lens|lumix s pro 70-200mm f/2.8 ois": {
+      src: "https://shop.panasonic.com/cdn/shop/files/S-E70200.jpg?v=1779301610&width=600",
+      alt: "Panasonic Lumix S PRO 70-200mm f/2.8 OIS",
+    },
+    "panasonic|lens|lumix s pro 70-200mm f/4 ois": {
+      src: "https://shop.panasonic.com/cdn/shop/products/ipipm92bsccrnpbhqica.jpg?v=1779299390&width=600",
+      alt: "Panasonic Lumix S PRO 70-200mm f/4 OIS",
+    },
     "panasonic|lens|lumix s pro 50mm f/1.4": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/f1iBYE3kRa3zBkblPIFOrg?w=228&h=228&p=1&a=1&q=display",
       alt: "Panasonic Lumix S PRO 50mm f/1.4",
+    },
+    "profoto|flash / strobe|a2": {
+      src: "https://www.profoto.com/globalassets/inriver/resources/901250_a_a2_right.png",
+      alt: "Profoto A2",
     },
     "pentax|digital camera|*ist d": {
       src: "https://www.ricoh-imaging.co.jp/japan/products/top/img/img-istD.jpg",
@@ -3730,9 +3814,93 @@
       src: "https://cdn11.bigcommerce.com/s-viuoku6kdb/products/116/images/408/downloadPNG_24__30705.1775585567.386.513.png?c=1",
       alt: "Zeiss Batis 18mm f/2.8",
     },
+    "zeiss|lens|batis 25mm f/2 (sony fe)": {
+      src: "https://www.zeiss.com/content/dam/pno/images/photography/products/lenses-for-mirrorless-system-cameras/batis-lenses/models/zeiss-batis-225.jpg/_jcr_content/renditions/original./zeiss-batis-225.jpg",
+      alt: "Zeiss Batis 25mm f/2",
+    },
+    "zeiss|lens|batis 40mm f/2 cf (sony fe)": {
+      src: "https://www.zeiss.com/content/dam/pno/images/photography/products/lenses-for-mirrorless-system-cameras/batis-lenses/models/zeiss-batis-240cf.jpg/_jcr_content/renditions/original./zeiss-batis-240cf.jpg",
+      alt: "Zeiss Batis 40mm f/2 CF",
+    },
     "zeiss|lens|batis 85mm f/1.8 (sony fe)": {
       src: "https://cdn11.bigcommerce.com/s-viuoku6kdb/products/131/images/390/downloadPNG_6__84844.1775583880.386.513.png?c=1",
       alt: "Zeiss Batis 85mm f/1.8",
+    },
+    "zeiss|lens|loxia 25mm f/2.4 (sony fe)": {
+      src: "https://www.zeiss.com/content/dam/pno/images/photography/products/lenses-for-mirrorless-system-cameras/loxia-lenses/models/zeiss-loxia-2425.jpg/_jcr_content/renditions/original./zeiss-loxia-2425.jpg",
+      alt: "Zeiss Loxia 25mm f/2.4",
+    },
+    "zeiss|lens|loxia 35mm f/2 (sony fe)": {
+      src: "https://www.zeiss.com/content/dam/pno/images/photography/products/lenses-for-mirrorless-system-cameras/loxia-lenses/models/zeiss-loxia-235.jpg/_jcr_content/renditions/original./zeiss-loxia-235.jpg",
+      alt: "Zeiss Loxia 35mm f/2",
+    },
+    "zeiss|lens|loxia 50mm f/2 (sony fe)": {
+      src: "https://www.zeiss.com/content/dam/pno/images/photography/products/lenses-for-mirrorless-system-cameras/loxia-lenses/models/zeiss-loxia-250.jpg/_jcr_content/renditions/original./zeiss-loxia-250.jpg",
+      alt: "Zeiss Loxia 50mm f/2",
+    },
+    "zeiss|lens|loxia 85mm f/2.4 (sony fe)": {
+      src: "https://www.zeiss.com/content/dam/pno/images/photography/products/lenses-for-mirrorless-system-cameras/loxia-lenses/models/zeiss-loxia-2485.jpg/_jcr_content/renditions/original./zeiss-loxia-2485.jpg",
+      alt: "Zeiss Loxia 85mm f/2.4",
+    },
+    "zeiss|lens|milvus 15mm f/2.8 (dslr)": {
+      src: "https://www.zeiss.com/content/dam/pno/images/photography/products/lenses-for-slr-cameras/milvus-lenses/models/zeiss-milvus-2815.jpg/_jcr_content/renditions/original./zeiss-milvus-2815.jpg",
+      alt: "Zeiss Milvus 15mm f/2.8",
+    },
+    "zeiss|lens|milvus 21mm f/2.8 (dslr)": {
+      src: "https://www.zeiss.com/content/dam/pno/images/photography/products/lenses-for-slr-cameras/milvus-lenses/models/zeiss-milvus-2821.jpg/_jcr_content/renditions/original./zeiss-milvus-2821.jpg",
+      alt: "Zeiss Milvus 21mm f/2.8",
+    },
+    "zeiss|lens|milvus 35mm f/2 (dslr)": {
+      src: "https://www.zeiss.com/content/dam/pno/images/photography/products/lenses-for-slr-cameras/milvus-lenses/models/zeiss-milvus-235.jpg/_jcr_content/renditions/original./zeiss-milvus-235.jpg",
+      alt: "Zeiss Milvus 35mm f/2",
+    },
+    "zeiss|lens|milvus 50mm f/1.4 (dslr)": {
+      src: "https://www.zeiss.com/content/dam/pno/images/photography/products/lenses-for-slr-cameras/milvus-lenses/models/zeiss-milvus-1450.jpg/_jcr_content/renditions/original./zeiss-milvus-1450.jpg",
+      alt: "Zeiss Milvus 50mm f/1.4",
+    },
+    "zeiss|lens|milvus 50mm f/2 macro (dslr)": {
+      src: "https://www.zeiss.com/content/dam/pno/images/photography/products/lenses-for-slr-cameras/milvus-lenses/models/zeiss-milvus-250m.jpg/_jcr_content/renditions/original./zeiss-milvus-250m.jpg",
+      alt: "Zeiss Milvus 50mm f/2 Macro",
+    },
+    "zeiss|lens|milvus 85mm f/1.4 (dslr)": {
+      src: "https://www.zeiss.com/content/dam/pno/images/photography/products/lenses-for-slr-cameras/milvus-lenses/models/zeiss-milvus-1485.jpg/_jcr_content/renditions/original./zeiss-milvus-1485.jpg",
+      alt: "Zeiss Milvus 85mm f/1.4",
+    },
+    "zeiss|lens|milvus 100mm f/2 macro (dslr)": {
+      src: "https://www.zeiss.com/content/dam/pno/images/photography/products/lenses-for-slr-cameras/milvus-lenses/models/zeiss-milvus-2100m.jpg/_jcr_content/renditions/original./zeiss-milvus-2100m.jpg",
+      alt: "Zeiss Milvus 100mm f/2 Macro",
+    },
+    "zeiss|lens|milvus 135mm f/2 (dslr)": {
+      src: "https://www.zeiss.com/content/dam/pno/images/photography/products/lenses-for-slr-cameras/milvus-lenses/models/zeiss-milvus-2135.jpg/_jcr_content/renditions/original./zeiss-milvus-2135.jpg",
+      alt: "Zeiss Milvus 135mm f/2",
+    },
+    "zeiss|lens|otus 28mm f/1.4 (dslr)": {
+      src: "https://www.zeiss.com/content/dam/pno/images/photography/products/lenses-for-slr-cameras/otus-lenses/models/zeiss-otus-1428.jpg/_jcr_content/renditions/original./zeiss-otus-1428.jpg",
+      alt: "Zeiss Otus 28mm f/1.4",
+    },
+    "zeiss|lens|otus 55mm f/1.4 (dslr)": {
+      src: "https://www.zeiss.com/content/dam/pno/images/photography/products/lenses-for-slr-cameras/otus-lenses/models/zeiss-otus-1455.jpg/_jcr_content/renditions/original./zeiss-otus-1455.jpg",
+      alt: "Zeiss Otus 55mm f/1.4",
+    },
+    "zeiss|lens|otus 85mm f/1.4 (dslr)": {
+      src: "https://www.zeiss.com/content/dam/pno/images/photography/products/lenses-for-slr-cameras/otus-lenses/models/zeiss-otus-1485.jpg/_jcr_content/renditions/original./zeiss-otus-1485.jpg",
+      alt: "Zeiss Otus 85mm f/1.4",
+    },
+    "zeiss|lens|otus 100mm f/2 (dslr)": {
+      src: "https://www.zeiss.com/content/dam/pno/images/photography/products/lenses-for-slr-cameras/otus-lenses/models/zeiss-otus-14100.jpg/_jcr_content/renditions/original./zeiss-otus-14100.jpg",
+      alt: "Zeiss Otus 100mm f/2",
+    },
+    "zeiss|lens|otus ml 35mm f/1.4 (mirrorless)": {
+      src: "https://www.zeiss.com/content/dam/pno/images/photography/products/lenses-for-mirrorless-system-cameras/otus-ml-lenses/models/zeiss-otus-ml-1435.jpg/_jcr_content/renditions/original./zeiss-otus-ml-1435.jpg",
+      alt: "Zeiss Otus ML 35mm f/1.4",
+    },
+    "zeiss|lens|otus ml 50mm f/1.4 (mirrorless)": {
+      src: "https://www.zeiss.com/content/dam/pno/images/photography/products/lenses-for-mirrorless-system-cameras/otus-ml-lenses/models/zeiss-otus-ml-1450.jpg/_jcr_content/renditions/original./zeiss-otus-ml-1450.jpg",
+      alt: "Zeiss Otus ML 50mm f/1.4",
+    },
+    "zeiss|lens|otus ml 85mm f/1.4 (mirrorless)": {
+      src: "https://www.zeiss.com/content/dam/pno/images/photography/products/lenses-for-mirrorless-system-cameras/otus-ml-lenses/models/zeiss-otus-ml-1485.jpg/_jcr_content/renditions/original./zeiss-otus-ml-1485.jpg",
+      alt: "Zeiss Otus ML 85mm f/1.4",
     },
   });
 })();
