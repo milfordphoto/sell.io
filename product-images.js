@@ -1234,6 +1234,10 @@
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/u5grFuwtJGN_a1o1B7rENA?w=228&h=228&p=1&a=1&q=display",
       alt: "Fujifilm GF 50mm f/3.5 R LM WR",
     },
+    "fujifilm|lens|gf 55mm f/1.7 r wr": {
+      src: "https://shopusa.fujifilm-x.com/media/catalog/product/6/0/600023613_MAIN00_Image_GF55mmF1_7_lensFrontFUKAN_1.jpg?quality=90&bg-color=255,255,255&fit=bounds&height=635&width=635&canvas=635:635",
+      alt: "Fujifilm GF 55mm f/1.7 R WR",
+    },
     "fujifilm|lens|gf 63mm f/2.8 r wr": {
       src: "https://fujifilm-x.b-cdn.net/wp-content/uploads/2017/04/3_thum_gf63mmf2-8-r-wr.jpg?width=480&height=480",
       alt: "Fujifilm GF 63mm f/2.8 R WR",
@@ -1274,9 +1278,17 @@
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/WpwbXUNaOKOIScZ73LsVdA?w=228&h=228&p=1&a=1&q=display",
       alt: "Fujifilm XF 16mm f/1.4 R WR",
     },
+    "fujifilm|lens|xf 16mm f/2.8 r wr": {
+      src: "https://shopusa.fujifilm-x.com/media/catalog/product/1/6/16611655_MAIN_XF16mmF2.8_Black_FrontUp_2.jpg?quality=90&bg-color=255,255,255&fit=bounds&height=635&width=635&canvas=635:635",
+      alt: "Fujifilm XF 16mm f/2.8 R WR",
+    },
     "fujifilm|lens|xf 18-135mm f/3.5-5.6 r lm ois wr": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/498eb960-d792-0131-8195-00163e9110c0?w=228&h=228&p=1&a=1&q=display",
       alt: "Fujifilm XF 18-135mm f/3.5-5.6 R LM OIS WR",
+    },
+    "fujifilm|lens|xf 18mm f/2 r": {
+      src: "https://shopusa.fujifilm-x.com/media/catalog/product/1/6/16240743_MAIN_XF18mm_3.jpg?quality=90&bg-color=255,255,255&fit=bounds&height=635&width=635&canvas=635:635",
+      alt: "Fujifilm XF 18mm f/2 R",
     },
     "fujifilm|lens|xf 23mm f/1.4 r": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/583a5170-f85c-0130-87c0-20cf30bab63e?w=228&h=228&p=1&a=1&q=display",
@@ -1302,6 +1314,10 @@
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/93365640-22a4-012f-8aaa-20cf30bab63e?w=228&h=228&p=1&a=1&q=display",
       alt: "Fujifilm XF 35mm f/1.4 R",
     },
+    "fujifilm|lens|xf 35mm f/2 r wr": {
+      src: "https://shopusa.fujifilm-x.com/media/catalog/product/1/6/16481878_MAIN_XF35mmF2_R_WR_Black_Up_6.jpg?quality=90&bg-color=255,255,255&fit=bounds&height=635&width=635&canvas=635:635",
+      alt: "Fujifilm XF 35mm f/2 R WR",
+    },
     "fujifilm|lens|xf 50-140mm f/2.8 r lm ois wr": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/f39a3000-1b41-0132-3e4f-00163e9110c0?w=228&h=228&p=1&a=1&q=display",
       alt: "Fujifilm XF 50-140mm f/2.8 R LM OIS WR",
@@ -1309,6 +1325,10 @@
     "fujifilm|lens|xf 50mm f/1.0 r wr": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/MX5Sa7G6cPcx22NjrAy_Zg?w=228&h=228&p=1&a=1&q=display",
       alt: "Fujifilm XF 50mm f/1.0 R WR",
+    },
+    "fujifilm|lens|xf 50mm f/2 r wr": {
+      src: "https://shopusa.fujifilm-x.com/media/catalog/product/1/6/16536611_MAIN_XF50mmF2_R_WR_Black_Up_2.jpg?quality=90&bg-color=255,255,255&fit=bounds&height=635&width=635&canvas=635:635",
+      alt: "Fujifilm XF 50mm f/2 R WR",
     },
     "fujifilm|lens|xf 56mm f/1.2 r": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/b039a970-6509-0131-8807-20cf30bab63e?w=228&h=228&p=1&a=1&q=display",
