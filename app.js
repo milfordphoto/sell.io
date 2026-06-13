@@ -1498,12 +1498,13 @@ function renderQuote(quote) {
 function renderQuoteItem(item) {
   const statusClass = item.status === "quoted" ? "quoted" : item.status === "declined" ? "declined" : "review";
   const price = item.offerAmount ? money.format(item.offerAmount) : item.status === "declined" ? "$0" : "Review";
-  const credit = item.storeCreditAmount ? `${money.format(item.storeCreditAmount)} store credit` : item.message || "Staff follow-up needed";
+  const credit = item.storeCreditAmount ? `${money.format(item.storeCreditAmount)} store credit` : "";
   const reviewCopy = item.status === "quoted" ? "" : item.message || "";
   const image = productImageFor(item);
+  const followUpClass = reviewCopy ? " quote-item-has-note" : "";
 
   return `
-    <article class="quote-item">
+    <article class="quote-item${followUpClass}">
       ${productImageMarkup(image, "product-thumb", item.brand)}
       <div class="quote-body">
         <div class="quote-title">
@@ -1512,13 +1513,13 @@ function renderQuoteItem(item) {
         </div>
         <div class="quote-meta">
           ${escapeHtml(CONDITION_LABELS[item.condition] || item.condition)} · ${escapeHtml(item.category)}
-          ${reviewCopy ? `<br />${escapeHtml(reviewCopy)}` : ""}
         </div>
       </div>
       <div class="quote-price">
         <strong>${escapeHtml(price)}</strong>
-        <span>${escapeHtml(credit)}</span>
+        ${credit ? `<span>${escapeHtml(credit)}</span>` : ""}
       </div>
+      ${reviewCopy ? `<p class="quote-item-note">${escapeHtml(reviewCopy)}</p>` : ""}
     </article>
   `;
 }

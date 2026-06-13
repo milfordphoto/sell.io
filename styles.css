@@ -1374,6 +1374,16 @@ fieldset {
   line-height: 1;
 }
 
+.quote-item-note {
+  grid-column: 2 / -1;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--soft);
+  color: var(--ink-soft);
+  line-height: 1.45;
+}
+
 .quote-price span {
   display: block;
   margin-top: 6px;
@@ -2507,6 +2517,10 @@ fieldset {
   .quote-price {
     grid-column: 1 / -1;
     text-align: left;
+  }
+
+  .quote-item-note {
+    grid-column: 1 / -1;
   }
 
   .final-item-decision-row {
