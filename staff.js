@@ -198,6 +198,7 @@ const loadButton = document.getElementById("load-records");
 const refreshButton = document.getElementById("refresh-records");
 const pricingReviewButton = document.getElementById("open-pricing-review");
 const startStaffIntakeButton = document.getElementById("start-staff-intake");
+const intakeQueueButton = document.getElementById("open-intake-queue");
 const staffSearchInput = document.getElementById("staff-search");
 const staffFilterSelect = document.getElementById("staff-filter");
 const staffSortSelect = document.getElementById("staff-sort");
@@ -225,6 +226,7 @@ let staffIntakeToastTimer = null;
 let staffIntakeToastHideTimer = null;
 
 const STAFF_INTAKE_PREVIEW_DELAY_MS = 300;
+const PRICING_REVIEW_FLAGS_STORAGE_KEY = "milfordPricingReviewFlags";
 
 function createStaffIntakeState(options = {}) {
   return {
@@ -233,6 +235,7 @@ function createStaffIntakeState(options = {}) {
     quoteRef: options.quoteRef || "",
     sourceRecordId: options.sourceRecordId || "",
     customer: options.customer || "",
+    returnOrderId: options.returnOrderId || "",
     cart: [],
     currentQuote: null,
     currentQuoteSignature: "",
@@ -242,6 +245,10 @@ function createStaffIntakeState(options = {}) {
     cartQuoteSignature: "",
     cartQuoteLoading: false,
     cartQuoteError: "",
+    createdQuoteRef: options.createdQuoteRef || "",
+    createdQuoteSignature: options.createdQuoteSignature || "",
+    createdRecords: options.createdRecords || [],
+    quoteEmailQueued: Boolean(options.quoteEmailQueued),
   };
 }
 
@@ -446,20 +453,23 @@ function renderDetail() {
   detailEl.innerHTML = `
     <article class="staff-intake">
       ${renderOrderHeader(order, record, adjustedOffer)}
+      ${renderOrderStatusProgress(order)}
       ${renderOrderInfoGrid(order, fields, baseOffer, paymentMethod)}
-      ${renderOrderProgress(order)}
+      ${renderOrderItemsProgress(order)}
 
       <header class="staff-intake-header">
-        <div class="staff-item-title-block">
-          <div class="staff-item-kicker">
-            <p class="brand-line">${escapeHtml(fields["Quote Reference"] || record.id)}</p>
-            <span class="staff-item-position">${escapeHtml(itemPositionLabel(order, record))}</span>
+        <div class="staff-item-header-main">
+          <div class="staff-item-image-panel">
+            ${productImageMarkup(productImageForRecord(fields), "staff-item-image", fields["Item Brand"])}
           </div>
-          <h2>${escapeHtml(gearTitle(fields))}</h2>
-          <p>${escapeHtml(fields.Category || "Gear")} - ${escapeHtml(fields.Condition || "Condition not listed")}</p>
-        </div>
-        <div class="staff-item-image-panel">
-          ${productImageMarkup(productImageForRecord(fields), "staff-item-image", fields["Item Brand"])}
+          <div class="staff-item-title-block">
+            <div class="staff-item-kicker">
+              <p class="brand-line">${escapeHtml(fields["Quote Reference"] || record.id)}</p>
+              <span class="staff-item-position">${escapeHtml(itemPositionLabel(order, record))}</span>
+            </div>
+            <h2>${escapeHtml(gearTitle(fields))}</h2>
+            <p>${escapeHtml(fields.Category || "Gear")} - ${escapeHtml(fields.Condition || "Condition not listed")}</p>
+          </div>
         </div>
         <div class="staff-offer-box">
           <span>Item quote</span>
@@ -734,7 +744,14 @@ function renderStaffActionSteps(fields, parsed) {
 
 function renderOrderProgress(order) {
   return `
-    <section class="staff-order-progress" aria-label="Order status and item navigation">
+    ${renderOrderStatusProgress(order)}
+    ${renderOrderItemsProgress(order)}
+  `;
+}
+
+function renderOrderStatusProgress(order) {
+  return `
+    <section class="staff-order-progress staff-order-status-progress" aria-label="Order status">
       <div class="staff-order-progress-group">
         <div class="staff-progress-heading">
           <strong>Order status</strong>
@@ -742,6 +759,13 @@ function renderOrderProgress(order) {
         </div>
         ${renderWorkflow(order)}
       </div>
+    </section>
+  `;
+}
+
+function renderOrderItemsProgress(order) {
+  return `
+    <section class="staff-order-progress staff-order-items-progress" aria-label="Order item navigation">
       <div class="staff-order-progress-group">
         <div class="staff-progress-heading">
           <strong>Items in this order</strong>
@@ -1269,6 +1293,13 @@ function scrollToStaffItemStart() {
   target?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
+function scrollToStaffIntakeGearStart() {
+  const target = document.getElementById("staff-intake-gear-section")
+    || document.querySelector(".staff-intake-widget-section")
+    || detailEl;
+  target?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 function confirmStaffActionEmail(action) {
   const step = staffActionStep(action);
   return window.confirm(`${step?.notifyLabel || "Email customer"} will send a customer email only. Staff progress will not change unless you use the internal workflow button. Continue?`);
@@ -1607,7 +1638,7 @@ function renderPricingReview() {
         <div class="staff-order-total">
           <span>Rows</span>
           <strong>${pricingReviewRows.length}</strong>
-          <small>${pricingReviewRows.filter((row) => row.priority !== "Normal").length} flagged</small>
+          <small id="pricing-review-flag-count">${pricingReviewFlagCount()} flagged</small>
         </div>
       </header>
       <div class="pricing-review-controls">
@@ -1625,14 +1656,23 @@ function renderPricingReview() {
           <span>Sort</span>
           <select id="pricing-review-sort">
             <option value="highest_cash">Highest cash offer</option>
+            <option value="alphabetical">Alphabetical A-Z</option>
             <option value="oldest_review">Oldest reviewed</option>
             <option value="flagged">Flagged first</option>
-            <option value="brand">Brand / model</option>
           </select>
         </label>
       </div>
       <div class="pricing-review-table-wrap">
         <table class="pricing-review-table">
+          <colgroup>
+            <col class="pricing-review-item-col" />
+            <col class="pricing-review-category-col" />
+            <col class="pricing-review-money-col" />
+            <col class="pricing-review-money-col" />
+            <col class="pricing-review-basis-col" />
+            <col class="pricing-review-reviewed-col" />
+            <col class="pricing-review-links-col" />
+          </colgroup>
           <thead>
             <tr>
               <th>Item</th>
@@ -1653,6 +1693,11 @@ function renderPricingReview() {
   document.getElementById("pricing-review-search")?.addEventListener("input", redraw);
   document.getElementById("pricing-review-category")?.addEventListener("change", redraw);
   document.getElementById("pricing-review-sort")?.addEventListener("change", redraw);
+  document.getElementById("pricing-review-body")?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-pricing-flag-key]");
+    if (!button) return;
+    togglePricingReviewFlag(button.getAttribute("data-pricing-flag-key"));
+  });
   renderPricingReviewRows();
 }
 
@@ -1667,23 +1712,105 @@ function renderPricingReviewRows() {
     .filter((row) => !search || `${row.brand} ${row.model}`.toLowerCase().includes(search))
     .sort(pricingReviewSort(sort))
     .slice(0, 250);
+  const flagOverrides = pricingReviewFlagOverrides();
 
   body.innerHTML = filtered.map((row) => `
-    <tr class="${row.priority !== "Normal" ? "is-flagged" : ""}">
-      <td>
+    <tr class="${pricingReviewIsFlagged(row, flagOverrides) ? "is-flagged" : ""}">
+      <td class="pricing-review-item-cell">
         <strong>${escapeHtml(row.brand)} ${escapeHtml(row.model)}</strong>
-        <span>${escapeHtml(row.priority || "Normal")}${row.year ? ` - ${escapeHtml(row.year)}` : ""}</span>
+        <span>${escapeHtml(pricingReviewRowMeta(row))}</span>
+        ${pricingReviewFlagButton(row, flagOverrides)}
       </td>
-      <td>${escapeHtml(row.category)}</td>
-      <td>$${formatMoney(row.cashOffer)}</td>
-      <td>${row.targetResalePrice ? `$${formatMoney(row.targetResalePrice)}` : "-"}</td>
-      <td>${escapeHtml(row.pricingBasis || row.source || "-")}</td>
-      <td>${escapeHtml(row.priceLastReviewed || "-")}</td>
-      <td>
-        ${pricingReviewReferenceLinks(row).map((link) => `<a href="${escapeAttr(link.href)}" target="_blank" rel="noreferrer">${escapeHtml(link.label)}</a>`).join("")}
+      <td class="pricing-review-category-cell">${escapeHtml(row.category)}</td>
+      <td class="pricing-review-money-cell">$${formatMoney(row.cashOffer)}</td>
+      <td class="pricing-review-money-cell">${row.targetResalePrice ? `$${formatMoney(row.targetResalePrice)}` : "-"}</td>
+      <td class="pricing-review-basis-cell">${escapeHtml(row.pricingBasis || row.source || "-")}</td>
+      <td class="pricing-review-reviewed-cell">${escapeHtml(row.priceLastReviewed || "-")}</td>
+      <td class="pricing-review-links-cell">
+        <div class="pricing-review-links">
+          ${pricingReviewReferenceLinks(row).map((link) => `<a href="${escapeAttr(link.href)}" target="_blank" rel="noreferrer">${escapeHtml(link.label)}</a>`).join("")}
+        </div>
       </td>
     </tr>
   `).join("") || `<tr><td colspan="7">No matching pricing rows.</td></tr>`;
+  updatePricingReviewFlagCount();
+}
+
+function pricingReviewFlagButton(row = {}, overrides = pricingReviewFlagOverrides()) {
+  const key = pricingReviewRowKey(row);
+  const isFlagged = pricingReviewIsFlagged(row, overrides);
+  return `
+    <button
+      class="pricing-review-flag-button${isFlagged ? " is-flagged" : ""}"
+      type="button"
+      data-pricing-flag-key="${escapeAttr(key)}"
+      aria-pressed="${isFlagged ? "true" : "false"}"
+    >${isFlagged ? "Flagged" : "Flag"}</button>
+  `;
+}
+
+function pricingReviewRowMeta(row = {}) {
+  const priority = row.priority || "Normal";
+  const parts = [`Review priority: ${priority}`];
+  if (row.year) parts.push(`Model year: ${row.year}`);
+  return parts.join(" | ");
+}
+
+function pricingReviewRowKey(row = {}) {
+  return [row.brand, row.model, row.category, row.year, row.cashOffer]
+    .map((part) => String(part ?? "").trim().toLowerCase())
+    .join("|");
+}
+
+function pricingReviewFlagOverrides() {
+  try {
+    return JSON.parse(localStorage.getItem(PRICING_REVIEW_FLAGS_STORAGE_KEY) || "{}") || {};
+  } catch {
+    return {};
+  }
+}
+
+function savePricingReviewFlagOverrides(overrides = {}) {
+  try {
+    localStorage.setItem(PRICING_REVIEW_FLAGS_STORAGE_KEY, JSON.stringify(overrides));
+  } catch {
+    // Staff can still review rows if local browser storage is unavailable.
+  }
+}
+
+function pricingReviewBaseFlagged(row = {}) {
+  return (row.priority || "Normal") !== "Normal";
+}
+
+function pricingReviewIsFlagged(row = {}, overrides = pricingReviewFlagOverrides()) {
+  const key = pricingReviewRowKey(row);
+  if (Object.prototype.hasOwnProperty.call(overrides, key)) return Boolean(overrides[key]);
+  return pricingReviewBaseFlagged(row);
+}
+
+function pricingReviewFlagCount() {
+  const overrides = pricingReviewFlagOverrides();
+  return pricingReviewRows.filter((row) => pricingReviewIsFlagged(row, overrides)).length;
+}
+
+function updatePricingReviewFlagCount() {
+  const countEl = document.getElementById("pricing-review-flag-count");
+  if (countEl) countEl.textContent = `${pricingReviewFlagCount()} flagged`;
+}
+
+function togglePricingReviewFlag(key) {
+  if (!key) return;
+  const row = pricingReviewRows.find((candidate) => pricingReviewRowKey(candidate) === key);
+  if (!row) return;
+  const overrides = pricingReviewFlagOverrides();
+  const nextFlagged = !pricingReviewIsFlagged(row, overrides);
+  if (nextFlagged === pricingReviewBaseFlagged(row)) {
+    delete overrides[key];
+  } else {
+    overrides[key] = nextFlagged;
+  }
+  savePricingReviewFlagOverrides(overrides);
+  renderPricingReviewRows();
 }
 
 function pricingReviewReferenceLinks(row = {}) {
@@ -1698,21 +1825,43 @@ function pricingReviewReferenceLinks(row = {}) {
 }
 
 function pricingReviewSort(sort) {
-  const priorityRank = (row) => row.priority === "Normal" ? 1 : 0;
+  const flagOverrides = pricingReviewFlagOverrides();
+  const priorityRank = (row) => pricingReviewIsFlagged(row, flagOverrides) ? 0 : 1;
   if (sort === "oldest_review") return (a, b) => String(a.priceLastReviewed || "0000").localeCompare(String(b.priceLastReviewed || "0000"));
   if (sort === "flagged") return (a, b) => priorityRank(a) - priorityRank(b) || b.cashOffer - a.cashOffer;
+  if (sort === "alphabetical") return (a, b) => `${a.brand} ${a.model}`.localeCompare(`${b.brand} ${b.model}`);
   if (sort === "brand") return (a, b) => `${a.brand} ${a.model}`.localeCompare(`${b.brand} ${b.model}`);
   return (a, b) => b.cashOffer - a.cashOffer;
 }
 
 function startStaffIntake() {
+  const returnOrderId = selectedOrderId || "";
   selectedOrderId = null;
   selectedItemId = null;
   resetStaffIntakePricingRequests();
-  staffIntakeState = createStaffIntakeState();
+  staffIntakeState = createStaffIntakeState({ returnOrderId });
   renderQueue();
   renderStaffIntake();
   setStatus("New in-store quote started.");
+}
+
+function openStaffIntakeQueue() {
+  if (!orders.length) {
+    setStatus("Loading intake queue...");
+    loadRecords();
+    return;
+  }
+  const preferredOrderId = staffIntakeState.orderId || staffIntakeState.returnOrderId || selectedOrderId;
+  resetStaffIntakePricingRequests();
+  staffIntakeState = createStaffIntakeState();
+  const filtered = visibleOrders();
+  selectedOrderId = preferredOrderId && filtered.some((order) => order.id === preferredOrderId)
+    ? preferredOrderId
+    : filtered[0]?.id || orders[0]?.id || null;
+  syncSelectedItem();
+  renderQueue();
+  renderDetail();
+  setStatus(selectedOrderId ? "Showing intake queue." : "No orders in this view.");
 }
 
 function startAddOrderItem(order) {
@@ -1751,19 +1900,19 @@ function renderStaffIntake() {
           <h2 id="staff-intake-title">${escapeHtml(heading.title)}</h2>
           <p id="staff-intake-subtitle">${escapeHtml(heading.subtitle)}</p>
         </div>
-        <div class="staff-order-total">
-          <span>Current offer</span>
-          <strong id="staff-intake-total">Draft</strong>
-          <small id="staff-intake-routing">Add gear to price this quote.</small>
-        </div>
-      </header>
+	        <div class="staff-order-total">
+	          <span>Current offer</span>
+	          <strong id="staff-intake-header-total">Draft</strong>
+	          <small id="staff-intake-header-routing">Add gear to price this quote.</small>
+	        </div>
+	      </header>
 
-      <form class="staff-review-form" id="staff-intake-form">
-        <section class="staff-review-section">
-          <div class="staff-section-title">
-            <span>1</span>
-            <div>
-              <h3>Gear at the counter</h3>
+	      <form class="staff-review-form" id="staff-intake-form">
+		        <section class="staff-review-section staff-intake-widget-section" id="staff-intake-gear-section">
+	          <div class="staff-section-title">
+	            <span>1</span>
+	            <div>
+	              <h3>Gear at the counter</h3>
               <p>Select catalog gear or route specialty items into manual review.</p>
             </div>
           </div>
@@ -1772,14 +1921,14 @@ function renderStaffIntake() {
             <span>Search gear</span>
             <input id="staff-intake-gear-search" autocomplete="off" placeholder="Search by model, category, or brand" />
             <datalist id="staff-intake-gear-search-options"></datalist>
-            <div class="gear-search-results" id="staff-intake-gear-search-results" hidden></div>
-          </label>
+	            <div class="gear-search-results" id="staff-intake-gear-search-results" hidden></div>
+	          </label>
 
-          <div class="three-col">
-            <label class="field">
-              <span>Category</span>
-              <select id="staff-intake-category"></select>
-            </label>
+	          <div class="staff-intake-widget-fields">
+	            <label class="field">
+	              <span>Category</span>
+	              <select id="staff-intake-category"></select>
+	            </label>
             <label class="field">
               <span>Brand</span>
               <select id="staff-intake-brand"></select>
@@ -1807,61 +1956,82 @@ function renderStaffIntake() {
             <span>Lens mount</span>
             <select id="staff-intake-lens-mount">
               <option value="">Select mount</option>
-            </select>
-          </label>
+	            </select>
+	          </label>
 
-          <fieldset class="condition-grid staff-intake-condition-grid">
-            <legend>Customer-stated condition</legend>
-            ${STAFF_INTAKE_CONDITIONS.map((condition) => `
-              <label class="choice-card">
-                <input type="radio" name="staff-intake-condition" value="${escapeAttr(condition.value)}" ${condition.value === "excellent" ? "checked" : ""} />
-                <strong>${escapeHtml(condition.label)}</strong>
-                <span>${escapeHtml(condition.copy)}</span>
-              </label>
-            `).join("")}
-          </fieldset>
+	          ${renderStaffIntakeConditionPicker()}
+	        </section>
 
-          <fieldset class="check-grid" id="staff-intake-included-fieldset">
-            <legend>Included items</legend>
-            <div id="staff-intake-included-items"></div>
-          </fieldset>
-
-          <div class="staff-intake-current-price" id="staff-intake-current-price"></div>
-
-          <label class="field">
-            <span>Counter notes</span>
-            <textarea id="staff-intake-item-notes" rows="4" placeholder="Mention mount, kit details, shutter count, missing parts, known issues, or accessories."></textarea>
-          </label>
-
-          <div class="form-actions staff-intake-actions">
-            <button class="primary-action staff-intake-add-action" type="button" id="staff-intake-add-item">${escapeHtml(heading.button)}</button>
-          </div>
-        </section>
-
-        <section class="staff-review-section">
-          <div class="staff-section-title">
-            <span>2</span>
-            <div>
-              <h3>Offer preview</h3>
-              <p>${staffIntakeIsAddingToOrder() ? "Review pricing for gear being added to this order." : "Review pricing for the gear in this in-store quote."}</p>
+	        <section class="staff-review-section">
+	          <div class="staff-section-title">
+	            <span>2</span>
+	            <div>
+	              <h3>Verify included items</h3>
+	              <p>Check what arrived. Missing recommended accessories can lower the final offer.</p>
             </div>
           </div>
-          <div class="staff-intake-cart" id="staff-intake-cart"></div>
-          <div class="quote-message" id="staff-intake-quote-message"></div>
-        </section>
+	          <fieldset class="check-grid" id="staff-intake-included-fieldset">
+	            <legend>Included items</legend>
+	            <div id="staff-intake-included-items"></div>
+	          </fieldset>
 
-        <section class="staff-review-section">
-          <div class="staff-section-title">
-            <span>3</span>
-            <div>
-              <h3>${staffIntakeIsAddingToOrder() ? "Existing order" : "Customer details"}</h3>
-              <p>${staffIntakeIsAddingToOrder() ? "The added item will use this order's seller and delivery details." : "This creates the quote as an in-store dropoff and opens it in the staff intake queue."}</p>
+		          <label class="field staff-intake-notes-field">
+		            <span>Counter notes</span>
+		            <textarea id="staff-intake-item-notes" rows="2" placeholder="Mention mount, kit details, shutter count, missing parts, known issues, or accessories."></textarea>
+		          </label>
+
+	          <div class="form-actions staff-intake-actions">
+	            <button class="primary-action staff-intake-add-action" type="button" id="staff-intake-add-item">${escapeHtml(heading.button)}</button>
+	          </div>
+	        </section>
+
+	        <section class="staff-review-section">
+	          <div class="staff-section-title">
+	            <span>3</span>
+	            <div>
+	              <h3>Offer preview</h3>
+	              <p>${staffIntakeIsAddingToOrder() ? "Review pricing for gear being added to this order." : "Review pricing for the gear in this in-store quote."}</p>
+	            </div>
+	          </div>
+	          <section class="summary-panel staff-intake-summary-panel" aria-label="Quote summary">
+	            <div class="summary-header">
+	              <span>Quote summary</span>
+	              <strong id="staff-intake-summary-state">Draft</strong>
+	            </div>
+		            <div class="summary-price">
+		              <span id="staff-intake-total">Add gear</span>
+		              <small class="staff-intake-store-credit-line" id="staff-intake-store-credit-line" hidden></small>
+		              <small id="staff-intake-routing">Your offer will appear here as you add gear.</small>
+		            </div>
+			            <div class="cart-list staff-intake-cart" id="staff-intake-cart"></div>
+		            <dl class="summary-list staff-intake-summary-list">
+		              <div>
+		                <dt id="staff-intake-summary-label">Routing</dt>
+		                <dd id="staff-intake-summary-routing">Awaiting gear</dd>
+	              </div>
+	            </dl>
+	            <div class="status-panel" id="staff-intake-quote-message"></div>
+	          </section>
+	        </section>
+
+	        <section class="staff-review-section">
+	          <div class="staff-section-title">
+	            <span>4</span>
+	            <div>
+	              <h3>${staffIntakeIsAddingToOrder() ? "Existing order" : "Customer details"}</h3>
+	              <p>${staffIntakeIsAddingToOrder() ? "The added item will use this order's seller and delivery details." : "Create a 7-day quote without marking gear received. Email it if needed, or open intake when the gear arrives."}</p>
             </div>
           </div>
           ${staffIntakeIsAddingToOrder() ? renderAddItemOrderContext() : renderNewQuoteCustomerFields()}
           <div class="form-actions staff-intake-actions">
             <button class="secondary-action" type="button" id="staff-intake-cancel">${staffIntakeIsAddingToOrder() ? "Back to order" : "Back to queue"}</button>
-            <button class="primary-action" type="submit" id="staff-intake-submit">${staffIntakeIsAddingToOrder() ? "Add item to order" : "Create quote and open intake"}</button>
+            ${staffIntakeIsAddingToOrder()
+              ? `<button class="primary-action" type="submit" id="staff-intake-submit">Add item to order</button>`
+              : `<div class="staff-intake-submit-actions" aria-label="Quote actions">
+                  <button class="secondary-action" type="submit" data-staff-intake-submit-mode="create">Create quote</button>
+                  <button class="secondary-action" type="submit" data-staff-intake-submit-mode="email">Email Quote</button>
+                  <button class="primary-action" type="submit" data-staff-intake-submit-mode="open">Open Intake</button>
+                </div>`}
           </div>
         </section>
       </form>
@@ -1892,7 +2062,7 @@ function staffIntakeHeadingCopy() {
   if (!count) {
     return {
       title: "Start a new quote",
-      subtitle: "Build the quote while the customer is at the counter, then open it in the staff intake workflow.",
+      subtitle: "Build a 7-day quote for a counter or phone customer, then open intake when the gear arrives.",
       button: "Add item to quote",
     };
   }
@@ -1913,6 +2083,52 @@ function updateStaffIntakeHeading() {
   title.textContent = heading.title;
   subtitle.textContent = heading.subtitle;
   addButton.textContent = heading.button;
+}
+
+	function renderStaffIntakeConditionPicker() {
+	  return `
+	    <fieldset class="condition-picker staff-intake-condition-picker">
+	      <legend>Condition</legend>
+      <div class="condition-action-row">
+        <button class="condition-picker-toggle" id="staff-intake-condition-toggle" type="button" aria-expanded="false" aria-controls="staff-intake-condition-options">
+          <span id="staff-intake-condition-label">Choose condition</span>
+          <small id="staff-intake-condition-summary">Select gear first, then choose condition.</small>
+        </button>
+      </div>
+      <div class="condition-options" id="staff-intake-condition-options" hidden>
+        ${STAFF_INTAKE_CONDITIONS.map((condition) => `
+          <label class="choice-card condition-option-card">
+            <input type="radio" name="staff-intake-condition" value="${escapeAttr(condition.value)}" />
+            <strong>${escapeHtml(condition.label)}</strong>
+            <span>${escapeHtml(condition.copy)}</span>
+          </label>
+        `).join("")}
+      </div>
+    </fieldset>
+  `;
+}
+
+function toggleStaffIntakeConditionOptions(show) {
+  const toggle = document.getElementById("staff-intake-condition-toggle");
+  const options = document.getElementById("staff-intake-condition-options");
+  if (!toggle || !options) return;
+  options.hidden = !show;
+  toggle.setAttribute("aria-expanded", String(show));
+  toggle.classList.toggle("is-open", show);
+}
+
+function updateStaffIntakeConditionPicker() {
+  const toggle = document.getElementById("staff-intake-condition-toggle");
+  const label = document.getElementById("staff-intake-condition-label");
+  const summary = document.getElementById("staff-intake-condition-summary");
+  if (!toggle || !label || !summary) return;
+  const value = document.querySelector('input[name="staff-intake-condition"]:checked')?.value || "";
+  const text = conditionLabel(value);
+  toggle.classList.toggle("has-condition", Boolean(text));
+  label.textContent = text ? `${text} selected` : "Choose condition";
+  summary.textContent = text
+    ? "Change condition or add this item to the quote."
+    : "Select gear first, then choose condition.";
 }
 
 function renderNewQuoteCustomerFields() {
@@ -1963,10 +2179,6 @@ function renderNewQuoteCustomerFields() {
       </div>
       <p>Useful for mailed checks, return shipping, or matching a customer record. Leave blank for quick counter intake.</p>
     </div>
-    <label class="consent staff-intake-consent">
-      <input id="staff-intake-terms" type="checkbox" required />
-      <span>Customer understands the quote is pending Milford Photo inspection and may be adjusted after verification.</span>
-    </label>
   `;
 }
 
@@ -1998,6 +2210,9 @@ function bindStaffIntake() {
   renderStaffIntakeCart();
   renderStaffIntakeQuote();
   renderStaffIntakeCurrentPreview();
+  renderStaffIntakeReferencePricing();
+  updateStaffIntakeConditionPicker();
+  updateStaffIntakeSubmitButtons();
 
   search.addEventListener("change", applyStaffIntakeGearSearch);
   search.addEventListener("focus", renderStaffIntakeGearSearchResults);
@@ -2045,9 +2260,17 @@ function bindStaffIntake() {
   manualBrand.addEventListener("input", queueStaffIntakeCurrentPreview);
   manualModel.addEventListener("input", queueStaffIntakeCurrentPreview);
   notes.addEventListener("input", queueStaffIntakeCurrentPreview);
-  form.querySelectorAll('input[name="staff-intake-condition"]').forEach((input) => {
-    input.addEventListener("change", queueStaffIntakeCurrentPreview);
+  document.getElementById("staff-intake-condition-toggle")?.addEventListener("click", () => {
+    const options = document.getElementById("staff-intake-condition-options");
+    toggleStaffIntakeConditionOptions(Boolean(options?.hidden));
   });
+	  form.querySelectorAll('input[name="staff-intake-condition"]').forEach((input) => {
+	    input.addEventListener("change", () => {
+	      updateStaffIntakeConditionPicker();
+	      toggleStaffIntakeConditionOptions(false);
+	      queueStaffIntakeCurrentPreview();
+	    });
+	  });
   document.getElementById("staff-intake-add-item").addEventListener("click", addStaffIntakeItem);
   document.getElementById("staff-intake-cancel").addEventListener("click", () => {
     selectedOrderId = staffIntakeState.orderId || visibleOrders()[0]?.id || orders[0]?.id || null;
@@ -2363,14 +2586,10 @@ function renderStaffIntakeIncludedItems() {
       </div>
     `;
     return;
-  }
-  container.innerHTML = `
-    <div class="included-copy">
-      <strong>Check what the customer has with them now.</strong>
-      <span>These selections travel into the quote notes for staff inspection.</span>
-    </div>
-    <div class="staff-intake-included-list">
-      ${items.map((item) => `
+	  }
+	  container.innerHTML = `
+	    <div class="staff-accessory-grid staff-intake-included-list">
+	      ${items.map((item) => `
         <label class="staff-accessory-item">
           <input type="checkbox" data-staff-intake-included="${escapeAttr(item.name)}" data-staff-intake-adjustment="${escapeAttr(item.value)}" ${item.checked ? "checked" : ""} />
           <span>${escapeHtml(item.name)}</span>
@@ -2378,18 +2597,43 @@ function renderStaffIntakeIncludedItems() {
         </label>
       `).join("")}
     </div>
+    <label class="staff-check-row staff-intake-all-accessories">
+      <input type="checkbox" id="staff-intake-all-included-check" checked />
+      <strong>All recommended accessories included</strong>
+    </label>
   `;
-  container.querySelectorAll("[data-staff-intake-included]").forEach((input) => input.addEventListener("change", () => {
+  const includedInputs = Array.from(container.querySelectorAll("[data-staff-intake-included]"));
+  const allIncluded = container.querySelector("#staff-intake-all-included-check");
+  const syncAllIncluded = () => {
+    if (!allIncluded) return;
+    const checkedCount = includedInputs.filter((input) => input.checked).length;
+    allIncluded.checked = checkedCount === includedInputs.length;
+    allIncluded.indeterminate = checkedCount > 0 && checkedCount < includedInputs.length;
+  };
+  includedInputs.forEach((input) => input.addEventListener("change", () => {
     const impact = input.closest(".staff-accessory-item")?.querySelector("[data-staff-intake-impact]");
     if (impact) impact.textContent = staffIntakeAccessoryImpactText(input.dataset.staffIntakeAdjustment, input.checked);
+    syncAllIncluded();
     queueStaffIntakeCurrentPreview();
   }));
+  if (allIncluded) {
+    allIncluded.addEventListener("change", () => {
+      includedInputs.forEach((input) => {
+        input.checked = allIncluded.checked;
+        const impact = input.closest(".staff-accessory-item")?.querySelector("[data-staff-intake-impact]");
+        if (impact) impact.textContent = staffIntakeAccessoryImpactText(input.dataset.staffIntakeAdjustment, input.checked);
+      });
+      syncAllIncluded();
+      queueStaffIntakeCurrentPreview();
+    });
+  }
+  syncAllIncluded();
 }
 
 function staffIntakeAccessoryImpactText(value, checked) {
   const amount = Number(value) || 0;
-  if (!amount) return checked ? "Expected" : "No price change";
-  return checked ? `Missing: -$${formatMoney(amount)}` : `Add: +$${formatMoney(amount)}`;
+  if (!amount) return checked ? "Included" : "No price change";
+  return `-$${formatMoney(amount)}`;
 }
 
 async function addStaffIntakeItem() {
@@ -2402,6 +2646,7 @@ async function addStaffIntakeItem() {
   resetStaffIntakeCurrentPreview();
   renderStaffIntakeCurrentPreview();
   renderStaffIntakeQuote();
+  window.requestAnimationFrame(scrollToStaffIntakeGearStart);
   setStatus(`${item.brand} ${item.model} added to the in-store quote. Updating offer...`);
   showStaffIntakeToast("Item added to quote");
 
@@ -2424,7 +2669,7 @@ function readStaffIntakeItem(options = {}) {
   const model = selectedModel === MANUAL_MODEL
     ? document.getElementById("staff-intake-manual-model").value.trim()
     : catalogQuoteModel(catalogItem, selectedModel, category);
-  const condition = document.querySelector('input[name="staff-intake-condition"]:checked')?.value || "excellent";
+  const condition = document.querySelector('input[name="staff-intake-condition"]:checked')?.value || "";
   const includedItems = Array.from(document.querySelectorAll("[data-staff-intake-included]:checked")).map((input) => input.dataset.staffIntakeIncluded);
   const validMounts = staffIntakeMountOptions();
   const requiresMount = validMounts.length > 1;
@@ -2451,6 +2696,16 @@ function readStaffIntakeItem(options = {}) {
     return null;
   }
 
+  if (!condition) {
+    if (!options.silent) {
+      setStatus("Choose a condition before adding this item.", true);
+      toggleStaffIntakeConditionOptions(true);
+      document.getElementById("staff-intake-condition-toggle")?.focus({ preventScroll: true });
+      document.getElementById("staff-intake-condition-toggle")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    return null;
+  }
+
   return {
     id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
     brand,
@@ -2473,6 +2728,40 @@ function readStaffIntakeItem(options = {}) {
 
 function staffIntakeCartItems() {
   return [...staffIntakeState.cart];
+}
+
+function staffIntakeCreatedQuoteMatches(signature = quoteItemsSignature(staffIntakeCartItems())) {
+  return Boolean(staffIntakeState.createdQuoteRef && staffIntakeState.createdQuoteSignature === signature);
+}
+
+function rememberStaffIntakeCreatedQuote(result = {}, signature = "") {
+  if (!result.quoteRef) return;
+  staffIntakeState.createdQuoteRef = result.quoteRef;
+  staffIntakeState.createdQuoteSignature = signature;
+  staffIntakeState.createdRecords = result.records || staffIntakeState.createdRecords || [];
+  staffIntakeState.quoteEmailQueued = Boolean(staffIntakeState.quoteEmailQueued || result.customerEmailQueued);
+  updateStaffIntakeSubmitButtons();
+}
+
+function updateStaffIntakeSubmitButtons() {
+  if (staffIntakeIsAddingToOrder()) return;
+  const buttons = {
+    create: document.querySelector('[data-staff-intake-submit-mode="create"]'),
+    email: document.querySelector('[data-staff-intake-submit-mode="email"]'),
+    open: document.querySelector('[data-staff-intake-submit-mode="open"]'),
+  };
+  if (!buttons.create && !buttons.email && !buttons.open) return;
+  const saved = staffIntakeCreatedQuoteMatches();
+  if (buttons.create) {
+    buttons.create.disabled = saved;
+    buttons.create.textContent = saved ? "Quote created" : "Create quote";
+  }
+  if (buttons.email) {
+    buttons.email.textContent = saved && staffIntakeState.quoteEmailQueued ? "Email Quote again" : "Email Quote";
+  }
+  if (buttons.open) {
+    buttons.open.textContent = "Open Intake";
+  }
 }
 
 function quoteItemStableKey(item) {
@@ -2514,6 +2803,7 @@ function resetStaffIntakeCurrentPreview() {
 function queueStaffIntakeCurrentPreview() {
   resetStaffIntakeCurrentPreview();
   renderStaffIntakeCurrentPreview();
+  renderStaffIntakeReferencePricing();
   staffIntakePreviewTimer = setTimeout(priceStaffIntakeCurrentPreview, STAFF_INTAKE_PREVIEW_DELAY_MS);
 }
 
@@ -2604,11 +2894,20 @@ async function submitStaffIntakeQuote(event) {
     return;
   }
   const signature = quoteItemsSignature(items);
-  const submitButton = document.getElementById("staff-intake-submit");
+  const submitMode = staffIntakeIsAddingToOrder()
+    ? "add"
+    : event.submitter?.dataset?.staffIntakeSubmitMode || "open";
+  const submitButton = event.submitter || document.getElementById("staff-intake-submit");
+  const submitButtons = Array.from(document.querySelectorAll("#staff-intake-submit, [data-staff-intake-submit-mode]"));
+  const submitButtonLabels = new Map(submitButtons.map((button) => [button, button.textContent]));
 
-  submitButton.disabled = true;
-  submitButton.textContent = staffIntakeIsAddingToOrder() ? "Adding..." : "Creating...";
-  setStatus(staffIntakeIsAddingToOrder() ? "Adding item to order..." : "Creating in-store quote...");
+  submitButtons.forEach((button) => {
+    button.disabled = true;
+  });
+  if (submitButton) {
+    submitButton.textContent = staffIntakeSubmitWorkingLabel(submitMode);
+  }
+  setStatus(staffIntakeSubmitStatus(submitMode, "start"));
 
   try {
     if (staffIntakeIsAddingToOrder()) {
@@ -2630,14 +2929,9 @@ async function submitStaffIntakeQuote(event) {
     const sellerCity = document.getElementById("staff-intake-seller-city").value.trim();
     const sellerState = document.getElementById("staff-intake-seller-state").value.trim();
     const sellerZip = document.getElementById("staff-intake-seller-zip").value.trim();
-    const terms = document.getElementById("staff-intake-terms");
 
     if (!sellerName || !sellerEmail) {
       setStatus("Customer name and email are required before creating the quote.", true);
-      return;
-    }
-    if (!terms.checked) {
-      setStatus("Confirm that the customer understands the inspection terms.", true);
       return;
     }
 
@@ -2648,7 +2942,29 @@ async function submitStaffIntakeQuote(event) {
     if (!quote?.quoteToken) {
       throw new Error("Unable to price this in-store quote.");
     }
-    const result = await staffPost("/api/submit", {
+
+    const savedQuoteMatches = staffIntakeCreatedQuoteMatches(signature);
+    if (savedQuoteMatches && submitMode === "create") {
+      setStatus(`Quote ${staffIntakeState.createdQuoteRef} is already created.`);
+      return;
+    }
+    if (savedQuoteMatches && submitMode === "email") {
+      await staffPost("/api/staff/email-quote", {
+        quoteRef: staffIntakeState.createdQuoteRef,
+        to: sellerEmail,
+      }, { staff: true });
+      staffIntakeState.quoteEmailQueued = true;
+      updateStaffIntakeSubmitButtons();
+      setStatus(`Quote ${staffIntakeState.createdQuoteRef} customer quote email queued.`);
+      return;
+    }
+    if (savedQuoteMatches && submitMode === "open") {
+      await loadRecords({ selectQuoteRef: staffIntakeState.createdQuoteRef });
+      setStatus(`Quote ${staffIntakeState.createdQuoteRef} opened in intake.`);
+      return;
+    }
+
+    const submitPayload = {
       quoteToken: quote.quoteToken,
       source: "staff_dashboard",
       seller: {
@@ -2664,31 +2980,72 @@ async function submitStaffIntakeQuote(event) {
       },
       delivery: "dropoff",
       paymentPreference: document.getElementById("staff-intake-payment-preference").value,
-    }, { staff: true });
-    await loadRecords({ selectQuoteRef: result.quoteRef });
-    setStatus(`In-store quote ${result.quoteRef} created and opened.`);
+      emailCustomer: submitMode === "email",
+    };
+    const result = await staffPost("/api/submit", submitPayload, { staff: true });
+    rememberStaffIntakeCreatedQuote(result, signature);
+
+    if (submitMode === "open") {
+      await loadRecords({ selectQuoteRef: result.quoteRef });
+      setStatus(staffIntakeSubmitStatus(submitMode, "success", result.quoteRef));
+      return;
+    }
+    setStatus(staffIntakeSubmitStatus(submitMode, "success", result.quoteRef));
   } catch (error) {
     setStatus(error.message || (staffIntakeIsAddingToOrder() ? "Unable to add item to this order." : "Unable to create the in-store quote."), true);
   } finally {
-    submitButton.disabled = false;
-    submitButton.textContent = staffIntakeIsAddingToOrder() ? "Add item to order" : "Create quote and open intake";
+    submitButtons.forEach((button) => {
+      button.disabled = false;
+      button.textContent = submitButtonLabels.get(button) || button.textContent;
+    });
+    updateStaffIntakeSubmitButtons();
   }
+}
+
+function staffIntakeSubmitWorkingLabel(mode) {
+  if (mode === "add") return "Adding...";
+  if (mode === "email") return "Emailing...";
+  if (mode === "open") return "Opening...";
+  return "Creating...";
+}
+
+function staffIntakeSubmitStatus(mode, state, quoteRef = "") {
+  if (mode === "add") return state === "success" ? "Item added to order." : "Adding item to order...";
+  if (mode === "email") {
+    return state === "success"
+      ? `Quote ${quoteRef} created and customer quote email queued.`
+      : "Creating quote and queueing customer email...";
+  }
+  if (mode === "open") {
+    return state === "success"
+      ? `Quote ${quoteRef} created and opened. No customer email was sent.`
+      : "Creating quote and opening intake...";
+  }
+  return state === "success"
+    ? `Quote ${quoteRef} created. No customer email was sent.`
+    : "Creating quote...";
 }
 
 function renderStaffIntakeCart() {
   const cart = document.getElementById("staff-intake-cart");
   if (!cart) return;
   if (!staffIntakeState.cart.length) {
-    cart.innerHTML = `<div class="staff-empty-card">No added items yet. Add the current item to include it in the offer.</div>`;
+    cart.innerHTML = `<div class="cart-item"><span class="cart-meta">Add gear to build the quote summary.</span></div>`;
     return;
   }
   cart.innerHTML = staffIntakeState.cart.map((item) => `
-    <article class="cart-item staff-intake-cart-item has-remove-action">
-      <button class="staff-intake-remove-item" type="button" aria-label="Remove item" data-staff-intake-remove="${escapeAttr(item.id)}"><span aria-hidden="true">x</span><small>Remove item</small></button>
-      <div class="cart-title">
-        <strong>${escapeHtml(item.brand)} ${escapeHtml(item.model)}</strong>
+    <article class="cart-item staff-intake-cart-item">
+      ${staffIntakeItemImageMarkup(item, "product-thumb staff-intake-cart-image")}
+      <div class="cart-body">
+        <div class="cart-title">
+          <strong>${escapeHtml(item.brand)} ${escapeHtml(item.model)}</strong>
+          <div class="cart-actions">
+            <span class="cart-price">Pending</span>
+            <button class="remove-item" type="button" aria-label="Remove item" data-staff-intake-remove="${escapeAttr(item.id)}">x</button>
+          </div>
+        </div>
+        <span class="cart-meta">${escapeHtml(item.category)} - ${escapeHtml(conditionLabel(item.condition))}${item.mount ? ` - ${escapeHtml(item.mount)}` : ""}</span>
       </div>
-      <span class="cart-meta">${escapeHtml(item.category)} - ${escapeHtml(conditionLabel(item.condition))}${item.mount ? ` - ${escapeHtml(item.mount)}` : ""}</span>
     </article>
   `).join("");
   wireStaffIntakeRemoveButtons(cart);
@@ -2696,10 +3053,19 @@ function renderStaffIntakeCart() {
 
 function renderStaffIntakeCurrentPreview() {
   const container = document.getElementById("staff-intake-current-price");
-  if (!container) return;
+  const headerTotal = document.getElementById("staff-intake-header-total");
+  const headerRouting = document.getElementById("staff-intake-header-routing");
+  const setHeader = (totalCopy, routingCopy) => {
+    if (headerTotal) headerTotal.textContent = totalCopy;
+    if (headerRouting) headerRouting.textContent = routingCopy;
+  };
+
+  if (staffIntakeState.cart.length) return;
 
   const item = readStaffIntakeItem({ silent: true });
   if (!item) {
+    setHeader("Draft", "Add gear to price this quote.");
+    if (!container) return;
     container.innerHTML = `
       <article class="staff-intake-price-panel is-empty">
         <div>
@@ -2713,6 +3079,8 @@ function renderStaffIntakeCurrentPreview() {
   }
 
   if (staffIntakeState.currentQuoteLoading) {
+    setHeader("Pricing", "Checking the current item.");
+    if (!container) return;
     container.innerHTML = `
       <article class="staff-intake-price-panel is-loading">
         <div>
@@ -2725,6 +3093,8 @@ function renderStaffIntakeCurrentPreview() {
   }
 
   if (staffIntakeState.currentQuoteError) {
+    setHeader("Review", staffIntakeState.currentQuoteError);
+    if (!container) return;
     container.innerHTML = `
       <article class="staff-intake-price-panel is-error">
         <div>
@@ -2739,6 +3109,8 @@ function renderStaffIntakeCurrentPreview() {
 
   const quotedItem = staffIntakeState.currentQuote?.items?.[0];
   if (!quotedItem) {
+    setHeader("Price pending", `${item.brand} ${item.model}`);
+    if (!container) return;
     container.innerHTML = `
       <article class="staff-intake-price-panel">
         <div>
@@ -2751,6 +3123,11 @@ function renderStaffIntakeCurrentPreview() {
     return;
   }
 
+  setHeader(
+    priceLabelForStaffQuoteItem(quotedItem),
+    quotedItem.storeCreditAmount ? `${money.format(quotedItem.storeCreditAmount)} store credit` : quotedItem.message || `${item.brand} ${item.model}`,
+  );
+  if (!container) return;
   container.innerHTML = `
     <div class="staff-intake-preview-heading">
       <span>Item offer</span>
@@ -2760,74 +3137,190 @@ function renderStaffIntakeCurrentPreview() {
   `;
 }
 
+function renderStaffIntakeReferencePricing() {
+  const container = document.getElementById("staff-intake-reference-pricing");
+  if (!container) return;
+  const item = readStaffIntakeItem({ silent: true });
+  if (!item) {
+    container.innerHTML = `
+      <div class="staff-reference-panel staff-intake-reference-panel is-empty">
+        <div>
+          <strong>Reference pricing</strong>
+          <span>Select gear to compare used-market listings before adding this item.</span>
+        </div>
+      </div>
+    `;
+    return;
+  }
+  container.innerHTML = renderStaffReferencePricing(staffIntakeFieldsForReference(item));
+}
+
+function staffIntakeFieldsForReference(item = {}) {
+  return {
+    "Item Brand": item.brand,
+    "Item Model": item.model,
+  };
+}
+
 function renderStaffIntakeQuote() {
   updateStaffIntakeHeading();
   const quote = staffIntakeState.cartQuote;
+  const headerTotal = document.getElementById("staff-intake-header-total");
+  const headerRouting = document.getElementById("staff-intake-header-routing");
   const total = document.getElementById("staff-intake-total");
-  const routing = document.getElementById("staff-intake-routing");
-  const list = document.getElementById("staff-intake-cart");
-  const message = document.getElementById("staff-intake-quote-message");
+	  const routing = document.getElementById("staff-intake-routing");
+	  const storeCreditLine = document.getElementById("staff-intake-store-credit-line");
+	  const list = document.getElementById("staff-intake-cart");
+	  const message = document.getElementById("staff-intake-quote-message");
+	  const state = document.getElementById("staff-intake-summary-state");
+	  const creditCard = document.getElementById("staff-intake-credit-card");
+  const creditFeature = document.getElementById("staff-intake-credit-feature");
+  const summaryCredit = document.getElementById("staff-intake-summary-credit");
+  const summaryRouting = document.getElementById("staff-intake-summary-routing");
+  const summaryLabel = document.getElementById("staff-intake-summary-label");
   if (!total || !routing || !list || !message) return;
+  updateStaffIntakeSubmitButtons();
+
+  const setHeader = (totalCopy, routingCopy) => {
+    if (headerTotal) headerTotal.textContent = totalCopy;
+    if (headerRouting) headerRouting.textContent = routingCopy;
+  };
+  const setSummary = ({
+    stateCopy = "Draft",
+    cashCopy = "Add gear",
+    subtitle = "Your offer will appear here as you add gear.",
+    creditCopy = "-",
+    showCreditCard = false,
+    routeLabel = "Routing",
+    routeCopy = "Awaiting gear",
+    messageCopy = "",
+    messageClass = "",
+  } = {}) => {
+	    if (state) state.textContent = stateCopy;
+	    total.textContent = cashCopy;
+	    routing.textContent = subtitle;
+	    if (storeCreditLine) {
+	      const hasStoreCredit = Boolean(creditCopy && creditCopy !== "-");
+	      storeCreditLine.textContent = hasStoreCredit ? `${creditCopy} store credit` : "";
+	      storeCreditLine.hidden = !hasStoreCredit;
+	    }
+	    if (summaryCredit) summaryCredit.textContent = creditCopy;
+	    if (summaryRouting) summaryRouting.textContent = routeCopy;
+	    if (summaryLabel) summaryLabel.textContent = routeLabel;
+	    if (creditFeature) creditFeature.textContent = creditCopy;
+	    if (creditCard) creditCard.hidden = true;
+    message.textContent = messageCopy;
+    message.className = `status-panel${messageCopy ? " is-visible" : ""}${messageClass ? ` ${messageClass}` : ""}`;
+  };
 
   if (!staffIntakeState.cart.length) {
-    total.textContent = "Draft";
-    routing.textContent = "Add gear to price this quote.";
+    setHeader("Draft", "Add gear to price this quote.");
+    setSummary();
     renderStaffIntakeCart();
-    message.textContent = "";
     return;
   }
 
   if (staffIntakeState.cartQuoteLoading) {
-    total.textContent = "Pricing";
-    routing.textContent = "Calculating added items.";
+    setHeader("Pricing", "Calculating added items.");
+    setSummary({
+      stateCopy: "Draft",
+      cashCopy: "Pricing...",
+      subtitle: "Pricing added items.",
+      routeCopy: "Updating quote",
+    });
     renderStaffIntakeCart();
-    message.textContent = "";
     return;
   }
 
   if (!quote) {
-    total.textContent = staffIntakeState.cart.length ? `${staffIntakeState.cart.length} item${staffIntakeState.cart.length === 1 ? "" : "s"}` : "Draft";
-    routing.textContent = staffIntakeState.cartQuoteError || "Pricing updates when items are added.";
+    const countCopy = `${staffIntakeState.cart.length} item${staffIntakeState.cart.length === 1 ? "" : "s"}`;
+    setHeader(countCopy, staffIntakeState.cartQuoteError || "Pricing updates when items are added.");
+    setSummary({
+      cashCopy: countCopy,
+      subtitle: staffIntakeState.cartQuoteError || "Pricing will update automatically.",
+      routeCopy: staffIntakeState.cartQuoteError || "Ready to quote",
+      messageCopy: staffIntakeState.cartQuoteError,
+      messageClass: staffIntakeState.cartQuoteError ? "is-error" : "",
+    });
     renderStaffIntakeCart();
-    message.textContent = staffIntakeState.cartQuoteError;
     return;
   }
 
-  total.textContent = quote.routing?.declinedOnly ? "Declined" : quote.totals.cash ? money.format(quote.totals.cash) : "Review";
-  routing.textContent = quote.totals.storeCredit ? `${money.format(quote.totals.storeCredit)} store credit` : quote.routing.message;
+  const declinedOnly = Boolean(quote.routing?.declinedOnly);
+  const cashCopy = declinedOnly ? "Declined" : quote.totals.cash ? money.format(quote.totals.cash) : "Review";
+  const creditCopy = quote.totals.storeCredit ? money.format(quote.totals.storeCredit) : "-";
+	  const subtitle = declinedOnly
+	    ? "Not eligible for an in-store offer"
+	    : quote.expiresAt
+	      ? `Offer valid through ${formatDate(quote.expiresAt)}`
+	      : "Offer updates with each added item.";
+  setHeader(cashCopy, quote.totals.storeCredit ? `${creditCopy} store credit` : quote.routing.message);
+  setSummary({
+    stateCopy: "Draft",
+    cashCopy,
+    subtitle,
+    creditCopy,
+    showCreditCard: Boolean(quote.totals.storeCredit),
+    routeLabel: quote.routing?.freeLabelEligible ? "Free label" : "Routing",
+    routeCopy: quote.routing.message,
+    messageCopy: quote.routing.message,
+    messageClass: quote.routing?.declinedOnly ? "is-error" : "is-success",
+  });
   const sourceItems = staffIntakeCartItems();
   list.innerHTML = quote.items.map((item, index) => renderStaffIntakeQuoteItem(item, sourceItems[index])).join("");
   wireStaffIntakeRemoveButtons(list);
-  message.textContent = quote.routing.message;
+}
+
+function priceLabelForStaffQuoteItem(quoteItem) {
+  if (!quoteItem) return "Pending";
+  if (quoteItem.offerAmount) return money.format(quoteItem.offerAmount);
+  if (quoteItem.status === "declined") return "$0";
+  return "Review";
 }
 
 function renderStaffIntakeQuoteItem(item, sourceItem, options = {}) {
-  const statusClass = item.status === "quoted" ? "quoted" : item.status === "declined" ? "declined" : "review";
-  const price = item.offerAmount ? money.format(item.offerAmount) : item.status === "declined" ? "$0" : "Review";
+  const price = priceLabelForStaffQuoteItem(item);
   const credit = item.storeCreditAmount ? `${money.format(item.storeCreditAmount)} store credit` : item.message || "Staff follow-up needed";
-  const marketCopy = item.marketPrice ? `Market estimate: ${money.format(item.marketPrice)}` : item.message || "";
   const canRemove = sourceItem?.id && staffIntakeState.cart.some((cartItem) => cartItem.id === sourceItem.id);
+  const imageSource = sourceItem || item;
+  const referenceItem = sourceItem || item;
   return `
-    <article class="quote-item staff-intake-quote-item${canRemove ? " has-remove-action" : ""}${options.preview ? " staff-intake-preview-item" : ""}">
-      ${canRemove ? `<button class="staff-intake-remove-item" type="button" aria-label="Remove item" data-staff-intake-remove="${escapeAttr(sourceItem.id)}"><span aria-hidden="true">x</span><small>Remove item</small></button>` : ""}
-      <div>
+    <article class="quote-item staff-intake-quote-item${options.preview ? " staff-intake-preview-item" : ""}">
+      ${staffIntakeItemImageMarkup(imageSource, "product-thumb staff-intake-quote-image")}
+      <div class="quote-body">
         <div class="quote-title">
           <strong>${escapeHtml(item.brand)} ${escapeHtml(item.model)}</strong>
-          <span class="staff-intake-quote-actions">
-            <span class="status-pill ${statusClass}">${escapeHtml(STATUS_LABELS[item.status] || item.status)}</span>
-          </span>
         </div>
-        <div class="quote-meta">
-          ${escapeHtml(conditionLabel(item.condition))} - ${escapeHtml(item.category)}
-          ${marketCopy ? `<br />${escapeHtml(marketCopy)}` : ""}
-        </div>
+        <div class="quote-meta">${escapeHtml(conditionLabel(item.condition))} &middot; ${escapeHtml(item.category)}</div>
       </div>
-      <div class="quote-price">
+      ${renderStaffIntakeReferenceDropdown(referenceItem)}
+      <div class="quote-price staff-intake-quote-price">
         <strong>${escapeHtml(price)}</strong>
         <span>${escapeHtml(credit)}</span>
+        ${canRemove ? `<button class="remove-item staff-intake-quote-remove" type="button" aria-label="Remove item" data-staff-intake-remove="${escapeAttr(sourceItem.id)}">x</button>` : ""}
       </div>
     </article>
   `;
+}
+
+function renderStaffIntakeReferenceDropdown(item = {}) {
+  return `
+    <details class="staff-intake-reference-details">
+      <summary class="status-pill staff-intake-reference-pill">Reference pricing</summary>
+      <div class="staff-intake-reference-menu">
+        ${renderStaffReferencePricing(staffIntakeFieldsForReference(item))}
+      </div>
+    </details>
+  `;
+}
+
+function staffIntakeItemImageMarkup(item = {}, className = "product-thumb") {
+  const image = productImageForOption({
+    brand: item.brand,
+    category: item.category,
+    model: item.model,
+  });
+  return productImageMarkup(image, className, item.brand);
 }
 
 function wireStaffIntakeRemoveButtons(container) {
@@ -2851,11 +3344,15 @@ function clearStaffIntakeItemForm() {
   document.getElementById("staff-intake-manual-brand").value = "";
   document.getElementById("staff-intake-manual-model").value = "";
   document.getElementById("staff-intake-item-notes").value = "";
-  const excellent = document.querySelector('input[name="staff-intake-condition"][value="excellent"]');
-  if (excellent) excellent.checked = true;
+  document.querySelectorAll('input[name="staff-intake-condition"]').forEach((input) => {
+    input.checked = false;
+  });
+  updateStaffIntakeConditionPicker();
+  toggleStaffIntakeConditionOptions(false);
   updateStaffIntakeManualFields();
   updateStaffIntakeMountField();
   renderStaffIntakeIncludedItems();
+  renderStaffIntakeReferencePricing();
 }
 
 function showStaffIntakeToast(message) {
@@ -3930,6 +4427,7 @@ loadButton.addEventListener("click", loadRecords);
 refreshButton.addEventListener("click", loadRecords);
 pricingReviewButton?.addEventListener("click", openPricingReview);
 startStaffIntakeButton?.addEventListener("click", startStaffIntake);
+intakeQueueButton?.addEventListener("click", openStaffIntakeQueue);
 staffSearchInput?.addEventListener("input", () => {
   activeSearch = staffSearchInput.value;
   const filtered = visibleOrders();

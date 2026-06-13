@@ -14,14 +14,18 @@
         <header class="hero staff-hero">
           <div>
             <p class="brand-line">Milford Photo Used Department</p>
-            <h1 id="staff-title">Used gear intake dashboard</h1>
+            <h1 id="staff-title">Used Gear Dashboard</h1>
             <p class="intro">Receive gear, verify accessories and condition, adjust offers, and move each quote to payment or return.</p>
           </div>
           <nav class="staff-header-actions" aria-label="Staff dashboard actions">
-            <span class="staff-current-user">Logged in as <strong>Employee</strong></span>
+            <span class="staff-current-user">
+              Logged in as <strong>Employee</strong>
+              <span class="staff-user-separator" aria-hidden="true">·</span>
+              <a class="staff-sign-out-link" href="/api/staff/logout">Sign out</a>
+            </span>
             <span class="staff-header-buttons">
               <button class="primary-action" type="button" id="start-staff-intake">Start new quote</button>
-              <a class="secondary-action" href="/api/staff/logout">Sign out</a>
+              <button class="secondary-action" type="button" id="open-intake-queue">Intake Queue</button>
             </span>
           </nav>
         </header>
