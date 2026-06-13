@@ -290,6 +290,8 @@ h1 {
 }
 
 .work-panel {
+  display: flex;
+  flex-direction: column;
   padding: clamp(18px, 3vw, 32px);
 }
 
@@ -390,6 +392,15 @@ h1 {
 
 .form-step.is-active {
   display: block;
+}
+
+.work-panel > .form-step.is-active {
+  flex: 1;
+}
+
+.gear-form.form-step.is-active {
+  display: flex;
+  flex-direction: column;
 }
 
 .section-heading {
@@ -901,8 +912,8 @@ fieldset {
 }
 
 .condition-picker-toggle span {
-  font-size: 1.05rem;
-  font-weight: 860;
+  font-size: 1rem;
+  font-weight: 740;
   line-height: 1.2;
 }
 
@@ -976,8 +987,10 @@ fieldset {
 .included-copy {
   display: grid;
   gap: 5px;
-  padding: 14px;
-  background: var(--soft);
+  padding: 2px 0 0;
+  border: 0;
+  background: transparent;
+  font-size: 0.86rem;
 }
 
 .included-copy strong {
@@ -986,7 +999,7 @@ fieldset {
 
 .included-copy span {
   color: var(--muted);
-  line-height: 1.45;
+  line-height: 1.35;
 }
 
 .included-columns {
@@ -1111,6 +1124,8 @@ fieldset {
 
 .gear-form .form-actions {
   justify-content: flex-end;
+  margin-top: auto;
+  padding-top: 28px;
 }
 
 .primary-action,
@@ -1197,11 +1212,8 @@ fieldset {
   display: grid;
   gap: 3px;
   margin-top: 14px;
-  padding: 13px 14px;
-  border: 1px solid rgba(213, 33, 39, 0.22);
-  border-left: 4px solid var(--mp-red);
-  border-radius: var(--radius);
-  background: rgba(213, 33, 39, 0.055);
+  padding: 0 0 0 12px;
+  border-left: 3px solid var(--mp-red);
   color: var(--ink);
 }
 
