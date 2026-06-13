@@ -214,7 +214,6 @@ const els = {
   currentOfferCredit: byId("current-offer-credit"),
   summaryCash: byId("summary-cash"),
   summarySubtitle: byId("summary-subtitle"),
-  summaryCredit: byId("summary-credit"),
   summaryCreditCard: byId("summary-credit-card"),
   summaryCreditFeature: byId("summary-credit-feature"),
   summaryRouting: byId("summary-routing"),
@@ -1529,7 +1528,6 @@ function renderSummary() {
     els.quoteRef.textContent = "Draft";
     els.summaryCash.textContent = "Pricing...";
     els.summarySubtitle.textContent = "Pricing added items.";
-    els.summaryCredit.textContent = "-";
     els.summaryCreditFeature.textContent = "-";
     els.summaryCreditCard.hidden = true;
     els.summaryRouting.textContent = "Updating quote";
@@ -1541,7 +1539,6 @@ function renderSummary() {
     els.quoteRef.textContent = "Draft";
     els.summaryCash.textContent = state.cart.length ? `${state.cart.length} item${state.cart.length === 1 ? "" : "s"}` : "Add gear";
     els.summarySubtitle.textContent = state.cart.length ? "Pricing will update automatically." : "Your offer will appear here as you add gear.";
-    els.summaryCredit.textContent = "-";
     els.summaryCreditFeature.textContent = "-";
     els.summaryCreditCard.hidden = true;
     els.summaryRouting.textContent = state.cart.length ? "Ready to quote" : "Awaiting gear";
@@ -1555,9 +1552,8 @@ function renderSummary() {
   els.summarySubtitle.textContent = declinedOnly
     ? "Not eligible for an online offer"
     : state.quote.totals.cash
-      ? `Cash offer valid through ${formatDate(state.quote.expiresAt)}`
+      ? `Offer valid through ${formatDate(state.quote.expiresAt)}`
       : "Manual review request";
-  els.summaryCredit.textContent = state.quote.totals.storeCredit ? money.format(state.quote.totals.storeCredit) : "-";
   els.summaryCreditFeature.textContent = state.quote.totals.storeCredit ? money.format(state.quote.totals.storeCredit) : "-";
   els.summaryCreditCard.hidden = !state.quote.totals.storeCredit;
   els.summaryRouting.textContent = state.quote.routing.message;
