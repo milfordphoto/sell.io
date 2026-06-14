@@ -1318,18 +1318,19 @@ fieldset {
   line-height: 1.35;
 }
 
-.summary-list {
+.summary-shipping-status {
   display: grid;
-  gap: 14px;
-  margin: 20px 0;
+  gap: 5px;
+  margin: 20px 0 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--soft);
+  color: var(--ink-soft);
+  line-height: 1.42;
 }
 
-.summary-list div {
-  display: grid;
-  gap: 4px;
-}
-
-.summary-list dt {
+.summary-shipping-status span {
   color: var(--muted);
   font-size: 0.78rem;
   font-weight: 830;
@@ -1337,9 +1338,24 @@ fieldset {
   text-transform: uppercase;
 }
 
-.summary-list dd {
+.summary-shipping-status strong {
+  color: var(--ink);
+  font-size: 1rem;
+  line-height: 1.25;
+}
+
+.summary-shipping-status p {
   margin: 0;
-  line-height: 1.4;
+}
+
+.summary-shipping-status.is-free {
+  border-color: rgba(20, 122, 80, 0.24);
+  background: rgba(20, 122, 80, 0.09);
+}
+
+.summary-shipping-status.is-free span,
+.summary-shipping-status.is-free strong {
+  color: var(--green);
 }
 
 .status-panel {

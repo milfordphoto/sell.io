@@ -7,7 +7,7 @@
     <meta name="description" content="Milford Photo used equipment quote widget." />
     <meta name="robots" content="noindex,nofollow" />
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="./styles.css?v=20260613-summary-polish" />
+    <link rel="stylesheet" href="./styles.css?v=20260613-shipping-status" />
   </head>
   <body>
     <main class="mp-used-app" id="app">
@@ -283,16 +283,11 @@
 
             <div class="cart-list" id="cart-list"></div>
 
-            <dl class="summary-list">
-              <div>
-                <dt>Routing</dt>
-                <dd id="summary-routing">Awaiting gear</dd>
-              </div>
-              <div>
-                <dt>Free label</dt>
-                <dd id="summary-label">Calculated after quote</dd>
-              </div>
-            </dl>
+            <section class="summary-shipping-status" id="summary-shipping-status" aria-live="polite">
+              <span id="summary-shipping-label">Shipping</span>
+              <strong id="summary-shipping-title">Quotes above $250 receive free shipping.</strong>
+              <p id="summary-shipping-copy">Mail-in is still available, or you can drop off in-store.</p>
+            </section>
 
             <div class="status-panel" id="status-panel" role="status" aria-live="polite"></div>
           </aside>
@@ -465,6 +460,6 @@
     <script src="./catalog-modern-supplement.js?v=20260610-condition-required"></script>
     <script src="./catalog.js?v=20260610-condition-required"></script>
     <script src="./product-images.js?v=20260610-product-images-640b57d"></script>
-    <script src="./app.js?v=20260613-summary-polish"></script>
+    <script src="./app.js?v=20260613-shipping-status"></script>
   </body>
 </html>

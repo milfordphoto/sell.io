@@ -216,8 +216,10 @@ const els = {
   summarySubtitle: byId("summary-subtitle"),
   summaryCreditCard: byId("summary-credit-card"),
   summaryCreditFeature: byId("summary-credit-feature"),
-  summaryRouting: byId("summary-routing"),
-  summaryLabel: byId("summary-label"),
+  summaryShippingStatus: byId("summary-shipping-status"),
+  summaryShippingLabel: byId("summary-shipping-label"),
+  summaryShippingTitle: byId("summary-shipping-title"),
+  summaryShippingCopy: byId("summary-shipping-copy"),
   cartList: byId("cart-list"),
   statusPanel: byId("status-panel"),
   conditionPickerToggle: byId("condition-picker-toggle"),
@@ -1531,8 +1533,10 @@ function renderSummary() {
     els.summarySubtitle.textContent = "Pricing added items.";
     els.summaryCreditFeature.textContent = "-";
     els.summaryCreditCard.hidden = true;
-    els.summaryRouting.textContent = "Updating quote";
-    els.summaryLabel.textContent = "Calculated after quote";
+    updateSummaryShipping({
+      title: "Checking shipping eligibility...",
+      copy: "Quotes above $250 receive free shipping.",
+    });
     return;
   }
 
@@ -1542,8 +1546,10 @@ function renderSummary() {
     els.summarySubtitle.textContent = state.cart.length ? "Pricing will update automatically." : "Your offer will appear here as you add gear.";
     els.summaryCreditFeature.textContent = "-";
     els.summaryCreditCard.hidden = true;
-    els.summaryRouting.textContent = state.cart.length ? "Ready to quote" : "Awaiting gear";
-    els.summaryLabel.textContent = "Calculated after quote";
+    updateSummaryShipping({
+      title: "Quotes above $250 receive free shipping.",
+      copy: state.cart.length ? "Shipping eligibility updates after pricing." : "Mail-in is still available, or you can drop off in-store.",
+    });
     return;
   }
 
@@ -1557,14 +1563,35 @@ function renderSummary() {
       : "Manual review request";
   els.summaryCreditFeature.textContent = state.quote.totals.storeCredit ? money.format(state.quote.totals.storeCredit) : "-";
   els.summaryCreditCard.hidden = !state.quote.totals.storeCredit;
-  els.summaryRouting.textContent = state.quote.routing.message;
-  els.summaryLabel.textContent = declinedOnly
-    ? "No shipping label"
-    : state.quote.routing.freeLabelEligible
-    ? "Free prepaid inbound label"
-    : state.quote.routing.requiresStaffBeforeLabel
-      ? "Staff approval first"
-      : `Below ${money.format(state.quote.policy.freeShippingMin)} threshold`;
+  if (declinedOnly) {
+    updateSummaryShipping({
+      title: "Shipping reviewed after quote.",
+      copy: "Milford Photo will confirm shipping options for manual-review gear.",
+    });
+  } else if (state.quote.routing.freeLabelEligible) {
+    updateSummaryShipping({
+      isFree: true,
+      title: "Free Shipping",
+      copy: "This quote qualifies for a free prepaid inbound shipping label.",
+    });
+  } else if (state.quote.routing.requiresStaffBeforeLabel) {
+    updateSummaryShipping({
+      title: "Shipping reviewed after quote.",
+      copy: "Milford Photo will confirm shipping options before a label is sent.",
+    });
+  } else {
+    updateSummaryShipping({
+      title: `Quotes above ${money.format(state.quote.policy.freeShippingMin)} receive free shipping.`,
+      copy: "Mail-in is still available, or you can drop off in-store.",
+    });
+  }
+}
+
+function updateSummaryShipping({ title, copy, isFree = false }) {
+  els.summaryShippingStatus.classList.toggle("is-free", isFree);
+  els.summaryShippingLabel.textContent = "Shipping";
+  els.summaryShippingTitle.textContent = title;
+  els.summaryShippingCopy.textContent = copy;
 }
 
 function renderDone(result) {
