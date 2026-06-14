@@ -455,6 +455,7 @@ function renderDetail() {
       ${renderOrderHeader(order, record, adjustedOffer)}
       ${renderOrderStatusProgress(order)}
       ${renderOrderInfoGrid(order, fields, baseOffer, paymentMethod)}
+      ${renderOrderAdminPanels(order, fields)}
       ${renderOrderItemsProgress(order)}
 
       <header class="staff-intake-header">
@@ -591,6 +592,7 @@ function renderDetail() {
       </form>
 
       ${renderOrderDecisionPanel(order)}
+      ${renderPayoutPanel(order, fields, paymentMethod)}
     </article>
   `;
 
@@ -711,6 +713,127 @@ function renderOrderInfoGrid(order, fields, baseOffer, paymentMethod) {
         <p>Payout: ${escapeHtml(paymentMethodLabel(paymentMethod))}</p>
       </section>
     </div>
+  `;
+}
+
+function renderOrderAdminPanels(order, fields) {
+  return `
+    <section class="staff-order-admin-panels" aria-label="Order administration">
+      ${renderCustomerAddressPanel(order, fields)}
+      ${renderShippingLabelPanel(order, fields)}
+    </section>
+  `;
+}
+
+function renderCustomerAddressPanel(order, fields) {
+  const address = {
+    street: fields["Seller Street"] || "",
+    city: fields["Seller City"] || "",
+    state: fields["Seller State"] || "",
+    zip: fields["Seller ZIP"] || "",
+  };
+  const hasAddress = Boolean(address.street && address.city && address.state && address.zip);
+  return `
+    <article class="staff-admin-card">
+      <div class="staff-admin-card-heading">
+        <div>
+          <h3>Customer address</h3>
+          <p>${hasAddress ? "Staff can adjust this before labels, checks, or returns." : "Add an address before creating labels or mailing checks."}</p>
+        </div>
+        <span class="staff-admin-state ${hasAddress ? "is-ready" : "is-needed"}">${hasAddress ? "On file" : "Needed"}</span>
+      </div>
+      <div class="staff-address-grid">
+        <label class="field">
+          <span>Street</span>
+          <input id="staff-address-street" autocomplete="off" value="${escapeAttr(address.street)}" />
+        </label>
+        <label class="field">
+          <span>City</span>
+          <input id="staff-address-city" autocomplete="off" value="${escapeAttr(address.city)}" />
+        </label>
+        <label class="field">
+          <span>State</span>
+          <input id="staff-address-state" autocomplete="off" maxlength="2" value="${escapeAttr(address.state)}" />
+        </label>
+        <label class="field">
+          <span>ZIP</span>
+          <input id="staff-address-zip" autocomplete="off" value="${escapeAttr(address.zip)}" />
+        </label>
+      </div>
+      <label class="staff-check-row staff-address-confirm">
+        <input type="checkbox" id="staff-address-confirmed" ${hasAddress ? "checked" : ""} />
+        Customer confirmed this address
+      </label>
+      <button class="secondary-action staff-admin-action" type="button" id="save-customer-address">Save address</button>
+    </article>
+  `;
+}
+
+function renderShippingLabelPanel(order, fields) {
+  const delivery = staffDeliveryFromFields(fields);
+  const isDropoff = delivery === "In-store drop-off";
+  const labelUrl = fields["Shippo Label URL"] || "";
+  const hasAddress = Boolean(fields["Seller Street"] && fields["Seller City"] && fields["Seller State"] && fields["Seller ZIP"]);
+  return `
+    <article class="staff-admin-card">
+      <div class="staff-admin-card-heading">
+        <div>
+          <h3>Prepaid label</h3>
+          <p>${isDropoff ? "This order is marked for in-store dropoff." : labelUrl ? "Inbound label is available for this order." : "Create after the customer address is confirmed."}</p>
+        </div>
+        <span class="staff-admin-state ${labelUrl ? "is-ready" : hasAddress && !isDropoff ? "is-needed" : ""}">${labelUrl ? "Ready" : isDropoff ? "Dropoff" : "Pending"}</span>
+      </div>
+      <div class="staff-admin-detail-list">
+        <p>Delivery: ${escapeHtml(delivery || "-")}</p>
+        <p>Tracking: ${escapeHtml(incomingTrackingNumber(fields))}</p>
+        <p>${labelUrl ? `<a href="${escapeAttr(labelUrl)}" target="_blank" rel="noreferrer">Open inbound label</a>` : "No inbound label link"}</p>
+      </div>
+      <button class="secondary-action staff-admin-action" type="button" id="create-shipping-label" ${isDropoff || !hasAddress ? "disabled" : ""}>Create label</button>
+    </article>
+  `;
+}
+
+function renderPayoutPanel(order, fields, paymentMethod) {
+  const method = paymentMethod || paymentMethodValue(fields);
+  const storeCreditCode = noteValue(fields["Staff Notes"], "Store credit code");
+  const checkNumber = noteValue(fields["Staff Notes"], "Check number");
+  const paymentSent = staffActionCompleted("payment", fields, parseStaffNotes(fields["Staff Notes"]));
+  return `
+    <article class="staff-admin-card staff-payout-card">
+      <div class="staff-admin-card-heading">
+        <div>
+          <h3>Payout</h3>
+          <p>Record the customer payout choice, then mark sent after the check or store credit is issued.</p>
+        </div>
+        <span class="staff-admin-state ${paymentSent ? "is-ready" : method ? "is-needed" : ""}">${paymentSent ? "Sent" : method ? "Selected" : "Needed"}</span>
+      </div>
+      <div class="staff-payout-grid">
+        <label class="field">
+          <span>Method</span>
+          <select id="payment-method">
+            <option value="">Choose method</option>
+            <option value="check" ${method === "check" ? "selected" : ""}>Check</option>
+            <option value="store_credit" ${method === "store_credit" ? "selected" : ""}>Store credit</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Store credit code</span>
+          <input id="store-credit-code" autocomplete="off" value="${escapeAttr(storeCreditCode)}" placeholder="Code" />
+        </label>
+        <label class="field">
+          <span>Check number</span>
+          <input id="check-number" autocomplete="off" value="${escapeAttr(checkNumber)}" />
+        </label>
+        <label class="field">
+          <span>Payout note</span>
+          <input id="payout-note" autocomplete="off" placeholder="Optional note" />
+        </label>
+      </div>
+      <div class="staff-admin-actions">
+        <button class="secondary-action staff-admin-action" type="button" id="save-payout-details">Save payout details</button>
+        <button class="primary-action staff-admin-action" type="button" id="mark-payment-sent">Mark sent + email</button>
+      </div>
+    </article>
   `;
 }
 
@@ -1098,6 +1221,22 @@ function bindDetail(record, accessories) {
     openOrderLog(selectedOrder());
   });
 
+  document.getElementById("save-customer-address")?.addEventListener("click", async (event) => {
+    await saveCustomerAddress(selectedOrder(), event.currentTarget);
+  });
+
+  document.getElementById("create-shipping-label")?.addEventListener("click", async (event) => {
+    await createShippingLabelForOrder(selectedOrder(), event.currentTarget);
+  });
+
+  document.getElementById("save-payout-details")?.addEventListener("click", async (event) => {
+    await savePayoutDetails(selectedOrder(), event.currentTarget, { markSent: false });
+  });
+
+  document.getElementById("mark-payment-sent")?.addEventListener("click", async (event) => {
+    await savePayoutDetails(selectedOrder(), event.currentTarget, { markSent: true, notifyCustomer: true });
+  });
+
   receivedCheck?.addEventListener("change", () => {
     if (receivedCheck.checked && notReceivedCheck) notReceivedCheck.checked = false;
     updateSuggestedOffer(record, accessories);
@@ -1198,6 +1337,112 @@ function updateSuggestedOffer(record, accessories) {
   updateOrderTotalCard(selectedOrder(), record, displayedAdjustedOffer);
   updateDefaultDecision(record, displayedAdjustedOffer, review, accessories);
   syncAutoInspectionNotes(fields, accessories, review);
+}
+
+async function saveCustomerAddress(order, button) {
+  if (!order?.quote) return;
+  const address = {
+    street: document.getElementById("staff-address-street")?.value.trim() || "",
+    city: document.getElementById("staff-address-city")?.value.trim() || "",
+    state: document.getElementById("staff-address-state")?.value.trim().toUpperCase() || "",
+    zip: document.getElementById("staff-address-zip")?.value.trim() || "",
+  };
+  setDetailBusy([button], true);
+  setStatus("Saving customer address...");
+  try {
+    const data = await staffPost("/api/staff/address", {
+      quoteRef: order.quote,
+      address,
+      confirmed: Boolean(document.getElementById("staff-address-confirmed")?.checked),
+    }, { staff: true });
+    mergeUpdatedRecords(data.records || []);
+    renderQueue();
+    renderDetail();
+    setStatus("Customer address saved.");
+  } catch (error) {
+    setStatus(error.message || "Unable to save customer address.", true);
+  } finally {
+    setDetailBusy([button], false);
+  }
+}
+
+async function createShippingLabelForOrder(order, button) {
+  if (!order?.quote) return;
+  if (!window.confirm("Create a prepaid inbound shipping label for this order using the confirmed customer address? In test mode this will dry-run and will not purchase a label.")) {
+    setStatus("Label creation canceled.");
+    return;
+  }
+  const address = {
+    street: document.getElementById("staff-address-street")?.value.trim() || "",
+    city: document.getElementById("staff-address-city")?.value.trim() || "",
+    state: document.getElementById("staff-address-state")?.value.trim().toUpperCase() || "",
+    zip: document.getElementById("staff-address-zip")?.value.trim() || "",
+  };
+  setDetailBusy([button], true);
+  setStatus("Creating prepaid label...");
+  try {
+    const data = await staffPost("/api/staff/create-label", {
+      quoteRef: order.quote,
+      address,
+      emailCustomer: true,
+    }, { staff: true });
+    mergeUpdatedRecords(data.records || []);
+    renderQueue();
+    renderDetail();
+    const dryRun = data.label?.dryRun;
+    setStatus(dryRun ? "Shippo dry run saved. Real label purchasing is still disabled." : "Shipping label created.");
+  } catch (error) {
+    setStatus(error.message || "Unable to create shipping label.", true);
+  } finally {
+    setDetailBusy([button], false);
+  }
+}
+
+async function savePayoutDetails(order, button, options = {}) {
+  if (!order?.quote) return;
+  const paymentMethod = document.getElementById("payment-method")?.value || "";
+  if (!paymentMethod) {
+    setStatus("Choose a payout method before saving payout details.", true);
+    return;
+  }
+  if (options.markSent && !window.confirm("Mark payout sent and email the customer? Use this only after the check or store credit has actually been issued.")) {
+    setStatus("Payout update canceled.");
+    return;
+  }
+  setDetailBusy([button], true);
+  setStatus(options.markSent ? "Marking payout sent..." : "Saving payout details...");
+  try {
+    const data = await staffPost("/api/staff/payout", {
+      quoteRef: order.quote,
+      paymentMethod,
+      storeCreditCode: document.getElementById("store-credit-code")?.value.trim() || "",
+      checkNumber: document.getElementById("check-number")?.value.trim() || "",
+      payoutNotes: document.getElementById("payout-note")?.value.trim() || "",
+      markSent: Boolean(options.markSent),
+      action: options.markSent ? "payment_sent" : "payout_saved",
+      notifyCustomer: Boolean(options.notifyCustomer),
+    }, { staff: true });
+    mergeUpdatedRecords(data.records || []);
+    renderQueue();
+    renderDetail();
+    setStatus(options.markSent ? "Payout marked sent and customer email queued." : "Payout details saved.");
+  } catch (error) {
+    setStatus(error.message || "Unable to save payout details.", true);
+  } finally {
+    setDetailBusy([button], false);
+  }
+}
+
+function mergeUpdatedRecords(updatedRecords = []) {
+  if (!updatedRecords.length) return;
+  const updatedMap = new Map(updatedRecords.map((record) => [record.id, record]));
+  records = records.map((record) => updatedMap.get(record.id) || record);
+  orders = buildOrders(records);
+  const selected = selectedOrder();
+  selectedOrderId = selected?.id || selectedOrderId;
+  if (selectedItemId && !selected?.items?.some((item) => item.id === selectedItemId)) {
+    selectedItemId = selected?.items?.[0]?.id || null;
+  }
 }
 
 async function handleStaffAction(record, accessories, action, buttons, options = {}) {
@@ -3263,7 +3508,7 @@ function renderStaffIntakeQuote() {
     subtitle,
     creditCopy,
     showCreditCard: Boolean(quote.totals.storeCredit),
-    routeLabel: quote.routing?.freeLabelEligible ? "Free label" : "Routing",
+    routeLabel: quote.routing?.freeLabelEligible ? "Shipping" : "Routing",
     routeCopy: quote.routing.message,
   });
   const sourceItems = staffIntakeCartItems();

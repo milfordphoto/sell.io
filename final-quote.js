@@ -196,13 +196,6 @@ function renderPayout() {
           </span>
         </label>
         <label class="final-choice-card">
-          <input type="radio" name="payout" value="paypal" ${state.payout === "paypal" || state.payout === "bank_transfer" ? "checked" : ""} />
-          <span>
-            <strong>PayPal</strong>
-            <small>Milford Photo sends payment to the confirmed PayPal email.</small>
-          </span>
-        </label>
-        <label class="final-choice-card">
           <input type="radio" name="payout" value="store_credit" ${state.payout === "store_credit" ? "checked" : ""} />
           <span>
             <strong>Store credit</strong>

@@ -100,6 +100,17 @@ h1 {
   line-height: 1.6;
 }
 
+.quote-status-entry {
+  margin: 12px 0 0;
+}
+
+.quote-status-entry a {
+  color: var(--blue);
+  font-weight: 850;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .quick-steps-panel {
   display: grid;
   gap: 18px;
@@ -2361,6 +2372,164 @@ fieldset {
   line-height: 1.45;
 }
 
+.quote-status-app {
+  min-height: 100vh;
+}
+
+.quote-status-shell {
+  max-width: 880px;
+}
+
+.quote-status-hero {
+  display: grid;
+  gap: 6px;
+}
+
+.quote-status-panel,
+.quote-status-form,
+.quote-status-summary,
+.quote-status-details article {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.quote-status-panel {
+  display: grid;
+  gap: 18px;
+  padding: clamp(18px, 3vw, 28px);
+}
+
+.quote-status-form {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+}
+
+.quote-status-message {
+  border: 1px solid rgba(20, 122, 80, 0.25);
+  border-radius: var(--radius);
+  background: rgba(20, 122, 80, 0.08);
+  color: var(--green);
+  padding: 12px 14px;
+  line-height: 1.45;
+}
+
+.quote-status-message.is-error {
+  border-color: rgba(213, 33, 39, 0.28);
+  background: rgba(213, 33, 39, 0.08);
+  color: var(--mp-red-dark);
+}
+
+.quote-status-message p {
+  margin: 5px 0 0;
+}
+
+.quote-status-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(190px, auto);
+  gap: 18px;
+  align-items: start;
+  padding: 18px;
+}
+
+.quote-status-summary h2,
+.quote-status-summary p {
+  margin: 0;
+}
+
+.quote-status-summary h2 {
+  font-size: clamp(1.8rem, 4vw, 3rem);
+  line-height: 1;
+}
+
+.quote-status-summary p:not(.brand-line) {
+  margin-top: 8px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.quote-status-total {
+  display: grid;
+  gap: 4px;
+  border-left: 4px solid var(--mp-red);
+  padding-left: 14px;
+}
+
+.quote-status-total span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+
+.quote-status-total strong {
+  font-size: 1.2rem;
+  line-height: 1.15;
+}
+
+.quote-status-steps {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.quote-status-step {
+  min-height: 64px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--soft);
+  color: var(--muted);
+  padding: 10px;
+  font-size: 0.78rem;
+  font-weight: 850;
+  line-height: 1.2;
+}
+
+.quote-status-step.is-complete {
+  border-color: rgba(20, 122, 80, 0.28);
+  background: rgba(20, 122, 80, 0.1);
+  color: var(--green);
+}
+
+.quote-status-step.is-current {
+  border-color: rgba(213, 33, 39, 0.38);
+  background: rgba(213, 33, 39, 0.08);
+  color: var(--mp-red-dark);
+}
+
+.quote-status-details {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.quote-status-details article {
+  display: grid;
+  gap: 6px;
+  box-shadow: none;
+  padding: 15px;
+}
+
+.quote-status-details h3,
+.quote-status-details p {
+  margin: 0;
+}
+
+.quote-status-details h3 {
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.quote-status-details p {
+  color: var(--muted);
+  line-height: 1.35;
+}
+
 .label-link {
   width: fit-content;
   border: 1px solid var(--mp-red);
@@ -2647,6 +2816,7 @@ fieldset {
   color: var(--muted);
   font-size: 0.9rem;
   line-height: 1.2;
+  white-space: nowrap;
 }
 
 .staff-current-user strong {
@@ -3449,6 +3619,120 @@ fieldset {
   margin: 12px 0 22px;
   padding-bottom: 20px;
   border-bottom: 1px solid var(--line);
+}
+
+.staff-order-admin-panels {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0 0 22px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.staff-admin-card {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 15px;
+  background: #ffffff;
+}
+
+.staff-admin-card-heading {
+  display: flex;
+  gap: 12px;
+  align-items: start;
+  justify-content: space-between;
+}
+
+.staff-admin-card-heading h3,
+.staff-admin-card-heading p,
+.staff-admin-detail-list p {
+  margin: 0;
+}
+
+.staff-admin-card-heading h3 {
+  font-size: 0.92rem;
+}
+
+.staff-admin-card-heading p,
+.staff-admin-detail-list p {
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.staff-admin-state {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--soft);
+  color: var(--muted);
+  padding: 4px 8px;
+  font-size: 0.7rem;
+  font-weight: 900;
+}
+
+.staff-admin-state.is-ready {
+  background: rgba(20, 122, 80, 0.12);
+  color: var(--green);
+}
+
+.staff-admin-state.is-needed {
+  background: rgba(213, 33, 39, 0.08);
+  color: var(--mp-red-dark);
+}
+
+.staff-address-grid,
+.staff-payout-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.staff-payout-card {
+  grid-column: 1 / -1;
+}
+
+.staff-intake > .staff-payout-card {
+  margin-top: 16px;
+}
+
+.staff-payout-card .staff-payout-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.staff-address-grid .field,
+.staff-payout-grid .field {
+  margin-bottom: 0;
+}
+
+.staff-address-confirm {
+  width: 100%;
+  margin: 0;
+}
+
+.staff-admin-detail-list {
+  display: grid;
+  gap: 5px;
+}
+
+.staff-admin-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  justify-self: end;
+  width: min(460px, 100%);
+}
+
+.staff-admin-action {
+  width: 100%;
+}
+
+.staff-admin-action:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .staff-info-grid section {
@@ -4435,6 +4719,12 @@ fieldset {
   .staff-order-header,
   .staff-intake-header,
 	  .staff-info-grid,
+	  .staff-order-admin-panels,
+	  .staff-address-grid,
+	  .staff-payout-grid,
+	  .staff-admin-actions,
+	  .quote-status-summary,
+	  .quote-status-details,
 	  .staff-accessory-grid,
 	  .staff-adjust-grid,
 	  .staff-intake-widget-fields,
@@ -4492,6 +4782,10 @@ fieldset {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .quote-status-steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .staff-order-decision {
     display: grid;
   }
@@ -4521,6 +4815,10 @@ fieldset {
   }
 
   .staff-action-steps {
+    grid-template-columns: 1fr;
+  }
+
+  .staff-payout-card .staff-payout-grid {
     grid-template-columns: 1fr;
   }
 
