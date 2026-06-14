@@ -1916,7 +1916,6 @@ function packingQuoteHtml() {
             <th>Condition</th>
             <th>Cash offer</th>
             <th>Store credit</th>
-            <th>Market estimate</th>
           </tr>
         </thead>
         <tbody>
@@ -1961,7 +1960,6 @@ function packingQuoteItems() {
       condition: CONDITION_LABELS[condition] || condition || "-",
       offerAmount: quoteItem.offerAmount,
       storeCreditAmount: quoteItem.storeCreditAmount,
-      marketPrice: quoteItem.marketPrice,
       message: quoteItem.message || "",
       notes: cartItem.notes || "",
     };
@@ -1972,7 +1970,6 @@ function renderPackingQuoteItem(item) {
   const itemName = [item.brand, item.model].filter(Boolean).join(" ") || "Item";
   const offer = item.offerAmount ? money.format(item.offerAmount) : item.message || "Review";
   const storeCredit = item.storeCreditAmount ? money.format(item.storeCreditAmount) : "-";
-  const market = item.marketPrice ? money.format(item.marketPrice) : "-";
   const itemMeta = [item.category, item.message].filter(Boolean).join(" - ");
   const notes = item.notes ? `<div class="notes">${escapeHtml(item.notes)}</div>` : "";
 
@@ -1983,7 +1980,6 @@ function renderPackingQuoteItem(item) {
       <td>${escapeHtml(item.condition)}</td>
       <td>${escapeHtml(offer)}</td>
       <td>${escapeHtml(storeCredit)}</td>
-      <td>${escapeHtml(market)}</td>
     </tr>
   `;
 }
