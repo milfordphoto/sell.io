@@ -167,6 +167,7 @@ const state = {
 const els = {
   appTitle: byId("app-title"),
   appIntro: byId("app-intro"),
+  doneStepLabel: byId("step-done-label"),
   brand: byId("brand"),
   category: byId("category"),
   model: byId("model"),
@@ -1776,9 +1777,14 @@ function updateDeliveryFields() {
 }
 
 function updateSubmitQuoteButtonLabel() {
-  if (!els.submitQuote || els.submitQuote.disabled) return;
   const delivery = selectedRadioValue("delivery") || "ship";
-  els.submitQuote.textContent = delivery === "dropoff" ? "Finalize quote" : "Ship your gear";
+  const label = delivery === "dropoff" ? "Finalize quote" : "Ship your gear";
+  if (els.submitQuote && els.submitQuote.textContent !== "Submitting...") {
+    els.submitQuote.textContent = label;
+  }
+  if (els.doneStepLabel) {
+    els.doneStepLabel.textContent = label;
+  }
 }
 
 function printPackingQuote() {

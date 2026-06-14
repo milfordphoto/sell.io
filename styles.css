@@ -263,6 +263,10 @@ h1 {
   font-size: 0.78rem;
 }
 
+.step b {
+  font: inherit;
+}
+
 .step.is-active {
   border-color: var(--mp-red);
   background: var(--mp-red);
