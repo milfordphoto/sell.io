@@ -1614,12 +1614,17 @@ fieldset {
 
 .staff-intake-quote-item {
   position: relative;
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
-  gap: 14px;
+  grid-template-columns: 50px minmax(180px, 1fr) max-content minmax(112px, max-content);
+  column-gap: 14px;
+  row-gap: 8px;
   align-items: center;
   padding: 14px;
   border-color: #d8dee8;
   background: #ffffff;
+}
+
+.staff-intake-quote-item.has-follow-up-note {
+  align-items: start;
 }
 
 .staff-intake-quote-item .quote-title {
@@ -1639,7 +1644,7 @@ fieldset {
 
 .staff-intake-quote-price {
   display: grid;
-  min-width: 132px;
+  min-width: 112px;
   justify-items: end;
   text-align: right;
 }
@@ -1659,6 +1664,15 @@ fieldset {
   line-height: 1.2;
 }
 
+.staff-intake-quote-note {
+  grid-column: 2 / -1;
+  margin: -2px 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.35;
+  text-align: right;
+}
+
 .staff-intake-quote-remove {
   margin-top: 2px;
 }
@@ -1672,7 +1686,7 @@ fieldset {
 }
 
 .staff-intake-summary-panel .cart-list {
-  margin-bottom: 18px;
+  margin: 0 0 18px;
 }
 
 .staff-intake-store-credit-line {
@@ -3520,6 +3534,36 @@ fieldset {
   line-height: 1.45;
 }
 
+.staff-offer-preview-title {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(190px, auto);
+  align-items: start;
+}
+
+.staff-intake-summary-compact {
+  justify-self: end;
+  min-width: 190px;
+  text-align: right;
+}
+
+.staff-intake-summary-compact .summary-header {
+  justify-content: flex-end;
+  margin-bottom: 5px;
+}
+
+.staff-intake-summary-compact .summary-price {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.staff-intake-summary-compact .summary-price span {
+  font-size: clamp(1.9rem, 4vw, 2.65rem);
+}
+
+.staff-intake-summary-compact .summary-price small {
+  margin-top: 5px;
+}
+
 .staff-check-row,
 .staff-accessory-item {
   display: flex;
@@ -4378,6 +4422,20 @@ fieldset {
 	  .staff-decision-grid {
 	    grid-template-columns: 1fr;
 	  }
+
+  .staff-offer-preview-title {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .staff-intake-summary-compact {
+    grid-column: 1 / -1;
+    justify-self: stretch;
+    text-align: left;
+  }
+
+  .staff-intake-summary-compact .summary-header {
+    justify-content: space-between;
+  }
 
   .staff-condition-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));

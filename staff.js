@@ -1986,23 +1986,25 @@ function renderStaffIntake() {
 	        </section>
 
 	        <section class="staff-review-section">
-	          <div class="staff-section-title">
+	          <div class="staff-section-title staff-offer-preview-title">
 	            <span>3</span>
 	            <div>
 	              <h3>Offer preview</h3>
 	              <p>${staffIntakeIsAddingToOrder() ? "Review pricing for gear being added to this order." : "Review pricing for the gear in this in-store quote."}</p>
 	            </div>
-	          </div>
-	          <section class="summary-panel staff-intake-summary-panel" aria-label="Quote summary">
-	            <div class="summary-header">
+	            <div class="staff-intake-summary-compact">
+	              <div class="summary-header">
 	              <span>Quote summary</span>
 	              <strong id="staff-intake-summary-state">Draft</strong>
-	            </div>
+	              </div>
 		            <div class="summary-price">
 		              <span id="staff-intake-total">Add gear</span>
 		              <small class="staff-intake-store-credit-line" id="staff-intake-store-credit-line" hidden></small>
 		              <small id="staff-intake-routing">Your offer will appear here as you add gear.</small>
 		            </div>
+	            </div>
+	          </div>
+	          <section class="summary-panel staff-intake-summary-panel" aria-label="Quote summary">
 			            <div class="cart-list staff-intake-cart" id="staff-intake-cart"></div>
 		            <dl class="summary-list staff-intake-summary-list">
 		              <div>
@@ -3263,8 +3265,6 @@ function renderStaffIntakeQuote() {
     showCreditCard: Boolean(quote.totals.storeCredit),
     routeLabel: quote.routing?.freeLabelEligible ? "Free label" : "Routing",
     routeCopy: quote.routing.message,
-    messageCopy: quote.routing.message,
-    messageClass: quote.routing?.declinedOnly ? "is-error" : "is-success",
   });
   const sourceItems = staffIntakeCartItems();
   list.innerHTML = quote.items.map((item, index) => renderStaffIntakeQuoteItem(item, sourceItems[index])).join("");
@@ -3280,12 +3280,13 @@ function priceLabelForStaffQuoteItem(quoteItem) {
 
 function renderStaffIntakeQuoteItem(item, sourceItem, options = {}) {
   const price = priceLabelForStaffQuoteItem(item);
-  const credit = item.storeCreditAmount ? `${money.format(item.storeCreditAmount)} store credit` : item.message || "Staff follow-up needed";
+  const credit = item.storeCreditAmount ? `${money.format(item.storeCreditAmount)} store credit` : "";
+  const followUpNote = !credit ? item.message || "Staff follow-up needed" : "";
   const canRemove = sourceItem?.id && staffIntakeState.cart.some((cartItem) => cartItem.id === sourceItem.id);
   const imageSource = sourceItem || item;
   const referenceItem = sourceItem || item;
   return `
-    <article class="quote-item staff-intake-quote-item${options.preview ? " staff-intake-preview-item" : ""}">
+    <article class="quote-item staff-intake-quote-item${options.preview ? " staff-intake-preview-item" : ""}${followUpNote ? " has-follow-up-note" : ""}">
       ${staffIntakeItemImageMarkup(imageSource, "product-thumb staff-intake-quote-image")}
       <div class="quote-body">
         <div class="quote-title">
@@ -3296,9 +3297,10 @@ function renderStaffIntakeQuoteItem(item, sourceItem, options = {}) {
       ${renderStaffIntakeReferenceDropdown(referenceItem)}
       <div class="quote-price staff-intake-quote-price">
         <strong>${escapeHtml(price)}</strong>
-        <span>${escapeHtml(credit)}</span>
+        ${credit ? `<span>${escapeHtml(credit)}</span>` : ""}
         ${canRemove ? `<button class="remove-item staff-intake-quote-remove" type="button" aria-label="Remove item" data-staff-intake-remove="${escapeAttr(sourceItem.id)}">x</button>` : ""}
       </div>
+      ${followUpNote ? `<p class="staff-intake-quote-note">${escapeHtml(followUpNote)}</p>` : ""}
     </article>
   `;
 }
