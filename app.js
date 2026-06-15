@@ -213,6 +213,7 @@ const els = {
   doneReference: byId("done-reference"),
   doneTitle: byId("done-title"),
   doneCopy: byId("done-copy"),
+  doneActions: byId("done-actions"),
   doneNextSteps: byId("done-next-steps"),
   printQuote: byId("print-quote"),
   labelLink: byId("label-link"),
@@ -1638,12 +1639,26 @@ function renderDone(result) {
   els.doneCopy.textContent = copy.panelCopy;
   els.printQuote.textContent = deliveryForResult(result) === "dropoff" ? "Print dropoff quote" : "Print packing quote";
   els.doneNextSteps.innerHTML = renderDoneNextSteps(result);
+  const actionsSlot = byId("done-roadmap-actions-slot");
+  if (actionsSlot && els.doneActions) actionsSlot.appendChild(els.doneActions);
+
+  const showLabelAction = shouldShowShippingLabelAction(result);
   if (result.labelUrl) {
     els.labelLink.href = result.labelUrl;
     els.labelLink.textContent = "Print shipping label";
     els.labelLink.hidden = false;
+    els.labelLink.classList.remove("is-disabled");
+    els.labelLink.removeAttribute("aria-disabled");
+  } else if (showLabelAction) {
+    els.labelLink.removeAttribute("href");
+    els.labelLink.textContent = "Print shipping label";
+    els.labelLink.hidden = false;
+    els.labelLink.classList.add("is-disabled");
+    els.labelLink.setAttribute("aria-disabled", "true");
   } else {
     els.labelLink.removeAttribute("href");
+    els.labelLink.classList.remove("is-disabled");
+    els.labelLink.removeAttribute("aria-disabled");
     els.labelLink.hidden = true;
   }
   renderSummary();
@@ -1651,6 +1666,12 @@ function renderDone(result) {
 
 function deliveryForResult(result = {}) {
   return result.delivery || selectedRadioValue("delivery") || "ship";
+}
+
+function shouldShowShippingLabelAction(result = {}) {
+  const delivery = deliveryForResult(result);
+  if (delivery === "dropoff") return false;
+  return Boolean(result.labelUrl || result.labelDryRun || state.quote?.routing?.freeLabelEligible);
 }
 
 function doneViewFor(result = {}) {
@@ -1718,12 +1739,12 @@ function renderDoneNextSteps(result = {}) {
       }
     : hasLabel
       ? {
-          title: "Print and ship",
+          title: "Send your gear",
           copy: "Print the packing quote and prepaid label. Put the quote inside the box, attach the label outside the box, and drop it off with the carrier within 7 days.",
         }
       : freeLabelExpected
         ? {
-            title: "Print quote and wait for label",
+            title: "Send your gear",
             copy: "Print the packing quote now and place it in the box. Milford Photo will email the prepaid label and packing instructions when the label is ready.",
           }
         : requiresStaffFirst
@@ -1779,6 +1800,7 @@ function renderDoneNextSteps(result = {}) {
           <div class="done-roadmap-copy">
             <h4>${escapeHtml(step.title)}</h4>
             <p>${escapeHtml(step.copy)}</p>
+            ${step.status === "current" ? '<div class="done-roadmap-actions-slot" id="done-roadmap-actions-slot"></div>' : ""}
           </div>
         </li>
       `).join("")}

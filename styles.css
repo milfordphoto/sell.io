@@ -2450,6 +2450,14 @@ fieldset {
   gap: 6px;
 }
 
+.done-roadmap-actions-slot {
+  margin-top: 8px;
+}
+
+.done-roadmap-actions-slot:empty {
+  display: none;
+}
+
 .done-roadmap-copy h4 {
   margin: 0;
   font-size: clamp(1.2rem, 2vw, 1.7rem);
@@ -2629,6 +2637,15 @@ fieldset {
 
 .label-link:hover {
   background: var(--mp-red-dark);
+}
+
+.label-link.is-disabled,
+.label-link.is-disabled:hover {
+  border-color: var(--line);
+  background: #ffffff;
+  color: var(--muted);
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 @media (max-width: 640px) {
