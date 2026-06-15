@@ -100,17 +100,6 @@ h1 {
   line-height: 1.6;
 }
 
-.quote-status-entry {
-  margin: 12px 0 0;
-}
-
-.quote-status-entry a {
-  color: var(--blue);
-  font-weight: 850;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
 .quick-steps-panel {
   display: grid;
   gap: 18px;
@@ -399,6 +388,13 @@ h1 {
 .sell-faq p {
   padding: 14px 16px;
   background: var(--soft);
+}
+
+.sell-faq a {
+  color: var(--blue);
+  font-weight: 850;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .form-step {

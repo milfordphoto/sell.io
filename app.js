@@ -1646,7 +1646,7 @@ function doneViewFor(result = {}) {
   if (freeLabelExpected) {
     return {
       heroTitle: "Print your quote, then watch for the label email",
-      heroIntro: "Place the printed quote in the box. Milford Photo will email the prepaid label and packing instructions when the label is ready.",
+      heroIntro: "Put the printed quote in the box and watch your email for the prepaid label.",
       panelTitle: "Print this quote for your box",
       panelCopy: "Milford Photo received your quote. Print a copy to include with the gear, then use the label from the follow-up email when it arrives. The quote and shipping label are valid for 7 days.",
     };
