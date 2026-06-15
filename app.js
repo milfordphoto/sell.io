@@ -203,13 +203,11 @@ const els = {
   parcelHeight: byId("parcel-height"),
   parcelWeight: byId("parcel-weight"),
   shippingReviewCard: byId("shipping-review-card"),
-  shippingReviewName: byId("shipping-review-name"),
   shippingReviewEmail: byId("shipping-review-email"),
   shippingReviewPhone: byId("shipping-review-phone"),
   shippingReviewAddress: byId("shipping-review-address"),
   shippingConfirmed: byId("shipping-confirmed"),
   editShippingDetails: byId("edit-shipping-details"),
-  terms: byId("terms"),
   submitQuote: byId("submit-quote"),
   doneStep: byId("done-step"),
   doneReference: byId("done-reference"),
@@ -1846,7 +1844,7 @@ function showShippingReview() {
     return;
   }
   state.shippingDetailsConfirmed = false;
-  setStatus("Confirm your shipping details before Milford Photo creates the prepaid label.", "info");
+  setStatus("Confirm your information before Milford Photo creates the prepaid label.", "info");
   els.shippingReviewCard.scrollIntoView({ block: "center", behavior: "smooth" });
   els.shippingConfirmed.focus({ preventScroll: true });
   resizeParentFrame();
@@ -1864,13 +1862,24 @@ function resetShippingConfirmation() {
 function renderShippingReview() {
   const name = [els.sellerFirstName.value.trim(), els.sellerLastName.value.trim()].filter(Boolean).join(" ") || "-";
   const address = [
+    name,
     els.street.value.trim(),
     [els.city.value.trim(), els.stateField.value.trim(), els.zip.value.trim()].filter(Boolean).join(", "),
   ].filter(Boolean).join("\n") || "-";
-  els.shippingReviewName.textContent = name;
   els.shippingReviewEmail.textContent = els.sellerEmail.value.trim() || "-";
-  els.shippingReviewPhone.textContent = els.sellerPhone.value.trim() || "-";
+  els.shippingReviewPhone.textContent = formatPhoneForDisplay(els.sellerPhone.value.trim()) || "-";
   els.shippingReviewAddress.textContent = address;
+}
+
+function formatPhoneForDisplay(value) {
+  const digits = String(value || "").replace(/\D/g, "");
+  if (digits.length === 10) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+  }
+  if (digits.length === 11 && digits.startsWith("1")) {
+    return `+1 (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
+  }
+  return value;
 }
 
 function printPackingQuote() {
