@@ -57,7 +57,7 @@ const STEP_COPY = {
     intro: "Add contact and delivery details so Milford Photo can receive and inspect your offer.",
   },
   done: {
-    title: "Next steps for your used gear quote",
+    title: "Next steps for your used gear order",
     intro: "Print the packing quote, keep the quote number handy, and follow the status below for what happens next.",
   },
 };
@@ -161,6 +161,7 @@ const state = {
   cartQuoteTimer: null,
   quote: null,
   submission: null,
+  shippingDetailsConfirmed: false,
   frameResizePending: false,
 };
 
@@ -201,8 +202,16 @@ const els = {
   parcelWidth: byId("parcel-width"),
   parcelHeight: byId("parcel-height"),
   parcelWeight: byId("parcel-weight"),
+  shippingReviewCard: byId("shipping-review-card"),
+  shippingReviewName: byId("shipping-review-name"),
+  shippingReviewEmail: byId("shipping-review-email"),
+  shippingReviewPhone: byId("shipping-review-phone"),
+  shippingReviewAddress: byId("shipping-review-address"),
+  shippingConfirmed: byId("shipping-confirmed"),
+  editShippingDetails: byId("edit-shipping-details"),
   terms: byId("terms"),
   submitQuote: byId("submit-quote"),
+  doneStep: byId("done-step"),
   doneReference: byId("done-reference"),
   doneTitle: byId("done-title"),
   doneCopy: byId("done-copy"),
@@ -342,7 +351,29 @@ function bindEvents() {
   });
 
   document.querySelectorAll('input[name="delivery"]').forEach((input) => {
-    input.addEventListener("change", updateDeliveryFields);
+    input.addEventListener("change", () => {
+      resetShippingConfirmation();
+      updateDeliveryFields();
+    });
+  });
+  [
+    els.sellerFirstName,
+    els.sellerLastName,
+    els.sellerEmail,
+    els.sellerPhone,
+    els.street,
+    els.city,
+    els.stateField,
+    els.zip,
+  ].forEach((input) => input.addEventListener("input", resetShippingConfirmation));
+  els.shippingConfirmed.addEventListener("change", () => {
+    state.shippingDetailsConfirmed = els.shippingConfirmed.checked;
+    updateSubmitQuoteButtonLabel();
+  });
+  els.editShippingDetails.addEventListener("click", () => {
+    resetShippingConfirmation();
+    els.street.focus();
+    setStatus("Update the shipping details, then click Ship your gear again.", "info");
   });
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && !els.conditionGuideModal.hidden) closeConditionGuide();
@@ -1335,12 +1366,17 @@ async function submitQuote(event) {
     return;
   }
 
+  const delivery = selectedRadioValue("delivery") || "ship";
+  if (requiresShippingConfirmation(delivery) && !shippingConfirmationReady()) {
+    showShippingReview();
+    return;
+  }
+
   els.submitQuote.disabled = true;
   els.submitQuote.textContent = "Submitting...";
   clearStatus();
 
   try {
-    const delivery = selectedRadioValue("delivery") || "ship";
     const firstName = els.sellerFirstName.value.trim();
     const lastName = els.sellerLastName.value.trim();
     const data = await apiPost("/api/submit", {
@@ -1370,6 +1406,7 @@ async function submitQuote(event) {
     state.submission = { ...data, delivery };
     renderDone(state.submission);
     setStep("done");
+    els.doneStep.scrollIntoView({ block: "start" });
   } catch (error) {
     setStatus(error.message || "Unable to submit the quote right now.", "error");
   } finally {
@@ -1733,8 +1770,8 @@ function renderDoneNextSteps(result = {}) {
   ];
 
   return `
-    <h3>Your quote status</h3>
-    <ol class="done-roadmap" aria-label="Quote status">
+    <h3>Your order status</h3>
+    <ol class="done-roadmap" aria-label="Order status">
       ${steps.map((step) => `
         <li class="done-roadmap-step is-${escapeHtml(step.status)}"${step.status === "current" ? ' aria-current="step"' : ""}>
           <div class="done-roadmap-meta">
@@ -1764,6 +1801,7 @@ function updateDeliveryFields() {
   els.zip.required = true;
 
   if (delivery === "dropoff") {
+    resetShippingConfirmation();
     els.mailCopy.textContent = "Use this quote with a Milford Photo specialist.";
   } else if (freeLabel) {
     els.mailCopy.textContent = "Milford Photo can email a prepaid label after the quote is submitted. The label is valid for 7 days.";
@@ -1778,13 +1816,61 @@ function updateDeliveryFields() {
 
 function updateSubmitQuoteButtonLabel() {
   const delivery = selectedRadioValue("delivery") || "ship";
-  const label = delivery === "dropoff" ? "Finalize quote" : "Ship your gear";
+  const label = delivery === "dropoff"
+    ? "Finalize quote"
+    : requiresShippingConfirmation(delivery) && !els.shippingReviewCard.hidden
+      ? "Create prepaid label"
+      : "Ship your gear";
   if (els.submitQuote && els.submitQuote.textContent !== "Submitting...") {
     els.submitQuote.textContent = label;
   }
   if (els.doneStepLabel) {
     els.doneStepLabel.textContent = label;
   }
+}
+
+function requiresShippingConfirmation(delivery) {
+  return delivery === "ship" && Boolean(state.quote?.routing?.freeLabelEligible);
+}
+
+function shippingConfirmationReady() {
+  return !els.shippingReviewCard.hidden && state.shippingDetailsConfirmed && els.shippingConfirmed.checked;
+}
+
+function showShippingReview() {
+  renderShippingReview();
+  els.shippingReviewCard.hidden = false;
+  updateSubmitQuoteButtonLabel();
+  if (els.shippingConfirmed.checked) {
+    state.shippingDetailsConfirmed = true;
+    return;
+  }
+  state.shippingDetailsConfirmed = false;
+  setStatus("Confirm your shipping details before Milford Photo creates the prepaid label.", "info");
+  els.shippingReviewCard.scrollIntoView({ block: "center", behavior: "smooth" });
+  els.shippingConfirmed.focus({ preventScroll: true });
+  resizeParentFrame();
+}
+
+function resetShippingConfirmation() {
+  const wasVisible = els.shippingReviewCard && !els.shippingReviewCard.hidden;
+  state.shippingDetailsConfirmed = false;
+  if (els.shippingConfirmed) els.shippingConfirmed.checked = false;
+  if (els.shippingReviewCard) els.shippingReviewCard.hidden = true;
+  updateSubmitQuoteButtonLabel();
+  if (wasVisible) resizeParentFrame();
+}
+
+function renderShippingReview() {
+  const name = [els.sellerFirstName.value.trim(), els.sellerLastName.value.trim()].filter(Boolean).join(" ") || "-";
+  const address = [
+    els.street.value.trim(),
+    [els.city.value.trim(), els.stateField.value.trim(), els.zip.value.trim()].filter(Boolean).join(", "),
+  ].filter(Boolean).join("\n") || "-";
+  els.shippingReviewName.textContent = name;
+  els.shippingReviewEmail.textContent = els.sellerEmail.value.trim() || "-";
+  els.shippingReviewPhone.textContent = els.sellerPhone.value.trim() || "-";
+  els.shippingReviewAddress.textContent = address;
 }
 
 function printPackingQuote() {

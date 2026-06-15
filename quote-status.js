@@ -15,7 +15,7 @@ async function init() {
 }
 
 async function loadStatus(quote, token) {
-  panel.innerHTML = `<p>Loading quote status...</p>`;
+  panel.innerHTML = `<p>Loading order status...</p>`;
   try {
     const data = await apiGet(`/api/status?quote=${encodeURIComponent(quote)}&token=${encodeURIComponent(token)}`);
     renderStatus(data);
@@ -45,7 +45,7 @@ function lookupFormHtml(quote = "") {
       <div class="section-heading final-small-heading">
         <p>Status link</p>
         <h2>Email me a secure status link</h2>
-        <span>Enter the quote number plus the email or phone number from the quote.</span>
+        <span>Enter the quote number plus the email or phone number from the order.</span>
       </div>
       <label class="field">
         <span>Quote number</span>
@@ -87,7 +87,7 @@ function renderStatus(data = {}) {
     <section class="quote-status-summary">
       <div>
         <p class="brand-line">Quote ${escapeHtml(data.quoteRef || "")}</p>
-        <h2>${escapeHtml(data.status?.label || "Quote status")}</h2>
+        <h2>${escapeHtml(data.status?.label || "Order status")}</h2>
         <p>${escapeHtml(data.status?.copy || "")}</p>
       </div>
       <div class="quote-status-total">
@@ -95,7 +95,7 @@ function renderStatus(data = {}) {
         <strong>${escapeHtml(data.offerSummary || "Offer pending")}</strong>
       </div>
     </section>
-    <ol class="quote-status-steps" aria-label="Quote progress">
+    <ol class="quote-status-steps" aria-label="Order progress">
       ${(data.steps || []).map((step) => `
         <li class="quote-status-step is-${escapeAttr(step.state)}">
           <span>${escapeHtml(step.label)}</span>

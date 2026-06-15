@@ -7,7 +7,7 @@
     <meta name="description" content="Milford Photo used equipment quote widget." />
     <meta name="robots" content="noindex,nofollow" />
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="./styles.css?v=20260614-status-workflow" />
+    <link rel="stylesheet" href="./styles.css?v=20260614-shipping-confirmation" />
   </head>
   <body>
     <main class="mp-used-app" id="app">
@@ -240,6 +240,39 @@
                 </label>
               </div>
 
+              <section class="shipping-review-card" id="shipping-review-card" aria-labelledby="shipping-review-title" hidden>
+                <div class="shipping-review-heading">
+                  <div>
+                    <p>Before we create the label</p>
+                    <h3 id="shipping-review-title">Confirm your shipping details</h3>
+                  </div>
+                  <button class="text-action" type="button" id="edit-shipping-details">Edit</button>
+                </div>
+                <p class="shipping-review-copy">Milford Photo will use this contact information and ship-from address for the prepaid label.</p>
+                <dl class="shipping-review-list">
+                  <div>
+                    <dt>Name</dt>
+                    <dd id="shipping-review-name">-</dd>
+                  </div>
+                  <div>
+                    <dt>Email</dt>
+                    <dd id="shipping-review-email">-</dd>
+                  </div>
+                  <div>
+                    <dt>Phone</dt>
+                    <dd id="shipping-review-phone">-</dd>
+                  </div>
+                  <div class="shipping-review-address">
+                    <dt>Ship-from address</dt>
+                    <dd id="shipping-review-address">-</dd>
+                  </div>
+                </dl>
+                <label class="shipping-confirmation">
+                  <input id="shipping-confirmed" type="checkbox" />
+                  <span>I confirm this is the address where I will ship from.</span>
+                </label>
+              </section>
+
               <label class="consent">
                 <input id="terms" type="checkbox" required />
                 <span>I understand the offer is pending Milford Photo inspection and may be adjusted after verification.</span>
@@ -375,8 +408,8 @@
 
           <div class="sell-faq">
             <details>
-              <summary>How do I check my quote status?</summary>
-              <p>Use the <a href="./quote-status.html">Check quote status</a> page with your quote number and email address to get a secure status link.</p>
+              <summary>How do I check my order status?</summary>
+              <p>Use the <a href="./quote-status.html">Check order status</a> page with your quote number and email address to get a secure status link.</p>
             </details>
             <details>
               <summary>How long does inspection take?</summary>
@@ -464,6 +497,6 @@
     <script src="./catalog-modern-supplement.js?v=20260610-condition-required"></script>
     <script src="./catalog.js?v=20260610-condition-required"></script>
     <script src="./product-images.js?v=20260610-product-images-640b57d"></script>
-    <script src="./app.js?v=20260613-print-quote"></script>
+    <script src="./app.js?v=20260614-shipping-confirmation"></script>
   </body>
 </html>

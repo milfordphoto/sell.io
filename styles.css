@@ -2159,6 +2159,102 @@ fieldset {
   padding-top: 2px;
 }
 
+.shipping-review-card {
+  display: grid;
+  gap: 14px;
+  margin: 18px 0;
+  padding: 16px;
+  border: 1px solid rgba(20, 122, 80, 0.28);
+  border-radius: var(--radius);
+  background: rgba(20, 122, 80, 0.07);
+}
+
+.shipping-review-card[hidden] {
+  display: none;
+}
+
+.shipping-review-heading {
+  display: flex;
+  gap: 14px;
+  align-items: start;
+  justify-content: space-between;
+}
+
+.shipping-review-heading p {
+  margin: 0 0 4px;
+  color: var(--green);
+  font-size: 0.74rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.shipping-review-heading h3 {
+  margin: 0;
+  font-size: 1.18rem;
+  line-height: 1.15;
+}
+
+.shipping-review-copy {
+  margin: 0;
+  color: var(--ink-soft);
+  line-height: 1.45;
+}
+
+.shipping-review-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.shipping-review-list div {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid rgba(20, 122, 80, 0.18);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.shipping-review-list .shipping-review-address {
+  grid-column: 1 / -1;
+}
+
+.shipping-review-list dt {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 850;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.shipping-review-list dd {
+  margin: 0;
+  color: var(--ink);
+  font-weight: 760;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+
+.shipping-confirmation {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin: 0;
+  color: var(--ink);
+  font-weight: 780;
+  line-height: 1.4;
+}
+
+.shipping-confirmation input {
+  width: auto;
+  min-height: auto;
+  margin-top: 2px;
+}
+
 .staff-intake-address-fields {
   margin: 2px 0 18px;
   padding: 14px;
