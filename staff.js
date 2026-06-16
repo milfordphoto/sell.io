@@ -101,43 +101,49 @@ const STAFF_INTAKE_CONDITIONS = [
 const STAFF_ACTION_STEPS = [
   {
     action: "received",
-    label: "Mark item received",
+    label: "Mark Item Received at Milford Photo",
     status: "Received - Needs Inspection",
+    statusCopy: "Saves status: Received - needs inspection",
     notifyLabel: "Email received notice",
     notifyMeta: "Includes tracking when available and 1-2 business day inspection timing.",
   },
   {
     action: "save",
-    label: "Save item intake",
+    label: "Save Inspection Progress",
     status: "Inspection In Progress",
+    statusCopy: "Saves status: Inspection in progress",
     notifyLabel: "Email inspection update",
     notifyTemplate: "staff_item_update",
   },
   {
     action: "adjusted",
-    label: "Finish item evaluation",
+    label: "Mark Item Evaluation Complete",
     status: "Evaluated",
+    statusCopy: "Saves status: Evaluated",
     primary: true,
     notifyLabel: "Email evaluation update",
     notifyTemplate: "staff_item_update",
   },
   {
     action: "accepted",
-    label: "Mark item accepted",
+    label: "Mark Final Quote Accepted by Customer",
     status: "Customer Accepted Item",
+    statusCopy: "Saves status: Customer accepted final quote",
     notifyLabel: "Email accepted update",
     notifyTemplate: "staff_item_update",
   },
   {
     action: "payment",
-    label: "Payment sent",
+    label: "Mark Customer Payment Sent",
     status: "Payment Sent",
+    statusCopy: "Saves status: Payment sent",
     notifyLabel: "Email payment sent",
   },
   {
     action: "return",
-    label: "Return item",
+    label: "Mark Item for Return",
     status: "Return Item",
+    statusCopy: "Saves status: Return item",
     notifyLabel: "Email return update",
     danger: true,
   },
@@ -183,13 +189,13 @@ const money = new Intl.NumberFormat("en-US", {
 
 const WORKFLOW_STEPS = [
   { key: "initial", label: "Initial Quote" },
-  { key: "shipped", label: "Shipped to Milford Photo" },
-  { key: "received", label: "Receive" },
-  { key: "evaluated", label: "Evaluate" },
-  { key: "final", label: "Final Quote" },
+  { key: "shipped", label: "Awaiting Gear" },
+  { key: "received", label: "Gear Received" },
+  { key: "evaluated", label: "Evaluation Complete" },
+  { key: "final", label: "Final Quote Sent" },
   { key: "customer", label: "Customer Decision" },
   { key: "payout", label: "Payout" },
-  { key: "return", label: "Items Shipped to Customer" },
+  { key: "return", label: "Return / Close" },
 ];
 
 const usernameInput = document.getElementById("staff-username");
@@ -227,6 +233,21 @@ let staffIntakeToastHideTimer = null;
 
 const STAFF_INTAKE_PREVIEW_DELAY_MS = 300;
 const PRICING_REVIEW_FLAGS_STORAGE_KEY = "milfordPricingReviewFlags";
+const PRICING_REVIEW_FLAG_REASONS = [
+  { value: "", label: "Choose reason" },
+  { value: "price_too_high", label: "Price too high" },
+  { value: "price_too_low", label: "Price too low" },
+  { value: "bad_source_data", label: "Bad source data" },
+  { value: "wrong_model_alias", label: "Wrong model or alias" },
+  { value: "missing_price_table_row", label: "Missing price table row" },
+  { value: "should_be_instant_quote", label: "Should be instant quote" },
+  { value: "should_stay_manual_review", label: "Should stay manual review" },
+  { value: "accessory_or_kit_dependent", label: "Accessory/kit dependent" },
+  { value: "film_or_collectible", label: "Film or collectible pricing" },
+  { value: "large_heavy_shipping", label: "Large/heavy shipping risk" },
+  { value: "duplicate_catalog_cleanup", label: "Duplicate/catalog cleanup" },
+  { value: "other", label: "Other" },
+];
 
 function createStaffIntakeState(options = {}) {
   return {
@@ -455,7 +476,6 @@ function renderDetail() {
       ${renderOrderHeader(order, record, adjustedOffer)}
       ${renderOrderStatusProgress(order)}
       ${renderOrderInfoGrid(order, fields, baseOffer, paymentMethod)}
-      ${renderOrderAdminPanels(order, fields)}
       ${renderOrderItemsProgress(order)}
 
       <header class="staff-intake-header">
@@ -580,7 +600,7 @@ function renderDetail() {
         <section class="staff-actions-panel" aria-label="Item workflow actions">
           <div class="staff-actions-heading">
             <strong>Item workflow actions</strong>
-            <span>Internal buttons update staff progress only. Use Email customer separately when you want to notify the customer.</span>
+            <span>Top buttons save the listed item status only. Email customer buttons send the matching customer email separately.</span>
           </div>
           <div class="staff-action-steps">
             ${renderStaffActionSteps(fields, parsed)}
@@ -601,6 +621,7 @@ function renderDetail() {
 
 function renderOrderHeader(order, currentRecord, currentCashOffer) {
   const totals = orderOfferTotals(order, currentRecord, currentCashOffer);
+  const fields = currentRecord?.fields || {};
   return `
     <section class="staff-order-header">
       <div>
@@ -610,7 +631,7 @@ function renderOrderHeader(order, currentRecord, currentCashOffer) {
         </p>
         <h2>${escapeHtml(order.customer)}</h2>
         <p>${escapeHtml(order.items.length)} item${order.items.length === 1 ? "" : "s"} in this order${order.synthetic && order.items.length > 1 ? " - grouped for testing from same customer/address/time window" : ""}</p>
-        ${renderOrderSellerContact(order)}
+        ${renderOrderSellerContact(order, fields)}
       </div>
       <div class="staff-order-total" id="staff-order-total-card">
         <span>Order offer total</span>
@@ -622,24 +643,82 @@ function renderOrderHeader(order, currentRecord, currentCashOffer) {
   `;
 }
 
-function renderOrderSellerContact(order = {}) {
+function renderOrderSellerContact(order = {}, fields = {}) {
+  const contact = sellerContactValues(order, fields);
   const contactRows = [
-    order.address && order.addressText
-      ? `<a class="staff-contact-link staff-contact-link-address" href="${escapeAttr(mapsSearchUrl(order.addressText))}" target="_blank" rel="noreferrer">${order.address}</a>`
+    contact.addressHtml && contact.addressText
+      ? `<a class="staff-contact-link staff-contact-link-address" href="${escapeAttr(mapsSearchUrl(contact.addressText))}" target="_blank" rel="noreferrer">${contact.addressHtml}</a>`
       : "",
-    order.email
-      ? `<a class="staff-contact-link" href="mailto:${escapeAttr(String(order.email).trim())}">${escapeHtml(order.email)}</a>`
+    contact.email
+      ? `<a class="staff-contact-link" href="mailto:${escapeAttr(String(contact.email).trim())}">${escapeHtml(contact.email)}</a>`
       : "",
-    order.phone && staffPhoneHref(order.phone)
-      ? `<a class="staff-contact-link" href="${escapeAttr(staffPhoneHref(order.phone))}">${escapeHtml(formatStaffPhone(order.phone))}</a>`
-      : order.phone ? escapeHtml(formatStaffPhone(order.phone)) : "",
+    contact.phone && staffPhoneHref(contact.phone)
+      ? `<a class="staff-contact-link" href="${escapeAttr(staffPhoneHref(contact.phone))}">${escapeHtml(formatStaffPhone(contact.phone))}</a>`
+      : contact.phone ? escapeHtml(formatStaffPhone(contact.phone)) : "",
   ].filter(Boolean);
-  if (!contactRows.length) return "";
+  const hasAddress = Boolean(contact.street && contact.city && contact.state && contact.zip);
   return `
-    <div class="staff-order-contact" aria-label="Seller contact">
-      ${contactRows.map((row) => `<p>${row}</p>`).join("")}
+    <div class="staff-order-contact-card" aria-label="Seller contact">
+      <div class="staff-order-contact-heading">
+        <div class="staff-order-contact">
+          ${contactRows.length ? contactRows.map((row) => `<p>${row}</p>`).join("") : `<p class="staff-order-contact-empty">No contact details on file.</p>`}
+        </div>
+        <button class="secondary-action staff-contact-edit-button" type="button" id="edit-customer-contact" aria-expanded="false" aria-controls="staff-contact-editor">Edit contact</button>
+      </div>
+      <div class="staff-contact-editor" id="staff-contact-editor" hidden>
+        <div class="staff-address-grid">
+          <label class="field">
+            <span>Street</span>
+            <input id="staff-address-street" autocomplete="off" value="${escapeAttr(contact.street)}" />
+          </label>
+          <label class="field">
+            <span>City</span>
+            <input id="staff-address-city" autocomplete="off" value="${escapeAttr(contact.city)}" />
+          </label>
+          <label class="field">
+            <span>State</span>
+            <input id="staff-address-state" autocomplete="off" maxlength="2" value="${escapeAttr(contact.state)}" />
+          </label>
+          <label class="field">
+            <span>ZIP</span>
+            <input id="staff-address-zip" autocomplete="off" value="${escapeAttr(contact.zip)}" />
+          </label>
+          <label class="field">
+            <span>Email</span>
+            <input id="staff-contact-email" type="email" autocomplete="off" value="${escapeAttr(contact.email)}" />
+          </label>
+          <label class="field">
+            <span>Phone</span>
+            <input id="staff-contact-phone" autocomplete="off" value="${escapeAttr(contact.phone)}" />
+          </label>
+        </div>
+        <label class="staff-check-row staff-address-confirm">
+          <input type="checkbox" id="staff-address-confirmed" ${hasAddress ? "checked" : ""} />
+          Customer confirmed this contact information
+        </label>
+        <button class="secondary-action staff-admin-action" type="button" id="save-customer-address">Save contact</button>
+      </div>
     </div>
   `;
+}
+
+function sellerContactValues(order = {}, fields = {}) {
+  const street = fields["Seller Street"] || "";
+  const city = fields["Seller City"] || "";
+  const state = fields["Seller State"] || "";
+  const zip = fields["Seller ZIP"] || "";
+  const addressHtml = orderAddress({ "Seller Street": street, "Seller City": city, "Seller State": state, "Seller ZIP": zip });
+  const addressText = orderAddressText({ "Seller Street": street, "Seller City": city, "Seller State": state, "Seller ZIP": zip });
+  return {
+    street,
+    city,
+    state,
+    zip,
+    addressHtml,
+    addressText,
+    email: fields["Seller Email"] || order.email || "",
+    phone: fields["Seller Phone"] || order.phone || "",
+  };
 }
 
 function formatStaffPhone(phone = "") {
@@ -690,8 +769,7 @@ function setOfferAmountSummary(kind, cashAmount) {
 
 function renderOrderInfoGrid(order, fields, baseOffer, paymentMethod) {
   const delivery = staffDeliveryFromFields(fields);
-  const isDropoff = delivery === "In-store drop-off";
-  const logisticsTitle = isDropoff ? "Dropoff / payout" : "Shipping";
+  const shipping = shippingPanelState(fields, delivery);
   return `
     <div class="staff-info-grid staff-order-info-grid">
       <section>
@@ -704,93 +782,71 @@ function renderOrderInfoGrid(order, fields, baseOffer, paymentMethod) {
         <p>Price last reviewed: ${escapeHtml(staffNoteValue(fields, "Price last reviewed") || "-")}</p>
         <p>Expires: ${formatDate(fields["Quote Expires"]) || "-"}</p>
       </section>
-      <section>
-        <h3>${logisticsTitle}</h3>
-        ${delivery ? `<p>Delivery: ${escapeHtml(delivery)}</p>` : ""}
-        <p>Incoming tracking: ${escapeHtml(incomingTrackingNumber(fields))}</p>
-        <p>Outgoing tracking: ${escapeHtml(outgoingTrackingNumber(fields))}</p>
-        <p>${fields["Shippo Label URL"] ? `<a href="${escapeAttr(fields["Shippo Label URL"])}" target="_blank" rel="noreferrer">Open inbound label</a>` : "No inbound label link"}</p>
+      <section class="staff-logistics-panel">
+        <h3>${escapeHtml(shipping.title)}</h3>
+        <p>Delivery: <strong>${escapeHtml(delivery || "-")}</strong></p>
+        <p class="staff-logistics-copy">${escapeHtml(shipping.copy)}</p>
+        <dl class="staff-logistics-list">
+          <div>
+            <dt>Inbound label</dt>
+            <dd>${shipping.labelUrl ? `<a href="${escapeAttr(shipping.labelUrl)}" target="_blank" rel="noreferrer">Open inbound label</a>` : escapeHtml(shipping.labelText)}</dd>
+          </div>
+          <div>
+            <dt>Inbound tracking</dt>
+            <dd>${escapeHtml(incomingTrackingNumber(fields))}</dd>
+          </div>
+          <div>
+            <dt>Return tracking</dt>
+            <dd>${escapeHtml(outgoingTrackingNumber(fields))}</dd>
+          </div>
+        </dl>
+        <div class="staff-shipping-actions">
+          <div class="staff-shipping-action">
+            <button class="secondary-action staff-admin-action" type="button" id="create-shipping-label" title="${escapeAttr(shipping.inboundReason)}" ${shipping.inboundDisabled ? "disabled" : ""}>${escapeHtml(shipping.inboundButtonLabel)}</button>
+            <small>${escapeHtml(shipping.inboundReason)}</small>
+          </div>
+          <div class="staff-shipping-action">
+            <button class="secondary-action staff-admin-action" type="button" id="create-outbound-label" title="${escapeAttr(shipping.outboundReason)}" disabled>Return label not connected</button>
+            <small>${escapeHtml(shipping.outboundReason)}</small>
+          </div>
+        </div>
         <p>Payout: ${escapeHtml(paymentMethodLabel(paymentMethod))}</p>
       </section>
     </div>
   `;
 }
 
-function renderOrderAdminPanels(order, fields) {
-  return `
-    <section class="staff-order-admin-panels" aria-label="Order administration">
-      ${renderCustomerAddressPanel(order, fields)}
-      ${renderShippingLabelPanel(order, fields)}
-    </section>
-  `;
-}
-
-function renderCustomerAddressPanel(order, fields) {
-  const address = {
-    street: fields["Seller Street"] || "",
-    city: fields["Seller City"] || "",
-    state: fields["Seller State"] || "",
-    zip: fields["Seller ZIP"] || "",
-  };
-  const hasAddress = Boolean(address.street && address.city && address.state && address.zip);
-  return `
-    <article class="staff-admin-card">
-      <div class="staff-admin-card-heading">
-        <div>
-          <h3>Customer address</h3>
-          <p>${hasAddress ? "Staff can adjust this before labels, checks, or returns." : "Add an address before creating labels or mailing checks."}</p>
-        </div>
-        <span class="staff-admin-state ${hasAddress ? "is-ready" : "is-needed"}">${hasAddress ? "On file" : "Needed"}</span>
-      </div>
-      <div class="staff-address-grid">
-        <label class="field">
-          <span>Street</span>
-          <input id="staff-address-street" autocomplete="off" value="${escapeAttr(address.street)}" />
-        </label>
-        <label class="field">
-          <span>City</span>
-          <input id="staff-address-city" autocomplete="off" value="${escapeAttr(address.city)}" />
-        </label>
-        <label class="field">
-          <span>State</span>
-          <input id="staff-address-state" autocomplete="off" maxlength="2" value="${escapeAttr(address.state)}" />
-        </label>
-        <label class="field">
-          <span>ZIP</span>
-          <input id="staff-address-zip" autocomplete="off" value="${escapeAttr(address.zip)}" />
-        </label>
-      </div>
-      <label class="staff-check-row staff-address-confirm">
-        <input type="checkbox" id="staff-address-confirmed" ${hasAddress ? "checked" : ""} />
-        Customer confirmed this address
-      </label>
-      <button class="secondary-action staff-admin-action" type="button" id="save-customer-address">Save address</button>
-    </article>
-  `;
-}
-
-function renderShippingLabelPanel(order, fields) {
-  const delivery = staffDeliveryFromFields(fields);
+function shippingPanelState(fields = {}, delivery = "") {
   const isDropoff = delivery === "In-store drop-off";
+  const hasAddress = sellerContactHasAddress(fields);
   const labelUrl = fields["Shippo Label URL"] || "";
-  const hasAddress = Boolean(fields["Seller Street"] && fields["Seller City"] && fields["Seller State"] && fields["Seller ZIP"]);
-  return `
-    <article class="staff-admin-card">
-      <div class="staff-admin-card-heading">
-        <div>
-          <h3>Prepaid label</h3>
-          <p>${isDropoff ? "This order is marked for in-store dropoff." : labelUrl ? "Inbound label is available for this order." : "Create after the customer address is confirmed."}</p>
-        </div>
-        <span class="staff-admin-state ${labelUrl ? "is-ready" : hasAddress && !isDropoff ? "is-needed" : ""}">${labelUrl ? "Ready" : isDropoff ? "Dropoff" : "Pending"}</span>
-      </div>
-      <div class="staff-admin-detail-list">
-        <p>Delivery: ${escapeHtml(delivery || "-")}</p>
-        <p>Tracking: ${escapeHtml(incomingTrackingNumber(fields))}</p>
-        <p>${labelUrl ? `<a href="${escapeAttr(labelUrl)}" target="_blank" rel="noreferrer">Open inbound label</a>` : "No inbound label link"}</p>
-      </div>
-      <button class="secondary-action staff-admin-action" type="button" id="create-shipping-label" ${isDropoff || !hasAddress ? "disabled" : ""}>Create label</button>
-    </article>
-  `;
+  const inboundDisabled = isDropoff || !hasAddress;
+  const title = isDropoff ? "In-store dropoff" : "Mail-in shipping";
+  const copy = isDropoff
+    ? "This order was created as a counter/dropoff quote, so staff should already have the gear. No customer-to-Milford inbound label is needed."
+    : "Use the inbound label for customer-to-Milford shipments. Return labels are separate and are not connected yet.";
+  const inboundReason = labelUrl
+    ? "Existing inbound label is linked above. Create another only if the first label needs to be replaced."
+    : isDropoff
+      ? "In-store dropoff assumes the gear is already with Milford Photo."
+      : hasAddress
+        ? "Creates a prepaid customer-to-Milford label and emails it to the customer."
+        : "Add and save the customer address before creating an inbound label.";
+
+  return {
+    title,
+    copy,
+    labelUrl,
+    labelText: isDropoff ? "Not needed for in-store dropoff" : "No inbound label yet",
+    inboundButtonLabel: labelUrl ? "Replace inbound label" : "Create inbound label",
+    inboundDisabled,
+    inboundReason,
+    outboundReason: "Return-label purchasing is not connected yet. Use the return workflow/email, then handle any return label manually.",
+  };
+}
+
+function sellerContactHasAddress(fields = {}) {
+  return Boolean(fields["Seller Street"] && fields["Seller City"] && fields["Seller State"] && fields["Seller ZIP"]);
 }
 
 function renderPayoutPanel(order, fields, paymentMethod) {
@@ -803,7 +859,7 @@ function renderPayoutPanel(order, fields, paymentMethod) {
       <div class="staff-admin-card-heading">
         <div>
           <h3>Payout</h3>
-          <p>Record the customer payout choice, then mark sent after the check or store credit is issued.</p>
+          <p>Record payout details for the order. Mark payment sent only after the check or store credit is issued.</p>
         </div>
         <span class="staff-admin-state ${paymentSent ? "is-ready" : method ? "is-needed" : ""}">${paymentSent ? "Sent" : method ? "Selected" : "Needed"}</span>
       </div>
@@ -831,7 +887,7 @@ function renderPayoutPanel(order, fields, paymentMethod) {
       </div>
       <div class="staff-admin-actions">
         <button class="secondary-action staff-admin-action" type="button" id="save-payout-details">Save payout details</button>
-        <button class="primary-action staff-admin-action" type="button" id="mark-payment-sent">Mark sent + email</button>
+        <button class="primary-action staff-admin-action" type="button" id="mark-payment-sent">Mark payment sent + email customer</button>
       </div>
     </article>
   `;
@@ -846,7 +902,7 @@ function renderStaffActionSteps(fields, parsed) {
       step.danger ? "is-danger" : "",
       completed ? "is-complete" : "",
     ].filter(Boolean).join(" ");
-    const meta = completed ? "Completed" : "Staff progress only";
+    const meta = completed ? "Completed" : (step.statusCopy || `Saves status: ${step.status}`);
     return `
       <div class="staff-action-card">
         <button class="${classes}" type="button" data-action="${escapeAttr(step.action)}">
@@ -1229,6 +1285,20 @@ function bindDetail(record, accessories) {
     await createShippingLabelForOrder(selectedOrder(), event.currentTarget);
   });
 
+  document.getElementById("create-outbound-label")?.addEventListener("click", () => {
+    setStatus("Return-label purchasing is not connected yet. Use the return workflow/email, then handle any return label manually.", true);
+  });
+
+  document.getElementById("edit-customer-contact")?.addEventListener("click", (event) => {
+    const editor = document.getElementById("staff-contact-editor");
+    if (!editor) return;
+    const shouldOpen = editor.hidden;
+    editor.hidden = !shouldOpen;
+    event.currentTarget.setAttribute("aria-expanded", shouldOpen ? "true" : "false");
+    event.currentTarget.textContent = shouldOpen ? "Close contact editor" : "Edit contact";
+    if (shouldOpen) document.getElementById("staff-address-street")?.focus();
+  });
+
   document.getElementById("save-payout-details")?.addEventListener("click", async (event) => {
     await savePayoutDetails(selectedOrder(), event.currentTarget, { markSent: false });
   });
@@ -1347,20 +1417,24 @@ async function saveCustomerAddress(order, button) {
     state: document.getElementById("staff-address-state")?.value.trim().toUpperCase() || "",
     zip: document.getElementById("staff-address-zip")?.value.trim() || "",
   };
+  const email = document.getElementById("staff-contact-email")?.value.trim() || "";
+  const phone = document.getElementById("staff-contact-phone")?.value.trim() || "";
   setDetailBusy([button], true);
-  setStatus("Saving customer address...");
+  setStatus("Saving customer contact...");
   try {
     const data = await staffPost("/api/staff/address", {
       quoteRef: order.quote,
       address,
+      email,
+      phone,
       confirmed: Boolean(document.getElementById("staff-address-confirmed")?.checked),
     }, { staff: true });
     mergeUpdatedRecords(data.records || []);
     renderQueue();
     renderDetail();
-    setStatus("Customer address saved.");
+    setStatus("Customer contact saved.");
   } catch (error) {
-    setStatus(error.message || "Unable to save customer address.", true);
+    setStatus(error.message || "Unable to save customer contact.", true);
   } finally {
     setDetailBusy([button], false);
   }
@@ -1368,7 +1442,7 @@ async function saveCustomerAddress(order, button) {
 
 async function createShippingLabelForOrder(order, button) {
   if (!order?.quote) return;
-  if (!window.confirm("Create a prepaid inbound shipping label for this order using the confirmed customer address? In test mode this will dry-run and will not purchase a label.")) {
+  if (!window.confirm("Create a prepaid customer-to-Milford inbound shipping label using the confirmed customer address, then email it to the customer? In test mode this will dry-run and will not purchase a label.")) {
     setStatus("Label creation canceled.");
     return;
   }
@@ -1379,7 +1453,7 @@ async function createShippingLabelForOrder(order, button) {
     zip: document.getElementById("staff-address-zip")?.value.trim() || "",
   };
   setDetailBusy([button], true);
-  setStatus("Creating prepaid label...");
+  setStatus("Creating inbound shipping label...");
   try {
     const data = await staffPost("/api/staff/create-label", {
       quoteRef: order.quote,
@@ -1390,9 +1464,9 @@ async function createShippingLabelForOrder(order, button) {
     renderQueue();
     renderDetail();
     const dryRun = data.label?.dryRun;
-    setStatus(dryRun ? "Shippo dry run saved. Real label purchasing is still disabled." : "Shipping label created.");
+    setStatus(dryRun ? "Shippo dry run saved. Real inbound label purchasing is still disabled." : "Inbound label created and customer email queued.");
   } catch (error) {
-    setStatus(error.message || "Unable to create shipping label.", true);
+    setStatus(error.message || "Unable to create inbound label.", true);
   } finally {
     setDetailBusy([button], false);
   }
@@ -1902,6 +1976,8 @@ function renderPricingReview() {
           <select id="pricing-review-sort">
             <option value="highest_cash">Highest cash offer</option>
             <option value="alphabetical">Alphabetical A-Z</option>
+            <option value="newest_model">Newest model year</option>
+            <option value="oldest_model">Oldest model year</option>
             <option value="oldest_review">Oldest reviewed</option>
             <option value="flagged">Flagged first</option>
           </select>
@@ -1943,6 +2019,11 @@ function renderPricingReview() {
     if (!button) return;
     togglePricingReviewFlag(button.getAttribute("data-pricing-flag-key"));
   });
+  document.getElementById("pricing-review-body")?.addEventListener("change", (event) => {
+    const select = event.target.closest("[data-pricing-flag-reason-key]");
+    if (!select) return;
+    setPricingReviewFlagReason(select.getAttribute("data-pricing-flag-reason-key"), select.value);
+  });
   renderPricingReviewRows();
 }
 
@@ -1954,7 +2035,7 @@ function renderPricingReviewRows() {
   const sort = document.getElementById("pricing-review-sort")?.value || "highest_cash";
   const filtered = pricingReviewRows
     .filter((row) => category === "All" || row.category === category)
-    .filter((row) => !search || `${row.brand} ${row.model}`.toLowerCase().includes(search))
+    .filter((row) => pricingReviewMatchesSearch(row, search))
     .sort(pricingReviewSort(sort))
     .slice(0, 250);
   const flagOverrides = pricingReviewFlagOverrides();
@@ -1964,7 +2045,7 @@ function renderPricingReviewRows() {
       <td class="pricing-review-item-cell">
         <strong>${escapeHtml(row.brand)} ${escapeHtml(row.model)}</strong>
         <span>${escapeHtml(pricingReviewRowMeta(row))}</span>
-        ${pricingReviewFlagButton(row, flagOverrides)}
+        ${pricingReviewFlagControls(row, flagOverrides)}
       </td>
       <td class="pricing-review-category-cell">${escapeHtml(row.category)}</td>
       <td class="pricing-review-money-cell">$${formatMoney(row.cashOffer)}</td>
@@ -1991,6 +2072,27 @@ function pricingReviewFlagButton(row = {}, overrides = pricingReviewFlagOverride
       data-pricing-flag-key="${escapeAttr(key)}"
       aria-pressed="${isFlagged ? "true" : "false"}"
     >${isFlagged ? "Flagged" : "Flag"}</button>
+  `;
+}
+
+function pricingReviewFlagControls(row = {}, overrides = pricingReviewFlagOverrides()) {
+  const key = pricingReviewRowKey(row);
+  const isFlagged = pricingReviewIsFlagged(row, overrides);
+  const reason = pricingReviewFlagReason(row, overrides);
+  const systemReason = pricingReviewSystemFlagReason(row);
+  const options = PRICING_REVIEW_FLAG_REASONS.map((item) =>
+    `<option value="${escapeAttr(item.value)}"${item.value === reason ? " selected" : ""}>${escapeHtml(item.label)}</option>`
+  ).join("");
+  return `
+    <div class="pricing-review-flag-group${isFlagged ? " is-flagged" : ""}">
+      ${pricingReviewFlagButton(row, overrides)}
+      <label class="pricing-review-flag-controls">
+        <select data-pricing-flag-reason-key="${escapeAttr(key)}" aria-label="Pricing flag reason for ${escapeAttr(row.brand)} ${escapeAttr(row.model)}">
+          ${options}
+        </select>
+      </label>
+      ${systemReason ? `<small class="pricing-review-system-flag">System: ${escapeHtml(systemReason)}</small>` : ""}
+    </div>
   `;
 }
 
@@ -2029,8 +2131,30 @@ function pricingReviewBaseFlagged(row = {}) {
 
 function pricingReviewIsFlagged(row = {}, overrides = pricingReviewFlagOverrides()) {
   const key = pricingReviewRowKey(row);
-  if (Object.prototype.hasOwnProperty.call(overrides, key)) return Boolean(overrides[key]);
+  if (Object.prototype.hasOwnProperty.call(overrides, key)) {
+    const entry = overrides[key];
+    if (entry && typeof entry === "object" && Object.prototype.hasOwnProperty.call(entry, "flagged")) return Boolean(entry.flagged);
+    return Boolean(entry);
+  }
   return pricingReviewBaseFlagged(row);
+}
+
+function pricingReviewFlagReason(row = {}, overrides = pricingReviewFlagOverrides()) {
+  const entry = overrides[pricingReviewRowKey(row)];
+  return entry && typeof entry === "object" ? String(entry.reason || "") : "";
+}
+
+function pricingReviewReasonLabel(value = "") {
+  return PRICING_REVIEW_FLAG_REASONS.find((item) => item.value === value)?.label || "";
+}
+
+function pricingReviewSystemFlagReason(row = {}) {
+  const priority = String(row.priority || "").trim();
+  if (priority && priority !== "Normal") return priority;
+  if (row.reviewState === "catalog_review_placeholder") return "Catalog review required";
+  if (row.reviewState === "no_match") return "Needs price table row";
+  if (row.reviewState === "manual_by_design") return "Manual by design";
+  return "";
 }
 
 function pricingReviewFlagCount() {
@@ -2049,13 +2173,84 @@ function togglePricingReviewFlag(key) {
   if (!row) return;
   const overrides = pricingReviewFlagOverrides();
   const nextFlagged = !pricingReviewIsFlagged(row, overrides);
+  const currentReason = pricingReviewFlagReason(row, overrides);
   if (nextFlagged === pricingReviewBaseFlagged(row)) {
-    delete overrides[key];
+    if (currentReason) {
+      overrides[key] = { flagged: nextFlagged, reason: currentReason };
+    } else {
+      delete overrides[key];
+    }
   } else {
-    overrides[key] = nextFlagged;
+    overrides[key] = { flagged: nextFlagged, reason: currentReason };
   }
   savePricingReviewFlagOverrides(overrides);
   renderPricingReviewRows();
+}
+
+function setPricingReviewFlagReason(key, reason) {
+  if (!key) return;
+  const row = pricingReviewRows.find((candidate) => pricingReviewRowKey(candidate) === key);
+  if (!row) return;
+  const cleanReason = String(reason || "");
+  const overrides = pricingReviewFlagOverrides();
+  const flagged = cleanReason ? true : pricingReviewIsFlagged(row, overrides);
+  if (flagged === pricingReviewBaseFlagged(row) && !cleanReason) {
+    delete overrides[key];
+  } else {
+    overrides[key] = { flagged, reason: cleanReason };
+  }
+  savePricingReviewFlagOverrides(overrides);
+  renderPricingReviewRows();
+  if (cleanReason) {
+    submitPricingReviewFlagFeedback(row, cleanReason).catch((error) => {
+      console.warn("Pricing review feedback failed:", error);
+      setStatus(error.message || "Unable to save pricing feedback.", true);
+    });
+  }
+}
+
+function pricingReviewMatchesSearch(row = {}, search = "") {
+  const terms = String(search || "").trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (!terms.length) return true;
+  const haystack = [
+    row.brand,
+    row.model,
+    row.displayModel,
+    row.category,
+    row.catalogCategory,
+    row.pricingBasis,
+    row.source,
+    row.priority,
+    row.reviewState,
+    row.confidence,
+    row.year,
+    row.notes,
+  ].filter(Boolean).join(" ").toLowerCase();
+  return terms.every((term) => haystack.includes(term));
+}
+
+async function submitPricingReviewFlagFeedback(row = {}, reason = "") {
+  const reasonLabel = pricingReviewReasonLabel(reason);
+  if (!reasonLabel) return;
+  const itemName = `${row.brand || ""} ${row.model || ""}`.trim() || "Unknown item";
+  const feedback = [
+    `Pricing review flag: ${reasonLabel}`,
+    `Item: ${itemName}`,
+    `Category: ${row.category || "-"}`,
+    `Cash offer: ${row.cashOffer ? `$${formatMoney(row.cashOffer)}` : "-"}`,
+    `Target resale: ${row.targetResalePrice ? `$${formatMoney(row.targetResalePrice)}` : "-"}`,
+    `Pricing basis: ${row.pricingBasis || row.source || "-"}`,
+    `Reviewed: ${row.priceLastReviewed || "-"}`,
+    `Model year: ${row.year || "-"}`,
+    `Review state: ${row.reviewState || "-"}`,
+  ].join("\n");
+  await staffPost("/api/staff/feedback", {
+    category: "Pricing review",
+    orderId: `pricing:${pricingReviewRowKey(row)}`.slice(0, 160),
+    pageUrl: window.location.href,
+    feedback,
+  }, { staff: true });
+  setStatus(`Saved pricing feedback for ${itemName}.`);
 }
 
 function pricingReviewReferenceLinks(row = {}) {
@@ -2074,6 +2269,8 @@ function pricingReviewSort(sort) {
   const priorityRank = (row) => pricingReviewIsFlagged(row, flagOverrides) ? 0 : 1;
   if (sort === "oldest_review") return (a, b) => String(a.priceLastReviewed || "0000").localeCompare(String(b.priceLastReviewed || "0000"));
   if (sort === "flagged") return (a, b) => priorityRank(a) - priorityRank(b) || b.cashOffer - a.cashOffer;
+  if (sort === "newest_model") return (a, b) => (Number(b.year) || 0) - (Number(a.year) || 0) || `${a.brand} ${a.model}`.localeCompare(`${b.brand} ${b.model}`);
+  if (sort === "oldest_model") return (a, b) => (Number(a.year) || 9999) - (Number(b.year) || 9999) || `${a.brand} ${a.model}`.localeCompare(`${b.brand} ${b.model}`);
   if (sort === "alphabetical") return (a, b) => `${a.brand} ${a.model}`.localeCompare(`${b.brand} ${b.model}`);
   if (sort === "brand") return (a, b) => `${a.brand} ${a.model}`.localeCompare(`${b.brand} ${b.model}`);
   return (a, b) => b.cashOffer - a.cashOffer;
@@ -4026,7 +4223,6 @@ function workflowState(order) {
 }
 
 function workflowStepDisplayLabel(step) {
-  if (step.key === "evaluated") return "Evaluated";
   return step.label;
 }
 

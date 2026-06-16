@@ -3264,10 +3264,23 @@ fieldset {
 .staff-order-contact {
   display: grid;
   gap: 2px;
-  margin-top: 12px;
   color: var(--ink-soft);
   font-size: 0.9rem;
   line-height: 1.35;
+}
+
+.staff-order-contact-card {
+  display: grid;
+  gap: 10px;
+  max-width: 640px;
+  margin-top: 12px;
+}
+
+.staff-order-contact-heading {
+  display: flex;
+  gap: 12px;
+  align-items: start;
+  justify-content: space-between;
 }
 
 .staff-order-contact p {
@@ -3275,6 +3288,29 @@ fieldset {
   max-width: 100%;
   margin: 0;
   overflow-wrap: anywhere;
+}
+
+.staff-order-contact-empty {
+  color: var(--muted);
+}
+
+.staff-contact-edit-button {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 6px 12px;
+}
+
+.staff-contact-editor {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 12px;
+  background: #f8fafc;
+}
+
+.staff-contact-editor[hidden] {
+  display: none;
 }
 
 .staff-contact-link {
@@ -3728,15 +3764,6 @@ fieldset {
   border-bottom: 1px solid var(--line);
 }
 
-.staff-order-admin-panels {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  margin: 0 0 22px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid var(--line);
-}
-
 .staff-admin-card {
   display: grid;
   gap: 12px;
@@ -3831,6 +3858,53 @@ fieldset {
   gap: 8px;
   justify-self: end;
   width: min(460px, 100%);
+}
+
+.staff-shipping-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.staff-logistics-copy {
+  color: var(--muted);
+}
+
+.staff-logistics-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.staff-logistics-list div {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 8px;
+}
+
+.staff-logistics-list dt {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.staff-logistics-list dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.staff-shipping-action {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.staff-shipping-action small {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.25;
 }
 
 .staff-admin-action {
@@ -4756,7 +4830,8 @@ fieldset {
 }
 
 .pricing-review-table a,
-.pricing-review-flag-button {
+.pricing-review-flag-button,
+.pricing-review-flag-controls select {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -4775,7 +4850,6 @@ fieldset {
 }
 
 .pricing-review-flag-button {
-  margin-top: 8px;
   border-color: #cfd8e3;
   color: #38516f;
 }
@@ -4784,6 +4858,51 @@ fieldset {
   border-color: #ef4444;
   background: #fff5f5;
   color: var(--mp-red);
+}
+
+.pricing-review-flag-group {
+  display: inline-grid;
+  grid-template-columns: auto minmax(130px, 1fr);
+  gap: 6px;
+  align-items: center;
+  max-width: 280px;
+  margin-top: 8px;
+  border: 1px solid #d7dde5;
+  border-radius: 9px;
+  padding: 6px;
+  background: #f8fafc;
+}
+
+.pricing-review-flag-group.is-flagged {
+  border-color: #f4b3b8;
+  background: #fff5f5;
+}
+
+.pricing-review-flag-controls {
+  display: block;
+  min-width: 0;
+  margin: 0;
+}
+
+.pricing-review-table td .pricing-review-system-flag {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.pricing-review-flag-controls select {
+  justify-content: flex-start;
+  width: 100%;
+  min-height: 32px;
+  border-color: #cfd8e3;
+  color: #243244;
+  background: #fff;
+  font-weight: 700;
+  text-align: left;
 }
 
 .pricing-review-table tr.is-flagged td:first-child {
@@ -4824,12 +4943,13 @@ fieldset {
 
   .staff-login-row,
   .staff-order-header,
-  .staff-intake-header,
+	  .staff-intake-header,
 	  .staff-info-grid,
-	  .staff-order-admin-panels,
 	  .staff-address-grid,
 	  .staff-payout-grid,
 	  .staff-admin-actions,
+	  .staff-shipping-actions,
+	  .staff-logistics-list div,
 	  .quote-status-summary,
 	  .quote-status-details,
 	  .staff-accessory-grid,
@@ -4839,6 +4959,10 @@ fieldset {
 	  .staff-decision-grid {
 	    grid-template-columns: 1fr;
 	  }
+
+  .staff-order-contact-heading {
+    display: grid;
+  }
 
   .staff-offer-preview-title {
     grid-template-columns: auto minmax(0, 1fr);
