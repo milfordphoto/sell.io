@@ -1,4 +1,4 @@
-// Auto-generated from Milford/Dakis exports and conservative manufacturer matches.
+// Auto-generated from Milford/Dakis exports and conservative manufacturer matches on 2026-06-14.
 // Conservative matches only: existing quote catalog key -> product image URL.
 (function () {
   window.MP_PRODUCT_IMAGE_OVERRIDES = Object.freeze({
@@ -98,13 +98,13 @@
       src: "https://global.canon/ja/c-museum/wp-content/uploads/2015/08/dslr789_s.jpg",
       alt: "Canon EOS 350D / Digital Rebel XT",
     },
-    "canon|digital camera|eos 400d / digital rebel xti": {
-      src: "https://global.canon/ja/c-museum/wp-content/uploads/2015/08/dslr793_b.jpg",
-      alt: "Canon EOS 400D / Digital Rebel XTi",
-    },
     "canon|digital camera|eos 4000d / rebel t100": {
       src: "https://s7d1.scene7.com/is/image/canon/2628C001_eos-rebel-t100_primary",
       alt: "Canon EOS 4000D / Rebel T100",
+    },
+    "canon|digital camera|eos 400d / digital rebel xti": {
+      src: "https://global.canon/ja/c-museum/wp-content/uploads/2015/08/dslr793_b.jpg",
+      alt: "Canon EOS 400D / Digital Rebel XTi",
     },
     "canon|digital camera|eos 40d": {
       src: "https://global.canon/ja/c-museum/wp-content/uploads/2015/08/dslr795_b.jpg",
@@ -410,6 +410,62 @@
       src: "https://global.canon/ja/c-museum/wp-content/uploads/2015/05/film132_b.jpg",
       alt: "Canon EOS-1",
     },
+    "canon|flash / speedlite|speedlite 270ex": {
+      src: "https://s7d1.scene7.com/is/image/canon/3806B002_speedlite-270ex_primary",
+      alt: "Canon Speedlite 270EX",
+    },
+    "canon|flash / speedlite|speedlite 270ex ii": {
+      src: "https://s7d1.scene7.com/is/image/canon/5247B002_speedlite-270ex-ii_primary",
+      alt: "Canon Speedlite 270EX II",
+    },
+    "canon|flash / speedlite|speedlite 320ex": {
+      src: "https://s7d1.scene7.com/is/image/canon/5246B002_speedlite-320ex_primary-1",
+      alt: "Canon Speedlite 320EX",
+    },
+    "canon|flash / speedlite|speedlite 430ex ii": {
+      src: "https://s7d1.scene7.com/is/image/canon/2805B002_speedlite-430ex-ii_primary",
+      alt: "Canon Speedlite 430EX II",
+    },
+    "canon|flash / speedlite|speedlite 430ex iii-rt": {
+      src: "https://s7d1.scene7.com/is/image/canon/0585C003_speedlite-430ex-iii-rt_primary",
+      alt: "Canon Speedlite 430EX III-RT",
+    },
+    "canon|flash / speedlite|speedlite 470ex-ai": {
+      src: "https://cdn.media.amplience.net/i/canon/02-TheFront-Stand",
+      alt: "Canon Speedlite 470EX-AI",
+    },
+    "canon|flash / speedlite|speedlite 600ex ii-rt": {
+      src: "https://s7d1.scene7.com/is/image/canon/1177C002_speedlite-600ex-ii-rt_primary",
+      alt: "Canon Speedlite 600EX II-RT",
+    },
+    "canon|flash / speedlite|speedlite 600ex-rt": {
+      src: "https://s7d1.scene7.com/is/image/canon/5296B002_speedlite-600ex-rt_primary",
+      alt: "Canon Speedlite 600EX-RT",
+    },
+    "canon|flash / speedlite|speedlite el-1": {
+      src: "https://cdn.media.amplience.net/i/canon/el-1_spec_gallery-1__a4160de73dc24d9ab87e9a036186347a",
+      alt: "Canon Speedlite EL-1",
+    },
+    "canon|flash / speedlite|speedlite el-10": {
+      src: "https://cdn.media.amplience.net/i/canon/speedlite-el-10_range_page_0ac08a2b55784feb929cb6ec432ced13",
+      alt: "Canon Speedlite EL-10",
+    },
+    "canon|flash / speedlite|speedlite el-100": {
+      src: "https://s7d1.scene7.com/is/image/canon/3249C010_speedlite-el-100-refurbished_primary?fmt=webp-alpha&wid=380",
+      alt: "Canon Speedlite EL-100",
+    },
+    "canon|flash / speedlite|speedlite el-5": {
+      src: "https://cdn.media.amplience.net/i/canon/speedlite-el-5-front-stand_range_f3d015d358c64694aaa6db0b362f9073.png",
+      alt: "Canon Speedlite EL-5",
+    },
+    "canon|lens|ef 1.4x extender ii": {
+      src: "https://global.canon/ja/c-museum/wp-content/uploads/2015/05/ef363_b.jpg",
+      alt: "Canon EF 1.4x Extender II",
+    },
+    "canon|lens|ef 1.4x extender iii": {
+      src: "https://global.canon/ja/c-museum/wp-content/uploads/2015/05/ef408_b.jpg",
+      alt: "Canon EF 1.4x Extender III",
+    },
     "canon|lens|ef 100-400mm f/4.5-5.6l is ii usm": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/bO46xNAefESzU0ioGp4duQ?w=228&h=228&p=1&a=1&q=display",
       alt: "Canon EF 100-400mm f/4.5-5.6L IS II USM",
@@ -433,6 +489,10 @@
     "canon|lens|ef 100mm f/2.8l macro is usm": {
       src: "https://global.canon/ja/c-museum/wp-content/uploads/2015/05/ef405_b.jpg",
       alt: "Canon EF 100mm f/2.8L Macro IS USM",
+    },
+    "canon|lens|ef 135mm f/2.8 softfocus": {
+      src: "https://global.canon/ja/c-museum/wp-content/uploads/2015/05/ef268_b.jpg",
+      alt: "Canon EF 135mm f/2.8 Softfocus",
     },
     "canon|lens|ef 135mm f/2l usm": {
       src: "https://global.canon/ja/c-museum/wp-content/uploads/2015/05/ef335_b.jpg",
@@ -474,6 +534,10 @@
       src: "https://global.canon/ja/c-museum/wp-content/uploads/2015/05/ef334_b.jpg",
       alt: "Canon EF 180mm f/3.5L Macro USM",
     },
+    "canon|lens|ef 200-400mm f/4l is usm 1.4x": {
+      src: "https://global.canon/ja/c-museum/wp-content/uploads/2016/03/ef428_b.jpg",
+      alt: "Canon EF 200-400mm f/4L IS USM 1.4x",
+    },
     "canon|lens|ef 200mm f/2.8l ii usm": {
       src: "https://global.canon/ja/c-museum/wp-content/uploads/2015/05/ef333_b.jpg",
       alt: "Canon EF 200mm f/2.8L II USM",
@@ -485,10 +549,6 @@
     "canon|lens|ef 200mm f/2l is usm": {
       src: "https://global.canon/ja/c-museum/wp-content/uploads/2015/05/ef397_b.jpg",
       alt: "Canon EF 200mm f/2L IS USM",
-    },
-    "canon|lens|ef 200-400mm f/4l is usm 1.4x": {
-      src: "https://global.canon/ja/c-museum/wp-content/uploads/2016/03/ef428_b.jpg",
-      alt: "Canon EF 200-400mm f/4L IS USM 1.4x",
     },
     "canon|lens|ef 20mm f/2.8 usm": {
       src: "https://global.canon/ja/c-museum/wp-content/uploads/2015/06/ef312_s.jpg",
@@ -550,6 +610,14 @@
       src: "https://global.canon/ja/c-museum/wp-content/uploads/2015/05/ef421_b.jpg",
       alt: "Canon EF 28mm f/2.8 IS USM",
     },
+    "canon|lens|ef 2x extender ii": {
+      src: "https://global.canon/ja/c-museum/wp-content/uploads/2015/05/ef364_b.jpg",
+      alt: "Canon EF 2x Extender II",
+    },
+    "canon|lens|ef 2x extender iii": {
+      src: "https://global.canon/ja/c-museum/wp-content/uploads/2015/05/ef409_b.jpg",
+      alt: "Canon EF 2x Extender III",
+    },
     "canon|lens|ef 300mm f/2.8l is ii usm": {
       src: "https://global.canon/ja/c-museum/wp-content/uploads/2015/05/ef417_b.jpg",
       alt: "Canon EF 300mm f/2.8L IS II USM",
@@ -561,22 +629,6 @@
     "canon|lens|ef 300mm f/4l is usm": {
       src: "https://global.canon/ja/c-museum/wp-content/uploads/2015/05/ef340_b.jpg",
       alt: "Canon EF 300mm f/4L IS USM",
-    },
-    "canon|lens|ef 1.4x extender ii": {
-      src: "https://global.canon/ja/c-museum/wp-content/uploads/2015/05/ef363_b.jpg",
-      alt: "Canon EF 1.4x Extender II",
-    },
-    "canon|lens|ef 1.4x extender iii": {
-      src: "https://global.canon/ja/c-museum/wp-content/uploads/2015/05/ef408_b.jpg",
-      alt: "Canon EF 1.4x Extender III",
-    },
-    "canon|lens|ef 2x extender ii": {
-      src: "https://global.canon/ja/c-museum/wp-content/uploads/2015/05/ef364_b.jpg",
-      alt: "Canon EF 2x Extender II",
-    },
-    "canon|lens|ef 2x extender iii": {
-      src: "https://global.canon/ja/c-museum/wp-content/uploads/2015/05/ef409_b.jpg",
-      alt: "Canon EF 2x Extender III",
     },
     "canon|lens|ef 35mm f/1.4l ii usm": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/qHYeq2lpY127MD3CA4n3Og?w=228&h=228&p=1&a=1&q=display",
@@ -713,10 +765,6 @@
     "canon|lens|ef 85mm f/1.8 usm": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/SgW25xwIuxLOaoUUCFwL8g?w=228&h=228&p=1&a=1&q=display",
       alt: "Canon EF 85mm f/1.8 USM",
-    },
-    "canon|lens|ef 135mm f/2.8 softfocus": {
-      src: "https://global.canon/ja/c-museum/wp-content/uploads/2015/05/ef268_b.jpg",
-      alt: "Canon EF 135mm f/2.8 Softfocus",
     },
     "canon|lens|ef-s 10-18mm f/4.5-5.6 is stm": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/20907c50-cee1-0131-7acc-00163e9110c0?w=228&h=228&p=1&a=1&q=display",
@@ -942,61 +990,13 @@
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/Lws5AaiE9KjwB0vOThfvYQ?w=228&h=228&p=1&a=1&q=display",
       alt: "Canon RF-S 55-210mm f/5-7.1 IS STM",
     },
-    "canon|flash / speedlite|speedlite 270ex": {
-      src: "https://s7d1.scene7.com/is/image/canon/3806B002_speedlite-270ex_primary",
-      alt: "Canon Speedlite 270EX",
-    },
-    "canon|flash / speedlite|speedlite 270ex ii": {
-      src: "https://s7d1.scene7.com/is/image/canon/5247B002_speedlite-270ex-ii_primary",
-      alt: "Canon Speedlite 270EX II",
-    },
-    "canon|flash / speedlite|speedlite 320ex": {
-      src: "https://s7d1.scene7.com/is/image/canon/5246B002_speedlite-320ex_primary-1",
-      alt: "Canon Speedlite 320EX",
-    },
-    "canon|flash / speedlite|speedlite 430ex ii": {
-      src: "https://s7d1.scene7.com/is/image/canon/2805B002_speedlite-430ex-ii_primary",
-      alt: "Canon Speedlite 430EX II",
-    },
-    "canon|flash / speedlite|speedlite 430ex iii-rt": {
-      src: "https://s7d1.scene7.com/is/image/canon/0585C003_speedlite-430ex-iii-rt_primary",
-      alt: "Canon Speedlite 430EX III-RT",
-    },
-    "canon|flash / speedlite|speedlite 470ex-ai": {
-      src: "https://cdn.media.amplience.net/i/canon/02-TheFront-Stand",
-      alt: "Canon Speedlite 470EX-AI",
-    },
-    "canon|flash / speedlite|speedlite 600ex-rt": {
-      src: "https://s7d1.scene7.com/is/image/canon/5296B002_speedlite-600ex-rt_primary",
-      alt: "Canon Speedlite 600EX-RT",
-    },
-    "canon|flash / speedlite|speedlite 600ex ii-rt": {
-      src: "https://s7d1.scene7.com/is/image/canon/1177C002_speedlite-600ex-ii-rt_primary",
-      alt: "Canon Speedlite 600EX II-RT",
-    },
-    "canon|flash / speedlite|speedlite el-5": {
-      src: "https://cdn.media.amplience.net/i/canon/speedlite-el-5-front-stand_range_f3d015d358c64694aaa6db0b362f9073.png",
-      alt: "Canon Speedlite EL-5",
-    },
-    "canon|flash / speedlite|speedlite el-1": {
-      src: "https://cdn.media.amplience.net/i/canon/el-1_spec_gallery-1__a4160de73dc24d9ab87e9a036186347a",
-      alt: "Canon Speedlite EL-1",
-    },
-    "canon|flash / speedlite|speedlite el-10": {
-      src: "https://cdn.media.amplience.net/i/canon/speedlite-el-10_range_page_0ac08a2b55784feb929cb6ec432ced13",
-      alt: "Canon Speedlite EL-10",
-    },
-    "canon|flash / speedlite|speedlite el-100": {
-      src: "https://s7d1.scene7.com/is/image/canon/3249C010_speedlite-el-100-refurbished_primary?fmt=webp-alpha&wid=380",
-      alt: "Canon Speedlite EL-100",
+    "elinchrom|flash / strobe|elb 500 ttl": {
+      src: "https://elinchrom.com/images/prod1000/el10232-ELB500TTL.jpg",
+      alt: "Elinchrom ELB 500 TTL",
     },
     "elinchrom|flash / strobe|elc 500": {
       src: "https://www.elinchrom.com/images/prod1000/Elinchrom-ELC500.jpg",
       alt: "Elinchrom ELC 500",
-    },
-    "elinchrom|flash / strobe|elb 500 ttl": {
-      src: "https://elinchrom.com/images/prod1000/el10232-ELB500TTL.jpg",
-      alt: "Elinchrom ELB 500 TTL",
     },
     "elinchrom|flash / strobe|one off camera flash": {
       src: "https://www.elinchrom.com/images/prod1000/el20932-ONE-kit-002.jpg",
@@ -1482,13 +1482,17 @@
       src: "https://cdn.hasselblad.com/f/77891/1000x1000/b16940333f/xcd_90_main_1000px.jpg",
       alt: "Hasselblad XCD 90mm f/3.2",
     },
+    "laowa|lens|10-18mm f/4.5-5.6 fe zoom": {
+      src: "https://www.laowalenses.ca/wp-content/uploads/2018/11/Laowa-10-18mm-sony-FE-Zoom-e1668442664461.jpg",
+      alt: "Laowa 10-18mm f/4.5-5.6 FE Zoom",
+    },
     "laowa|lens|100mm f/2.8 2x ultra macro apo": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/fu6cCpX1_WJ_twmBIPp_ng?w=228&h=228&p=1&a=1&q=display",
       alt: "Laowa 100mm f/2.8 2x Ultra Macro APO",
     },
-    "laowa|lens|10-18mm f/4.5-5.6 fe zoom": {
-      src: "https://www.laowalenses.ca/wp-content/uploads/2018/11/Laowa-10-18mm-sony-FE-Zoom-e1668442664461.jpg",
-      alt: "Laowa 10-18mm f/4.5-5.6 FE Zoom",
+    "laowa|lens|105mm f/2 smooth trans focus": {
+      src: "https://static.bhphoto.com/images/images2500x2500/venus_optics_ve10520c_laowa_105mm_f_2_smooth_1467296340_1247147.jpg",
+      alt: "Laowa 105mm f/2 Smooth Trans Focus",
     },
     "laowa|lens|11mm f/4.5 ff rl": {
       src: "https://www.laowalenses.ca/wp-content/uploads/2020/08/Laowa-11mm-f4-5-FF-RL.jpg",
@@ -1517,10 +1521,6 @@
     "laowa|lens|9mm f/2.8 zero-d": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/E55WvM5jnhFg4GzWjBUYOw?w=228&h=228&p=1&a=1&q=display",
       alt: "Laowa 9mm f/2.8 Zero-D",
-    },
-    "laowa|lens|105mm f/2 smooth trans focus": {
-      src: "https://static.bhphoto.com/images/images2500x2500/venus_optics_ve10520c_laowa_105mm_f_2_smooth_1467296340_1247147.jpg",
-      alt: "Laowa 105mm f/2 Smooth Trans Focus",
     },
     "laowa|lens|argus 33mm f/0.95 cf apo": {
       src: "https://www.laowalenses.ca/wp-content/uploads/2021/08/33mm_Argus_ESIA_award.jpg",
@@ -2578,6 +2578,10 @@
       src: "https://nala.explore.omsystem.com/media/catalog/product/1/2/12-45mm_f4.0_pro-om_1.webp?width=800&height=&optimize=medium&fit=bounds",
       alt: "OM System M.Zuiko 12-45mm f/4 PRO",
     },
+    "olympus / om system|lens|m.zuiko 12mm f/2": {
+      src: "./product-assets/om-mzuiko-12mm-f2.png",
+      alt: "Olympus / OM System M.Zuiko 12mm f/2",
+    },
     "olympus / om system|lens|m.zuiko 150-400mm f/4.5 tc1.25x is pro": {
       src: "https://nala.explore.omsystem.com/media/catalog/product/1/5/150-400mm_f4.5_tc1.25x_is_pro-om_1_1.webp?width=800&height=&optimize=medium&fit=bounds",
       alt: "OM System M.Zuiko 150-400mm f/4.5 TC1.25x IS PRO",
@@ -2641,6 +2645,14 @@
     "olympus / om system|lens|m.zuiko 75mm f/1.8": {
       src: "https://learnandsupport.getolympus.com/sites/default/files/styles/thumb_200px/public/2018-04/m._ed_75mm_f1.8.jpg?itok=uiP9V2X-",
       alt: "Olympus / OM System M.Zuiko 75mm f/1.8",
+    },
+    "olympus / om system|lens|m.zuiko 8-25mm f/4 pro": {
+      src: "./product-assets/om-mzuiko-8-25mm-f4-pro.png",
+      alt: "Olympus / OM System M.Zuiko 8-25mm f/4 PRO",
+    },
+    "olympus / om system|lens|m.zuiko 9-18mm f/4-5.6": {
+      src: "./product-assets/om-mzuiko-9-18mm-f4-5.6.png",
+      alt: "Olympus / OM System M.Zuiko 9-18mm f/4-5.6",
     },
     "olympus / om system|lens|m.zuiko 8mm f/1.8 fisheye pro": {
       src: "https://learnandsupport.getolympus.com/sites/default/files/styles/thumb_200px/public/2018-04/m.zuiko_ed_8mm_f1.8_pro_fisheye.jpg?itok=gECkjO_T",
@@ -2734,6 +2746,10 @@
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/RaN7t7bi03xt4uamDQFzHA?w=228&h=228&p=1&a=1&q=display",
       alt: "Panasonic Lumix S9",
     },
+    "panasonic|lens|lumix g 100-400mm f/4-6.3 ii": {
+      src: "https://shop.panasonic.com/cdn/shop/files/H-RSA100400.jpg?v=1779301279&width=600",
+      alt: "Panasonic Lumix G 100-400mm f/4-6.3 II",
+    },
     "panasonic|lens|lumix g 12-60mm f/3.5-5.6": {
       src: "https://cdn.shopify.com/s/files/1/0724/5371/8324/products/lcrtyltrfmiewlf1sail.jpg?v=1779299448",
       alt: "Panasonic Lumix G 12-60mm f/3.5-5.6",
@@ -2749,10 +2765,6 @@
     "panasonic|lens|lumix g 25mm f/1.7": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/yYqWHy4R7eVkKtLwnHfbpg?w=228&h=228&p=1&a=1&q=display",
       alt: "Panasonic Lumix G 25mm f/1.7",
-    },
-    "panasonic|lens|lumix g 100-400mm f/4-6.3 ii": {
-      src: "https://shop.panasonic.com/cdn/shop/files/H-RSA100400.jpg?v=1779301279&width=600",
-      alt: "Panasonic Lumix G 100-400mm f/4-6.3 II",
     },
     "panasonic|lens|lumix g 42.5mm f/1.2 nocticron": {
       src: "https://shop.panasonic.com/cdn/shop/products/qrogdi8zjvqiav47iot8.jpg?v=1779299415&width=600",
@@ -2786,13 +2798,13 @@
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/zzND_R8GTWE7p0djlZ-k-w?w=228&h=228&p=1&a=1&q=display",
       alt: "Panasonic Lumix S 20-60mm f/3.5-5.6",
     },
-    "panasonic|lens|lumix s 24mm f/1.8": {
-      src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/OEXVCmRnRf2NPyi1LHicTg?w=228&h=228&p=1&a=1&q=display",
-      alt: "Panasonic Lumix S 24mm f/1.8",
-    },
     "panasonic|lens|lumix s 24-105mm f/4 macro ois": {
       src: "https://shop.panasonic.com/cdn/shop/files/S-R24105.jpg?v=1779301608&width=600",
       alt: "Panasonic Lumix S 24-105mm f/4 Macro OIS",
+    },
+    "panasonic|lens|lumix s 24mm f/1.8": {
+      src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/OEXVCmRnRf2NPyi1LHicTg?w=228&h=228&p=1&a=1&q=display",
+      alt: "Panasonic Lumix S 24mm f/1.8",
     },
     "panasonic|lens|lumix s 28-200mm f/4-7.1 macro ois": {
       src: "https://shop.panasonic.com/cdn/shop/files/S-R28200_carousel.jpg?v=1779303764&width=600",
@@ -2818,6 +2830,10 @@
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/TAB8tUXIFZge0Sx0_3wGQw?w=228&h=228&p=1&a=1&q=display",
       alt: "Panasonic Lumix S PRO 24-70mm f/2.8",
     },
+    "panasonic|lens|lumix s pro 50mm f/1.4": {
+      src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/f1iBYE3kRa3zBkblPIFOrg?w=228&h=228&p=1&a=1&q=display",
+      alt: "Panasonic Lumix S PRO 50mm f/1.4",
+    },
     "panasonic|lens|lumix s pro 70-200mm f/2.8 ois": {
       src: "https://shop.panasonic.com/cdn/shop/files/S-E70200.jpg?v=1779301610&width=600",
       alt: "Panasonic Lumix S PRO 70-200mm f/2.8 OIS",
@@ -2825,14 +2841,6 @@
     "panasonic|lens|lumix s pro 70-200mm f/4 ois": {
       src: "https://shop.panasonic.com/cdn/shop/products/ipipm92bsccrnpbhqica.jpg?v=1779299390&width=600",
       alt: "Panasonic Lumix S PRO 70-200mm f/4 OIS",
-    },
-    "panasonic|lens|lumix s pro 50mm f/1.4": {
-      src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/f1iBYE3kRa3zBkblPIFOrg?w=228&h=228&p=1&a=1&q=display",
-      alt: "Panasonic Lumix S PRO 50mm f/1.4",
-    },
-    "profoto|flash / strobe|a2": {
-      src: "https://www.profoto.com/globalassets/inriver/resources/901250_a_a2_right.png",
-      alt: "Profoto A2",
     },
     "pentax|digital camera|*ist d": {
       src: "https://www.ricoh-imaging.co.jp/japan/products/top/img/img-istD.jpg",
@@ -2957,6 +2965,30 @@
     "pentax|film camera|mz-s": {
       src: "https://www.ricoh-imaging.co.jp/english/products/filmcamera/35mm/image/p_mz-s.jpg",
       alt: "Pentax MZ-S",
+    },
+    "profoto|flash / strobe|a2": {
+      src: "https://www.profoto.com/globalassets/inriver/resources/901250_a_a2_right.png",
+      alt: "Profoto A2",
+    },
+    "profoto|flash / strobe|a1x airttl": {
+      src: "./product-assets/profoto-a1x-airttl.png",
+      alt: "Profoto A1X AirTTL",
+    },
+    "profoto|flash / strobe|b10 airttl": {
+      src: "./product-assets/profoto-b10-airttl.png",
+      alt: "Profoto B10 AirTTL",
+    },
+    "profoto|flash / strobe|b10 plus airttl": {
+      src: "./product-assets/profoto-b10-plus-airttl.png",
+      alt: "Profoto B10 Plus AirTTL",
+    },
+    "profoto|flash / strobe|b10x airttl": {
+      src: "./product-assets/profoto-b10x-airttl.png",
+      alt: "Profoto B10X AirTTL",
+    },
+    "profoto|flash / strobe|d2 500 airttl monolight": {
+      src: "./product-assets/profoto-d2-500-airttl-monolight.png",
+      alt: "Profoto D2 500 AirTTL Monolight",
     },
     "ricoh|digital camera|gr": {
       src: "https://www.ricoh-imaging.co.jp/english/products/gr/top/img/bod_cam_02.jpg",
@@ -3362,10 +3394,6 @@
       src: "https://docs.sony.com/images/swt/dvimag/ilca68.jpg",
       alt: "Sony ILCA-68",
     },
-    "sony|digital camera|α700 / dslr-a700": {
-      src: "https://docs.sony.com/images/swt/dvimag/dslra700.jpg",
-      alt: "Sony DSLR-A700",
-    },
     "sony|digital camera|α7 iii": {
       src: "https://d1ncau8tqf99kp.cloudfront.net/converted/149049_original_local_1200x1050_v3_converted.webp",
       alt: "Sony α7 III",
@@ -3373,6 +3401,10 @@
     "sony|digital camera|α7 iv": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/K7q-ggQGVUIm1M2N1Xdkmg?w=228&h=228&p=1&a=1&q=display",
       alt: "Sony α7 IV",
+    },
+    "sony|digital camera|α700 / dslr-a700": {
+      src: "https://docs.sony.com/images/swt/dvimag/dslra700.jpg",
+      alt: "Sony DSLR-A700",
     },
     "sony|digital camera|α77": {
       src: "https://docs.sony.com/images/swt/dvimag/slta77v.jpg",
@@ -3654,9 +3686,29 @@
       src: "https://docs.sony.com/images/swt/dvimag/sal70400g2.jpg",
       alt: "Sony SAL 70-400mm f/4-5.6 G SSM II",
     },
+    "tamron|lens|10-24mm f/3.5-4.5 di ii vc hld": {
+      src: "https://www.tamron.com/global/consumer/pc_file/file/b023_main.webp",
+      alt: "Tamron 10-24mm f/3.5-4.5 Di II VC HLD",
+    },
+    "tamron|lens|100-400mm f/4.5-6.3 di vc usd": {
+      src: "https://www.tamron.com/global/consumer/pc_file/file/a035_main.webp",
+      alt: "Tamron 100-400mm f/4.5-6.3 Di VC USD",
+    },
     "tamron|lens|11-20mm f/2.8 di iii-a rxd": {
       src: "https://tamron-americas.com/wp-content/uploads/2026/04/b060-1200-x-1200-wht.webp",
       alt: "Tamron 11-20mm f/2.8 Di III-A RXD",
+    },
+    "tamron|lens|150-500mm f/5-6.7 di iii vc vxd": {
+      src: "https://tamron-americas.com/wp-content/uploads/2026/04/a057-1200-x-1200-wht.webp",
+      alt: "Tamron 150-500mm f/5-6.7 Di III VC VXD",
+    },
+    "tamron|lens|150-500mm f/5-6.7 di iii vc vxd (sony e)": {
+      src: "https://tamron-americas.com/wp-content/uploads/2026/04/a057-1200-x-1200-wht.webp",
+      alt: "Tamron 150-500mm f/5-6.7 Di III VC VXD",
+    },
+    "tamron|lens|16-300mm f/3.5-6.3 di ii vc pzd": {
+      src: "https://www.tamron.com/global/consumer/pc_file/file/b016_main.webp",
+      alt: "Tamron 16-300mm f/3.5-6.3 Di II VC PZD",
     },
     "tamron|lens|16-30mm f/2.8 di iii vxd g2": {
       src: "https://tamron-americas.com/wp-content/uploads/2026/04/a064-1200-x-1200-wht.webp",
@@ -3669,6 +3721,10 @@
     "tamron|lens|17-28mm f/2.8 di iii rxd (sony e)": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/JXyYnLWSU-sJyMtqS6PA4w?w=228&h=228&p=1&a=1&q=display",
       alt: "Tamron 17-28mm f/2.8 Di III RXD (Sony E)",
+    },
+    "tamron|lens|17-35mm f/2.8-4 di osd": {
+      src: "https://www.tamron.com/global/consumer/pc_file/file/a037_main.webp",
+      alt: "Tamron 17-35mm f/2.8-4 Di OSD",
     },
     "tamron|lens|17-50mm f/4 di iii vxd": {
       src: "https://tamron-americas.com/wp-content/uploads/2026/04/a068-1200-x-1200-wht.webp",
@@ -3690,14 +3746,6 @@
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/By-3Waa-fdq15mnb_WIQ9A?w=228&h=228&p=1&a=1&q=display",
       alt: "Tamron 18-400mm f/3.5-6.3 Di II VC HLD",
     },
-    "tamron|lens|20mm f/2.8 di iii osd m1:2": {
-      src: "https://tamron-americas.com/wp-content/uploads/2026/04/f050-1200-x-1200-wht.webp",
-      alt: "Tamron 20mm f/2.8 Di III OSD M1:2",
-    },
-    "tamron|lens|20mm f/2.8 di iii osd m1:2 (sony e)": {
-      src: "https://tamron-americas.com/wp-content/uploads/2026/04/f050-1200-x-1200-wht.webp",
-      alt: "Tamron 20mm f/2.8 Di III OSD M1:2 (Sony E)",
-    },
     "tamron|lens|20-40mm f/2.8 di iii vxd": {
       src: "https://tamron-americas.com/wp-content/uploads/2026/04/a062-1200-x-1200-wht.webp",
       alt: "Tamron 20-40mm f/2.8 Di III VXD",
@@ -3705,6 +3753,14 @@
     "tamron|lens|20-40mm f/2.8 di iii vxd (sony e)": {
       src: "https://tamron-americas.com/wp-content/uploads/2026/04/a062-1200-x-1200-wht.webp",
       alt: "Tamron 20-40mm f/2.8 Di III VXD",
+    },
+    "tamron|lens|20mm f/2.8 di iii osd m1:2": {
+      src: "https://tamron-americas.com/wp-content/uploads/2026/04/f050-1200-x-1200-wht.webp",
+      alt: "Tamron 20mm f/2.8 Di III OSD M1:2",
+    },
+    "tamron|lens|20mm f/2.8 di iii osd m1:2 (sony e)": {
+      src: "https://tamron-americas.com/wp-content/uploads/2026/04/f050-1200-x-1200-wht.webp",
+      alt: "Tamron 20mm f/2.8 Di III OSD M1:2 (Sony E)",
     },
     "tamron|lens|24mm f/2.8 di iii osd m1:2": {
       src: "https://tamron-americas.com/wp-content/uploads/2026/04/f051-1200-x-1200-wht.webp",
@@ -3717,6 +3773,22 @@
     "tamron|lens|25-200mm f/2.8-5.6 di iii vxd g2": {
       src: "https://tamron-americas.com/wp-content/uploads/2026/04/a075-1200-x-1200-wht.webp",
       alt: "Tamron 25-200mm f/2.8-5.6 Di III VXD G2",
+    },
+    "tamron|lens|28-200mm f/2.8-5.6 di iii rxd": {
+      src: "https://tamron-americas.com/wp-content/uploads/2026/04/a071-1200-x-1200-wht.webp",
+      alt: "Tamron 28-200mm f/2.8-5.6 Di III RXD",
+    },
+    "tamron|lens|28-200mm f/2.8-5.6 di iii rxd (sony e)": {
+      src: "https://tamron-americas.com/wp-content/uploads/2026/04/a071-1200-x-1200-wht.webp",
+      alt: "Tamron 28-200mm f/2.8-5.6 Di III RXD",
+    },
+    "tamron|lens|28-300mm f/3.5-6.3 di vc pzd": {
+      src: "https://www.tamron.com/global/consumer/pc_file/file/a010_main.webp",
+      alt: "Tamron 28-300mm f/3.5-6.3 Di VC PZD",
+    },
+    "tamron|lens|28-300mm f/4-7.1 di iii vc vxd": {
+      src: "https://tamron-americas.com/wp-content/uploads/2026/04/a074-1200-x-1200-wht.webp",
+      alt: "Tamron 28-300mm f/4-7.1 Di III VC VXD",
     },
     "tamron|lens|28-75mm f/2.8 di iii rxd": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/OvPE7IQYKVNxyFOxqcyFpw?w=228&h=228&p=1&a=1&q=display",
@@ -3734,26 +3806,6 @@
       src: "https://tamron-americas.com/wp-content/uploads/2026/04/a063-1200-x-1200-wht.webp",
       alt: "Tamron 28-75mm f/2.8 Di III VXD G2",
     },
-    "tamron|lens|28-200mm f/2.8-5.6 di iii rxd": {
-      src: "https://tamron-americas.com/wp-content/uploads/2026/04/a071-1200-x-1200-wht.webp",
-      alt: "Tamron 28-200mm f/2.8-5.6 Di III RXD",
-    },
-    "tamron|lens|28-200mm f/2.8-5.6 di iii rxd (sony e)": {
-      src: "https://tamron-americas.com/wp-content/uploads/2026/04/a071-1200-x-1200-wht.webp",
-      alt: "Tamron 28-200mm f/2.8-5.6 Di III RXD",
-    },
-    "tamron|lens|28-300mm f/4-7.1 di iii vc vxd": {
-      src: "https://tamron-americas.com/wp-content/uploads/2026/04/a074-1200-x-1200-wht.webp",
-      alt: "Tamron 28-300mm f/4-7.1 Di III VC VXD",
-    },
-    "tamron|lens|35mm f/2.8 di iii osd m1:2": {
-      src: "https://tamron-americas.com/wp-content/uploads/2026/04/f053-1200-x-1200-wht.webp",
-      alt: "Tamron 35mm f/2.8 Di III OSD M1:2",
-    },
-    "tamron|lens|35mm f/2.8 di iii osd m1:2 (sony e)": {
-      src: "https://tamron-americas.com/wp-content/uploads/2026/04/f053-1200-x-1200-wht.webp",
-      alt: "Tamron 35mm f/2.8 Di III OSD M1:2 (Sony E)",
-    },
     "tamron|lens|35-100mm f/2.8 di iii vxd": {
       src: "https://tamron-americas.com/wp-content/uploads/2026/04/a078-1200-x-1200-wht.webp",
       alt: "Tamron 35-100mm f/2.8 Di III VXD",
@@ -3765,6 +3817,18 @@
     "tamron|lens|35-150mm f/2-2.8 di iii vxd (sony e)": {
       src: "https://tamron-americas.com/wp-content/uploads/2026/04/a058-1200-x-1200-wht.webp",
       alt: "Tamron 35-150mm f/2-2.8 Di III VXD",
+    },
+    "tamron|lens|35-150mm f/2.8-4 di vc osd": {
+      src: "https://www.tamron.com/global/consumer/pc_file/file/a043_main.webp",
+      alt: "Tamron 35-150mm f/2.8-4 Di VC OSD",
+    },
+    "tamron|lens|35mm f/2.8 di iii osd m1:2": {
+      src: "https://tamron-americas.com/wp-content/uploads/2026/04/f053-1200-x-1200-wht.webp",
+      alt: "Tamron 35mm f/2.8 Di III OSD M1:2",
+    },
+    "tamron|lens|35mm f/2.8 di iii osd m1:2 (sony e)": {
+      src: "https://tamron-americas.com/wp-content/uploads/2026/04/f053-1200-x-1200-wht.webp",
+      alt: "Tamron 35mm f/2.8 Di III OSD M1:2 (Sony E)",
     },
     "tamron|lens|50-300mm f/4.5-6.3 di iii vc vxd": {
       src: "https://tamron-americas.com/wp-content/uploads/2026/04/a069-1200-x-1200-wht.webp",
@@ -3778,6 +3842,10 @@
       src: "https://tamron-americas.com/wp-content/uploads/2026/04/a067-1200-x-1200-wht.webp",
       alt: "Tamron 50-400mm f/4.5-6.3 Di III VC VXD",
     },
+    "tamron|lens|70-180mm f/2.8 di iii vc vxd g2": {
+      src: "https://tamron-americas.com/wp-content/uploads/2026/04/a065-1200-x-1200-wht.webp",
+      alt: "Tamron 70-180mm f/2.8 Di III VC VXD G2",
+    },
     "tamron|lens|70-180mm f/2.8 di iii vxd": {
       src: "https://www.tamron.com/global/consumer/pc_file/file/a056_main.webp",
       alt: "Tamron 70-180mm f/2.8 Di III VXD",
@@ -3786,9 +3854,9 @@
       src: "https://www.tamron.com/global/consumer/pc_file/file/a056_main.webp",
       alt: "Tamron 70-180mm f/2.8 Di III VXD (Sony E)",
     },
-    "tamron|lens|70-180mm f/2.8 di iii vc vxd g2": {
-      src: "https://tamron-americas.com/wp-content/uploads/2026/04/a065-1200-x-1200-wht.webp",
-      alt: "Tamron 70-180mm f/2.8 Di III VC VXD G2",
+    "tamron|lens|70-210mm f/4 di vc usd": {
+      src: "https://www.tamron.com/global/consumer/pc_file/file/a034_main.webp",
+      alt: "Tamron 70-210mm f/4 Di VC USD",
     },
     "tamron|lens|70-300mm f/4.5-6.3 di iii rxd": {
       src: "https://tamron-americas.com/wp-content/uploads/2026/04/a047-1200-x-1200-wht.webp",
@@ -3802,17 +3870,9 @@
       src: "https://tamron-americas.com/wp-content/uploads/2026/04/f072-1200-x-1200-wht.webp",
       alt: "Tamron 90mm f/2.8 Di III VXD Macro",
     },
-    "tamron|lens|150-500mm f/5-6.7 di iii vc vxd": {
-      src: "https://tamron-americas.com/wp-content/uploads/2026/04/a057-1200-x-1200-wht.webp",
-      alt: "Tamron 150-500mm f/5-6.7 Di III VC VXD",
-    },
-    "tamron|lens|150-500mm f/5-6.7 di iii vc vxd (sony e)": {
-      src: "https://tamron-americas.com/wp-content/uploads/2026/04/a057-1200-x-1200-wht.webp",
-      alt: "Tamron 150-500mm f/5-6.7 Di III VC VXD",
-    },
-    "tamron|lens|16-300mm f/3.5-6.3 di ii vc pzd": {
-      src: "https://www.tamron.com/global/consumer/pc_file/file/b016_main.webp",
-      alt: "Tamron 16-300mm f/3.5-6.3 Di II VC PZD",
+    "tamron|lens|af 70-300mm f/4-5.6 di ld macro 1:2": {
+      src: "https://www.tamron.com/global/consumer/pc_file/file/a005_main.webp",
+      alt: "Tamron AF 70-300mm f/4-5.6 Di LD Macro 1:2",
     },
     "tamron|lens|sp 15-30mm f/2.8 di vc usd": {
       src: "https://www.tamron.com/global/consumer/pc_file/file/a012_main.webp",
@@ -3821,6 +3881,14 @@
     "tamron|lens|sp 15-30mm f/2.8 di vc usd g2": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/mUWvvPBaT0ybmbBH5x07Vw?w=228&h=228&p=1&a=1&q=display",
       alt: "Tamron SP 15-30mm f/2.8 Di VC USD G2",
+    },
+    "tamron|lens|sp 150-600mm f/5-6.3 di vc usd": {
+      src: "https://www.tamron.com/global/consumer/pc_file/file/a011_main.webp",
+      alt: "Tamron SP 150-600mm f/5-6.3 Di VC USD",
+    },
+    "tamron|lens|sp 150-600mm f/5-6.3 di vc usd g2": {
+      src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/hPCD0x19HcN364mAFh-znw?w=228&h=228&p=1&a=1&q=display",
+      alt: "Tamron SP 150-600mm f/5-6.3 Di VC USD G2",
     },
     "tamron|lens|sp 24-70mm f/2.8 di vc usd": {
       src: "https://www.tamron.com/global/consumer/pc_file/file/a007_main.webp",
@@ -3854,21 +3922,13 @@
       src: "https://www.tamron.com/global/consumer/pc_file/file/a030_main.webp",
       alt: "Tamron SP 70-300mm f/4-5.6 Di VC USD G2",
     },
-    "tamron|lens|sp 90mm f/2.8 di macro vc usd g2": {
-      src: "https://www.tamron.com/global/consumer/pc_file/file/f017_main.webp",
-      alt: "Tamron SP 90mm f/2.8 Di Macro VC USD G2",
-    },
-    "tamron|lens|sp 150-600mm f/5-6.3 di vc usd": {
-      src: "https://www.tamron.com/global/consumer/pc_file/file/a011_main.webp",
-      alt: "Tamron SP 150-600mm f/5-6.3 Di VC USD",
-    },
-    "tamron|lens|sp 150-600mm f/5-6.3 di vc usd g2": {
-      src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/hPCD0x19HcN364mAFh-znw?w=228&h=228&p=1&a=1&q=display",
-      alt: "Tamron SP 150-600mm f/5-6.3 Di VC USD G2",
-    },
     "tamron|lens|sp 85mm f/1.8 di vc usd": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/jvwL1CrodZsLYlOusVc1dg?w=228&h=228&p=1&a=1&q=display",
       alt: "Tamron SP 85mm f/1.8 Di VC USD",
+    },
+    "tamron|lens|sp 90mm f/2.8 di macro vc usd g2": {
+      src: "https://www.tamron.com/global/consumer/pc_file/file/f017_main.webp",
+      alt: "Tamron SP 90mm f/2.8 Di Macro VC USD G2",
     },
     "tamron|lens|sp af 10-24mm f/3.5-4.5 di ii ld aspherical (if)": {
       src: "https://www.tamron.com/global/consumer/pc_file/file/b001_main.webp",
@@ -3878,33 +3938,9 @@
       src: "https://www.tamron.com/global/consumer/pc_file/file/g005_main.webp",
       alt: "Tamron SP AF 60mm f/2 Di II LD (IF) 1:1 Macro",
     },
-    "tamron|lens|10-24mm f/3.5-4.5 di ii vc hld": {
-      src: "https://www.tamron.com/global/consumer/pc_file/file/b023_main.webp",
-      alt: "Tamron 10-24mm f/3.5-4.5 Di II VC HLD",
-    },
-    "tamron|lens|17-35mm f/2.8-4 di osd": {
-      src: "https://www.tamron.com/global/consumer/pc_file/file/a037_main.webp",
-      alt: "Tamron 17-35mm f/2.8-4 Di OSD",
-    },
-    "tamron|lens|28-300mm f/3.5-6.3 di vc pzd": {
-      src: "https://www.tamron.com/global/consumer/pc_file/file/a010_main.webp",
-      alt: "Tamron 28-300mm f/3.5-6.3 Di VC PZD",
-    },
-    "tamron|lens|35-150mm f/2.8-4 di vc osd": {
-      src: "https://www.tamron.com/global/consumer/pc_file/file/a043_main.webp",
-      alt: "Tamron 35-150mm f/2.8-4 Di VC OSD",
-    },
-    "tamron|lens|70-210mm f/4 di vc usd": {
-      src: "https://www.tamron.com/global/consumer/pc_file/file/a034_main.webp",
-      alt: "Tamron 70-210mm f/4 Di VC USD",
-    },
-    "tamron|lens|100-400mm f/4.5-6.3 di vc usd": {
-      src: "https://www.tamron.com/global/consumer/pc_file/file/a035_main.webp",
-      alt: "Tamron 100-400mm f/4.5-6.3 Di VC USD",
-    },
-    "tamron|lens|af 70-300mm f/4-5.6 di ld macro 1:2": {
-      src: "https://www.tamron.com/global/consumer/pc_file/file/a005_main.webp",
-      alt: "Tamron AF 70-300mm f/4-5.6 Di LD Macro 1:2",
+    "tokina|lens|at-x 100mm f/2.8 pro d macro": {
+      src: "https://tokinalens.com/images/catalog/product/5ab25a8e1e7df.png?w=1200&fit=max",
+      alt: "Tokina AT-X 100mm f/2.8 Pro D Macro",
     },
     "tokina|lens|at-x 11-16mm f/2.8 pro dx ii": {
       src: "https://cdn.shopify.com/s/files/1/0606/1306/7006/products/atx-1116-01.jpg?v=1635874806",
@@ -3933,10 +3969,6 @@
     "tokina|lens|at-x 24-70mm f/2.8 pro fx": {
       src: "https://tokinalens.com/images/catalog/product/5c35ac5f2befb.png?w=1200&fit=max",
       alt: "Tokina AT-X 24-70mm f/2.8 Pro FX",
-    },
-    "tokina|lens|at-x 100mm f/2.8 pro d macro": {
-      src: "https://tokinalens.com/images/catalog/product/5ab25a8e1e7df.png?w=1200&fit=max",
-      alt: "Tokina AT-X 100mm f/2.8 Pro D Macro",
     },
     "tokina|lens|atx-m 23mm f/1.4 (sony e)": {
       src: "https://cdn.shopify.com/s/files/1/0606/1306/7006/products/atxm-23mm-sony-product-01.jpg?v=1635455598",
@@ -4098,6 +4130,10 @@
       src: "https://cdn11.bigcommerce.com/s-viuoku6kdb/products/131/images/390/downloadPNG_6__84844.1775583880.386.513.png?c=1",
       alt: "Zeiss Batis 85mm f/1.8",
     },
+    "zeiss|lens|loxia 21mm f/2.8 (sony fe)": {
+      src: "./product-assets/zeiss-loxia-21mm-f2.8-sony-fe.png",
+      alt: "Zeiss Loxia 21mm f/2.8",
+    },
     "zeiss|lens|loxia 25mm f/2.4 (sony fe)": {
       src: "https://www.zeiss.com/content/dam/pno/images/photography/products/lenses-for-mirrorless-system-cameras/loxia-lenses/models/zeiss-loxia-2425.jpg/_jcr_content/renditions/original./zeiss-loxia-2425.jpg",
       alt: "Zeiss Loxia 25mm f/2.4",
@@ -4113,6 +4149,14 @@
     "zeiss|lens|loxia 85mm f/2.4 (sony fe)": {
       src: "https://www.zeiss.com/content/dam/pno/images/photography/products/lenses-for-mirrorless-system-cameras/loxia-lenses/models/zeiss-loxia-2485.jpg/_jcr_content/renditions/original./zeiss-loxia-2485.jpg",
       alt: "Zeiss Loxia 85mm f/2.4",
+    },
+    "zeiss|lens|milvus 100mm f/2 macro (dslr)": {
+      src: "https://www.zeiss.com/content/dam/pno/images/photography/products/lenses-for-slr-cameras/milvus-lenses/models/zeiss-milvus-2100m.jpg/_jcr_content/renditions/original./zeiss-milvus-2100m.jpg",
+      alt: "Zeiss Milvus 100mm f/2 Macro",
+    },
+    "zeiss|lens|milvus 135mm f/2 (dslr)": {
+      src: "https://www.zeiss.com/content/dam/pno/images/photography/products/lenses-for-slr-cameras/milvus-lenses/models/zeiss-milvus-2135.jpg/_jcr_content/renditions/original./zeiss-milvus-2135.jpg",
+      alt: "Zeiss Milvus 135mm f/2",
     },
     "zeiss|lens|milvus 15mm f/2.8 (dslr)": {
       src: "https://www.zeiss.com/content/dam/pno/images/photography/products/lenses-for-slr-cameras/milvus-lenses/models/zeiss-milvus-2815.jpg/_jcr_content/renditions/original./zeiss-milvus-2815.jpg",
@@ -4138,13 +4182,9 @@
       src: "https://www.zeiss.com/content/dam/pno/images/photography/products/lenses-for-slr-cameras/milvus-lenses/models/zeiss-milvus-1485.jpg/_jcr_content/renditions/original./zeiss-milvus-1485.jpg",
       alt: "Zeiss Milvus 85mm f/1.4",
     },
-    "zeiss|lens|milvus 100mm f/2 macro (dslr)": {
-      src: "https://www.zeiss.com/content/dam/pno/images/photography/products/lenses-for-slr-cameras/milvus-lenses/models/zeiss-milvus-2100m.jpg/_jcr_content/renditions/original./zeiss-milvus-2100m.jpg",
-      alt: "Zeiss Milvus 100mm f/2 Macro",
-    },
-    "zeiss|lens|milvus 135mm f/2 (dslr)": {
-      src: "https://www.zeiss.com/content/dam/pno/images/photography/products/lenses-for-slr-cameras/milvus-lenses/models/zeiss-milvus-2135.jpg/_jcr_content/renditions/original./zeiss-milvus-2135.jpg",
-      alt: "Zeiss Milvus 135mm f/2",
+    "zeiss|lens|otus 100mm f/2 (dslr)": {
+      src: "https://www.zeiss.com/content/dam/pno/images/photography/products/lenses-for-slr-cameras/otus-lenses/models/zeiss-otus-14100.jpg/_jcr_content/renditions/original./zeiss-otus-14100.jpg",
+      alt: "Zeiss Otus 100mm f/2",
     },
     "zeiss|lens|otus 28mm f/1.4 (dslr)": {
       src: "https://www.zeiss.com/content/dam/pno/images/photography/products/lenses-for-slr-cameras/otus-lenses/models/zeiss-otus-1428.jpg/_jcr_content/renditions/original./zeiss-otus-1428.jpg",
@@ -4157,10 +4197,6 @@
     "zeiss|lens|otus 85mm f/1.4 (dslr)": {
       src: "https://www.zeiss.com/content/dam/pno/images/photography/products/lenses-for-slr-cameras/otus-lenses/models/zeiss-otus-1485.jpg/_jcr_content/renditions/original./zeiss-otus-1485.jpg",
       alt: "Zeiss Otus 85mm f/1.4",
-    },
-    "zeiss|lens|otus 100mm f/2 (dslr)": {
-      src: "https://www.zeiss.com/content/dam/pno/images/photography/products/lenses-for-slr-cameras/otus-lenses/models/zeiss-otus-14100.jpg/_jcr_content/renditions/original./zeiss-otus-14100.jpg",
-      alt: "Zeiss Otus 100mm f/2",
     },
     "zeiss|lens|otus ml 35mm f/1.4 (mirrorless)": {
       src: "https://www.zeiss.com/content/dam/pno/images/photography/products/lenses-for-mirrorless-system-cameras/otus-ml-lenses/models/zeiss-otus-ml-1435.jpg/_jcr_content/renditions/original./zeiss-otus-ml-1435.jpg",

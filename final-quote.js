@@ -1,5 +1,4 @@
 const DEMO_QUEUE_KEY = "mpUsedGearStaffQueue";
-const STORE_CREDIT_BONUS = 0.1;
 const API_BASE = resolveApiBase();
 
 const els = {
@@ -179,7 +178,6 @@ function renderPayout() {
         <div class="final-payout-total">
           <span>Total accepted offer</span>
           <strong id="final-cash-total">$0</strong>
-          <small id="final-credit-card" hidden>Store credit option: <b id="final-credit-total">$0</b></small>
         </div>
       </div>
       <div class="section-heading final-small-heading">
@@ -322,9 +320,7 @@ function renderSubmitted() {
 
 function renderTotals() {
   const accepted = state.records.filter((record) => state.decisions[record.id] !== "return");
-  const returned = state.records.filter((record) => state.decisions[record.id] === "return");
   const cashTotal = accepted.reduce((total, record) => total + offerFor(record.fields || {}), 0);
-  const storeCredit = Math.round(cashTotal * (1 + STORE_CREDIT_BONUS));
   const summary = summaryEls();
 
   if (!summary.cashTotal) return;
@@ -333,8 +329,6 @@ function renderTotals() {
   summary.cashCopy.textContent = accepted.length
     ? `${accepted.length} accepted item${accepted.length === 1 ? "" : "s"}`
     : "No items selected for payout";
-  summary.creditTotal.textContent = formatMoney(storeCredit);
-  summary.creditCard.hidden = state.payout !== "store_credit" || cashTotal <= 0;
 }
 
 function summaryEls() {
@@ -342,8 +336,6 @@ function summaryEls() {
     quoteRef: document.getElementById("final-quote-ref"),
     cashTotal: document.getElementById("final-cash-total"),
     cashCopy: document.getElementById("final-cash-copy"),
-    creditCard: document.getElementById("final-credit-card"),
-    creditTotal: document.getElementById("final-credit-total"),
   };
 }
 
