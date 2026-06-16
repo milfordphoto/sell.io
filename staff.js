@@ -98,6 +98,19 @@ const STAFF_INTAKE_CONDITIONS = [
   { value: "heavily_used", label: "Heavily Used", copy: CONDITION_COPY["Heavily Used"] },
 ];
 
+const STAFF_INTAKE_DELIVERY_OPTIONS = [
+  {
+    value: "dropoff",
+    label: "Counter / in-store dropoff",
+    copy: "Gear is already with Milford Photo or will be brought to the store. No inbound label is needed.",
+  },
+  {
+    value: "ship",
+    label: "Customer will ship later",
+    copy: "Use for phone or remote quotes. Eligible quotes can create a customer-to-Milford inbound label.",
+  },
+];
+
 const STAFF_ACTION_STEPS = [
   {
     action: "received",
@@ -2602,9 +2615,19 @@ function renderNewQuoteCustomerFields() {
         </select>
       </label>
     </div>
+    <fieldset class="delivery-grid staff-intake-delivery-grid">
+      <legend>Delivery</legend>
+      ${STAFF_INTAKE_DELIVERY_OPTIONS.map((option, index) => `
+        <label class="choice-card staff-intake-delivery-option">
+          <input type="radio" name="staff-intake-delivery" value="${escapeAttr(option.value)}" ${index === 0 ? "checked" : ""} />
+          <strong>${escapeHtml(option.label)}</strong>
+          <span>${escapeHtml(option.copy)}</span>
+        </label>
+      `).join("")}
+    </fieldset>
     <div class="staff-intake-address-fields">
       <label class="field">
-        <span>Mailing address <small>optional</small></span>
+        <span>Mailing address <small id="staff-intake-address-requirement">optional</small></span>
         <input id="staff-intake-seller-street" autocomplete="street-address" placeholder="Street address" />
       </label>
       <div class="three-col">
@@ -2621,7 +2644,7 @@ function renderNewQuoteCustomerFields() {
           <input id="staff-intake-seller-zip" autocomplete="postal-code" />
         </label>
       </div>
-      <p>Useful for mailed checks, return shipping, or matching a customer record. Leave blank for quick counter intake.</p>
+      <p id="staff-intake-address-note">Useful for mailed checks, return shipping, or matching a customer record. Leave blank for quick counter intake.</p>
     </div>
   `;
 }
@@ -2708,13 +2731,20 @@ function bindStaffIntake() {
     const options = document.getElementById("staff-intake-condition-options");
     toggleStaffIntakeConditionOptions(Boolean(options?.hidden));
   });
-	  form.querySelectorAll('input[name="staff-intake-condition"]').forEach((input) => {
-	    input.addEventListener("change", () => {
-	      updateStaffIntakeConditionPicker();
-	      toggleStaffIntakeConditionOptions(false);
-	      queueStaffIntakeCurrentPreview();
-	    });
-	  });
+  form.querySelectorAll('input[name="staff-intake-condition"]').forEach((input) => {
+    input.addEventListener("change", () => {
+      updateStaffIntakeConditionPicker();
+      toggleStaffIntakeConditionOptions(false);
+      queueStaffIntakeCurrentPreview();
+    });
+  });
+  form.querySelectorAll('input[name="staff-intake-delivery"]').forEach((input) => {
+    input.addEventListener("change", () => {
+      renderStaffIntakeQuote();
+      updateStaffIntakeSubmitButtons();
+    });
+  });
+  updateStaffIntakeDeliveryUi();
   document.getElementById("staff-intake-add-item").addEventListener("click", addStaffIntakeItem);
   document.getElementById("staff-intake-cancel").addEventListener("click", () => {
     selectedOrderId = staffIntakeState.orderId || visibleOrders()[0]?.id || orders[0]?.id || null;
@@ -3208,6 +3238,65 @@ function updateStaffIntakeSubmitButtons() {
   }
 }
 
+function staffIntakeDeliveryMethod() {
+  return document.querySelector('input[name="staff-intake-delivery"]:checked')?.value || "dropoff";
+}
+
+function staffIntakeAddressValue() {
+  return {
+    street: document.getElementById("staff-intake-seller-street")?.value.trim() || "",
+    city: document.getElementById("staff-intake-seller-city")?.value.trim() || "",
+    state: document.getElementById("staff-intake-seller-state")?.value.trim().toUpperCase() || "",
+    zip: document.getElementById("staff-intake-seller-zip")?.value.trim() || "",
+  };
+}
+
+function staffIntakeAddressComplete(address = staffIntakeAddressValue()) {
+  return Boolean(address.street && address.city && address.state && address.zip);
+}
+
+function staffIntakeNeedsAddressForInboundLabel() {
+  return staffIntakeDeliveryMethod() === "ship" && Boolean(staffIntakeState.cartQuote?.routing?.freeLabelEligible);
+}
+
+function updateStaffIntakeDeliveryUi() {
+  if (staffIntakeIsAddingToOrder()) return;
+  const addressPanel = document.querySelector(".staff-intake-address-fields");
+  const requirement = document.getElementById("staff-intake-address-requirement");
+  const note = document.getElementById("staff-intake-address-note");
+  const needsInboundAddress = staffIntakeNeedsAddressForInboundLabel();
+  const isShipLater = staffIntakeDeliveryMethod() === "ship";
+  ["staff-intake-seller-street", "staff-intake-seller-city", "staff-intake-seller-state", "staff-intake-seller-zip"].forEach((id) => {
+    const input = document.getElementById(id);
+    if (input) input.required = needsInboundAddress;
+  });
+  addressPanel?.classList.toggle("is-required", needsInboundAddress);
+  if (requirement) {
+    requirement.textContent = needsInboundAddress ? "required for inbound label" : "optional";
+  }
+  if (note) {
+    note.textContent = needsInboundAddress
+      ? "This mail-in quote is eligible for a prepaid customer-to-Milford label. Enter the full shipping address before creating or emailing it."
+      : isShipLater
+        ? "Recommended for mail-in quotes, return shipping, and customer matching. If the quote qualifies for a prepaid label, the full address will be required."
+        : "Useful for mailed checks, return shipping, or matching a customer record. Leave blank for quick counter intake.";
+  }
+}
+
+function staffIntakeDeliveryRoutingLabel(quote = {}) {
+  if (staffIntakeIsAddingToOrder()) return "Routing";
+  if (staffIntakeDeliveryMethod() === "dropoff") return "Delivery";
+  return quote.routing?.freeLabelEligible ? "Shipping" : "Routing";
+}
+
+function staffIntakeDeliveryRoutingCopy(quote = {}) {
+  if (staffIntakeIsAddingToOrder()) return quote.routing?.message || "Ready to quote";
+  if (staffIntakeDeliveryMethod() === "dropoff") {
+    return "Counter/dropoff selected. No customer-to-Milford inbound label is needed.";
+  }
+  return quote.routing?.message || "Ready to quote";
+}
+
 function quoteItemStableKey(item) {
   return [item.brand, item.category, item.model, item.mount, item.condition, item.notes].join("|").toLowerCase();
 }
@@ -3369,10 +3458,8 @@ async function submitStaffIntakeQuote(event) {
     const sellerName = document.getElementById("staff-intake-seller-name").value.trim();
     const sellerEmail = document.getElementById("staff-intake-seller-email").value.trim();
     const sellerPhone = document.getElementById("staff-intake-seller-phone").value.trim();
-    const sellerStreet = document.getElementById("staff-intake-seller-street").value.trim();
-    const sellerCity = document.getElementById("staff-intake-seller-city").value.trim();
-    const sellerState = document.getElementById("staff-intake-seller-state").value.trim();
-    const sellerZip = document.getElementById("staff-intake-seller-zip").value.trim();
+    const delivery = staffIntakeDeliveryMethod();
+    const address = staffIntakeAddressValue();
 
     if (!sellerName || !sellerEmail) {
       setStatus("Customer name and email are required before creating the quote.", true);
@@ -3385,6 +3472,13 @@ async function submitStaffIntakeQuote(event) {
     }
     if (!quote?.quoteToken) {
       throw new Error("Unable to price this in-store quote.");
+    }
+
+    if (delivery === "ship" && quote.routing?.freeLabelEligible && !staffIntakeAddressComplete(address)) {
+      setStatus("Complete the customer shipping address before creating a prepaid inbound label.", true);
+      document.getElementById("staff-intake-seller-street")?.focus({ preventScroll: true });
+      document.querySelector(".staff-intake-address-fields")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
     }
 
     const savedQuoteMatches = staffIntakeCreatedQuoteMatches(signature);
@@ -3415,14 +3509,9 @@ async function submitStaffIntakeQuote(event) {
         name: sellerName,
         email: sellerEmail,
         phone: sellerPhone,
-        address: {
-          street: sellerStreet,
-          city: sellerCity,
-          state: sellerState,
-          zip: sellerZip,
-        },
+        address,
       },
-      delivery: "dropoff",
+      delivery,
       paymentPreference: document.getElementById("staff-intake-payment-preference").value,
       emailCustomer: submitMode === "email",
     };
@@ -3608,6 +3697,7 @@ function staffIntakeFieldsForReference(item = {}) {
 
 function renderStaffIntakeQuote() {
   updateStaffIntakeHeading();
+  updateStaffIntakeDeliveryUi();
   const quote = staffIntakeState.cartQuote;
   const headerTotal = document.getElementById("staff-intake-header-total");
   const headerRouting = document.getElementById("staff-intake-header-routing");
@@ -3693,6 +3783,7 @@ function renderStaffIntakeQuote() {
   const declinedOnly = Boolean(quote.routing?.declinedOnly);
   const cashCopy = declinedOnly ? "Declined" : quote.totals.cash ? money.format(quote.totals.cash) : "Review";
   const creditCopy = quote.totals.storeCredit ? money.format(quote.totals.storeCredit) : "-";
+  const deliveryRouteCopy = staffIntakeDeliveryRoutingCopy(quote);
 	  const subtitle = declinedOnly
 	    ? "Not eligible for an in-store offer"
 	    : quote.expiresAt
@@ -3705,8 +3796,8 @@ function renderStaffIntakeQuote() {
     subtitle,
     creditCopy,
     showCreditCard: Boolean(quote.totals.storeCredit),
-    routeLabel: quote.routing?.freeLabelEligible ? "Shipping" : "Routing",
-    routeCopy: quote.routing.message,
+    routeLabel: staffIntakeDeliveryRoutingLabel(quote),
+    routeCopy: deliveryRouteCopy,
   });
   const sourceItems = staffIntakeCartItems();
   list.innerHTML = quote.items.map((item, index) => renderStaffIntakeQuoteItem(item, sourceItems[index])).join("");

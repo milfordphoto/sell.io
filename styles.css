@@ -2261,6 +2261,15 @@ fieldset {
   background: var(--soft);
 }
 
+.staff-intake-delivery-grid {
+  margin: 2px 0 18px;
+}
+
+.staff-intake-address-fields.is-required {
+  border-color: rgba(35, 77, 125, 0.42);
+  background: #f8fbff;
+}
+
 .staff-intake-address-fields .field:last-child {
   margin-bottom: 0;
 }
