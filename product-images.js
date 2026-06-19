@@ -887,7 +887,7 @@
       alt: "Canon RF 24-50mm f/4.5-6.3 IS STM",
     },
     "canon|lens|rf 24-70mm f/2.8l is usm": {
-      src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/XqaYHa67tlGK95BTtMIQug?w=228&h=228&p=1&a=1&q=display",
+      src: "./product-assets/canon-rf-24-70mm-f2.8l-is-usm.png",
       alt: "Canon RF 24-70mm f/2.8L IS USM",
     },
     "canon|lens|rf 28-70mm f/2l usm": {
@@ -1023,12 +1023,12 @@
       alt: "Fujifilm GFX 100S",
     },
     "fujifilm|digital camera|gfx 50r": {
-      src: "https://fujifilm-x.b-cdn.net/wp-content/uploads/2018/09/0_thum_gfx50r.jpg?width=480&height=480",
-      alt: "Fujifilm GFX 50R",
+      src: "./product-assets/fujifilm-gfx-50r-body.png",
+      alt: "Fujifilm GFX 50R body",
     },
     "fujifilm|digital camera|gfx 50s": {
-      src: "https://fujifilm-x.b-cdn.net/wp-content/uploads/2017/08/1_thum_gfx_50s.jpg?width=480&height=480",
-      alt: "Fujifilm GFX 50S",
+      src: "./product-assets/fujifilm-gfx-50s-body.png",
+      alt: "Fujifilm GFX 50S body",
     },
     "fujifilm|digital camera|gfx 50s ii": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/G4QfwyYboOrV63FnOXkKjw?w=228&h=228&p=1&a=1&q=display",
@@ -1209,6 +1209,10 @@
     "fujifilm|lens|gf 250mm f/4 r lm ois wr": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/hTAcu8bUziBKg2XvS71bNw?w=228&h=228&p=1&a=1&q=display",
       alt: "Fujifilm GF 250mm f/4 R LM OIS WR",
+    },
+    "fujifilm|lens|gf 500mm f/5.6 r lm ois wr": {
+      src: "./product-assets/fujifilm-gf-500mm-f5.6-r-lm-ois-wr.png",
+      alt: "Fujifilm GF 500mm f/5.6 R LM OIS WR",
     },
     "fujifilm|lens|gf 30mm f/3.5 r wr": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/KTrsyW7gm4uwQNi4DKRZXA?w=228&h=228&p=1&a=1&q=display",
@@ -1431,7 +1435,7 @@
       alt: "Hasselblad XCD 21mm f/4",
     },
     "hasselblad|lens|xcd 25mm f/2.5 v": {
-      src: "https://cdn.hasselblad.com/f/77891/3840x2316/689b690d9e/pc_xcd25v_hero_3840x2316.jpg",
+      src: "./product-assets/hasselblad-xcd-25mm-f2.5-v.png",
       alt: "Hasselblad XCD 25mm f/2.5 V",
     },
     "hasselblad|lens|xcd 28mm f/4 p": {
@@ -1447,7 +1451,7 @@
       alt: "Hasselblad XCD 35-75mm f/3.5-4.5",
     },
     "hasselblad|lens|xcd 38mm f/2.5 v": {
-      src: "https://cdn.hasselblad.com/f/77891/3840x2160/e08de369d3/38v-2560-1080-2x.jpg",
+      src: "./product-assets/hasselblad-xcd-38mm-f2.5-v.png",
       alt: "Hasselblad XCD 38mm f/2.5 V",
     },
     "hasselblad|lens|xcd 45mm f/3.5": {
@@ -1459,7 +1463,7 @@
       alt: "Hasselblad XCD 45mm f/4 P",
     },
     "hasselblad|lens|xcd 55mm f/2.5 v": {
-      src: "https://cdn.hasselblad.com/f/77891/3840x2160/d6aac6ada3/55v-2560-1080-2x.jpg",
+      src: "./product-assets/hasselblad-xcd-55mm-f2.5-v.png",
       alt: "Hasselblad XCD 55mm f/2.5 V",
     },
     "hasselblad|lens|xcd 65mm f/2.8": {
@@ -1467,7 +1471,7 @@
       alt: "Hasselblad XCD 65mm f/2.8",
     },
     "hasselblad|lens|xcd 75mm f/3.4 p": {
-      src: "https://cdn.hasselblad.com/f/77891/3840x2316/eb10b1085e/hasselblad-xcd-75p-banner-pc-1031.jpg",
+      src: "./product-assets/hasselblad-xcd-75mm-f3.4-p.png",
       alt: "Hasselblad XCD 75mm f/3.4 P",
     },
     "hasselblad|lens|xcd 80mm f/1.9": {
@@ -1475,7 +1479,7 @@
       alt: "Hasselblad XCD 80mm f/1.9",
     },
     "hasselblad|lens|xcd 90mm f/2.5 v": {
-      src: "https://cdn.hasselblad.com/f/77891/3840x2160/42df07d75b/90v-2560-1080-2x.jpg",
+      src: "./product-assets/hasselblad-xcd-90mm-f2.5-v.png",
       alt: "Hasselblad XCD 90mm f/2.5 V",
     },
     "hasselblad|lens|xcd 90mm f/3.2": {
@@ -1559,8 +1563,8 @@
       alt: "Leica M11 Monochrom",
     },
     "leica|digital camera|m11-d": {
-      src: "https://leica-camera.com/sites/default/files/styles/meta_tag_product_image/public/pm-110456-20220_M11-D_black_front_1920px.png?itok=pcFkqB1N",
-      alt: "Leica M11-D",
+      src: "./product-assets/leica-m11-d-body.png",
+      alt: "Leica M11-D body",
     },
     "leica|digital camera|m11-p": {
       src: "https://leica-camera.com/sites/default/files/styles/meta_tag_product_image/public/pm-13798-Leica_M11-P_black_front_1920x1440px.png?itok=PhSxwzzy",
@@ -2463,8 +2467,8 @@
       alt: "Olympus / OM System E-M1 Mark II",
     },
     "olympus / om system|digital camera|e-m1 mark iii": {
-      src: "https://learnandsupport.getolympus.com/sites/default/files/styles/thumb_200px/public/2020-02/fz2s_image_kit_-_black.png?itok=yJInKq7X",
-      alt: "Olympus / OM System E-M1 Mark III",
+      src: "./product-assets/om-e-m1-mark-iii-body.png",
+      alt: "Olympus OM-D E-M1 Mark III body",
     },
     "olympus / om system|digital camera|e-m10": {
       src: "https://learnandsupport.getolympus.com/sites/default/files/styles/thumb_200px/public/2018-04/e-m10.jpg?itok=GKSb2Y26",
@@ -2479,8 +2483,8 @@
       alt: "Olympus / OM System E-M10 Mark III",
     },
     "olympus / om system|digital camera|e-m10 mark iv": {
-      src: "https://nala.explore.omsystem.com/media/catalog/product/e/-/e-m10-mark-iv-14-42mm-kit-silver-hero-02.webp?width=1000&height=1000&optimize=medium&fit=bounds",
-      alt: "Olympus / OM System E-M10 Mark IV",
+      src: "./product-assets/om-e-m10-mark-iv-body.png",
+      alt: "Olympus OM-D E-M10 Mark IV body",
     },
     "olympus / om system|digital camera|e-m1x": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/R3QAQnyHD16Nx3Lczi7VCA?w=228&h=228&p=1&a=1&q=display",
@@ -4209,6 +4213,58 @@
     "zeiss|lens|otus ml 85mm f/1.4 (mirrorless)": {
       src: "https://www.zeiss.com/content/dam/pno/images/photography/products/lenses-for-mirrorless-system-cameras/otus-ml-lenses/models/zeiss-otus-ml-1485.jpg/_jcr_content/renditions/original./zeiss-otus-ml-1485.jpg",
       alt: "Zeiss Otus ML 85mm f/1.4",
+    },
+    "gitzo|tripod / support|centre ball head gh1382qd": {
+      src: "./product-assets/gitzo-centre-ball-head-gh1382qd.png",
+      alt: "Gitzo Centre Ball Head GH1382QD",
+    },
+    "gitzo|tripod / support|fluid video head gh3382qd": {
+      src: "./product-assets/gitzo-centre-ball-head-gh3382qd.png",
+      alt: "Gitzo Fluid Video Head GH3382QD",
+    },
+    "gitzo|tripod / support|mountaineer series 1 gt1542": {
+      src: "./product-assets/gitzo-mountaineer-series-1-gt1542.png",
+      alt: "Gitzo Mountaineer Series 1 GT1542",
+    },
+    "gitzo|tripod / support|mountaineer series 2 gt2542": {
+      src: "./product-assets/gitzo-mountaineer-series-2-gt2542.png",
+      alt: "Gitzo Mountaineer Series 2 GT2542",
+    },
+    "gitzo|tripod / support|mountaineer series 3 gt3542": {
+      src: "./product-assets/gitzo-mountaineer-series-3-gt3542.png",
+      alt: "Gitzo Mountaineer Series 3 GT3542",
+    },
+    "gitzo|tripod / support|mountaineer series 3 gt3543xls": {
+      src: "./product-assets/gitzo-mountaineer-series-3-gt3543xls.png",
+      alt: "Gitzo Mountaineer Series 3 GT3543XLS",
+    },
+    "gitzo|tripod / support|systematic series 5 gt5563gs": {
+      src: "./product-assets/gitzo-systematic-series-5-gt5563gs.png",
+      alt: "Gitzo Systematic Series 5 GT5563GS",
+    },
+    "gitzo|tripod / support|traveler series 1 gt1545t": {
+      src: "./product-assets/gitzo-traveler-series-1-gt1545t.png",
+      alt: "Gitzo Traveler Series 1 GT1545T",
+    },
+    "gitzo|tripod / support|traveler series 2 gt2545t": {
+      src: "./product-assets/gitzo-traveler-series-2-gt2545t.png",
+      alt: "Gitzo Traveler Series 2 GT2545T",
+    },
+    "manfrotto|tripod / support|055xpro3 tripod": {
+      src: "./product-assets/manfrotto-055xpro3-tripod.png",
+      alt: "Manfrotto 055XPRO3 Tripod",
+    },
+    "manfrotto|tripod / support|190xpro4 tripod": {
+      src: "./product-assets/manfrotto-190xpro4-tripod.png",
+      alt: "Manfrotto 190XPRO4 Tripod",
+    },
+    "manfrotto|tripod / support|ball head 496rc2": {
+      src: "./product-assets/manfrotto-496rc2-ball-head.png",
+      alt: "Manfrotto Ball Head 496RC2",
+    },
+    "manfrotto|tripod / support|504x fluid video head": {
+      src: "./product-assets/manfrotto-504x-fluid-video-head.png",
+      alt: "Manfrotto 504X Fluid Video Head",
     },
   });
 })();
