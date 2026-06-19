@@ -1301,7 +1301,7 @@ function renderOrderDecisionPanel(order) {
     : ready
       ? "All items are evaluated. Staff can send the item-by-item final quote for the customer to accept or return each item."
       : `${evaluated} of ${order.items.length} items evaluated. Finish every item before sending the final quote email.`;
-  const buttonDisabled = ready && !orderLocked ? "" : "disabled";
+  const buttonDisabled = (sent || ready) && !orderLocked ? "" : "disabled";
   const buttonLabel = sent ? "Resend final quote email" : "Send final quote email";
   return `
     <section class="staff-order-decision ${sent ? "is-sent" : ""}" data-staff-queue-guide="final-email">
@@ -4212,11 +4212,26 @@ function productImageForOption(option) {
 function productImageForRecord(fields = {}) {
   return productImageFor({
     brand: fields["Item Brand"],
-    category: fields.Category,
+    category: productImageCategoryFromRecord(fields),
     model: fields["Item Model"],
     catalogModel: catalogModelFromRecord(fields),
     imageKey: imageKeyFromRecord(fields),
   });
+}
+
+function productImageCategoryFromRecord(fields = {}) {
+  const explicit = [
+    fields["Item Category"],
+    fields["Item Type"],
+    fields["Product Type"],
+    fields.Type,
+    fields.Category,
+  ].find((value) => String(value || "").toLowerCase().includes("lens"));
+  if (explicit) return explicit;
+
+  const title = `${fields["Item Brand"] || ""} ${fields["Item Model"] || ""}`.toLowerCase();
+  if (/\b\d+(?:-\d+)?mm\b/.test(title) || /\bf\/\d/.test(title)) return "Lens";
+  return fields.Category;
 }
 
 function productImageFor(item = {}) {
