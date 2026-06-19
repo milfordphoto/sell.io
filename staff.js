@@ -154,13 +154,24 @@ const STAFF_ACTION_STEPS = [
   },
   {
     action: "return",
-    label: "Mark Item for Return",
+    label: "Mark Return Shipped / Closed",
     status: "Return Item",
-    statusCopy: "Saves status: Return item",
-    notifyLabel: "Email return update",
+    statusCopy: "Use after this item has been packed or sent back",
+    notifyLabel: "Email return shipment update",
     danger: true,
   },
 ];
+
+const STALE_STAFF_CREATED_REASON = "Staff-created quote. Gear has not been received yet.";
+
+const STAFF_ACTION_UNDO_STATUSES = {
+  received: "Accepted by Seller - Store Dropoff",
+  save: "Received - Needs Inspection",
+  adjusted: "Inspection In Progress",
+  accepted: "Final Quote Sent",
+  payment: "Customer Accepted Item",
+  return: "Final Quote Sent",
+};
 
 const STATUS_LABELS = {
   quoted: "Instant offer",
@@ -215,6 +226,9 @@ const usernameInput = document.getElementById("staff-username");
 const passwordInput = document.getElementById("staff-password");
 const loadButton = document.getElementById("load-records");
 const refreshButton = document.getElementById("refresh-records");
+const staffUndoButton = document.getElementById("staff-undo");
+const staffRedoButton = document.getElementById("staff-redo");
+const staffBugReportLink = document.getElementById("staff-bug-report-link");
 const pricingReviewButton = document.getElementById("open-pricing-review");
 const startStaffIntakeButton = document.getElementById("start-staff-intake");
 const intakeQueueButton = document.getElementById("open-intake-queue");
@@ -243,8 +257,39 @@ let staffIntakePreviewRequestId = 0;
 let staffIntakeCartQuoteRequestId = 0;
 let staffIntakeToastTimer = null;
 let staffIntakeToastHideTimer = null;
+let staffQueueGuideTargetOverride = "";
+let staffUndoStack = [];
+let staffRedoStack = [];
+let unlockedCompletedOrderIds = new Set();
 
 const STAFF_INTAKE_PREVIEW_DELAY_MS = 300;
+const STAFF_HISTORY_LIMIT = 25;
+const BUG_REPORT_EMAIL = CONFIG.bugReportEmail || "mikewilson.filmmaker@gmail.com";
+const STAFF_HISTORY_RESTORE_FIELDS = [
+  "Status",
+  "Workflow Step",
+  "Final Offer",
+  "Staff Notes",
+  "Decline Reason",
+  "Serial Number",
+  "Payment Method",
+  "Payment Date",
+  "Seller Name",
+  "Seller Email",
+  "Seller Phone",
+  "Seller Street",
+  "Seller City",
+  "Seller State",
+  "Seller ZIP",
+  "Shippo Label URL",
+  "Tracking Number",
+  "Incoming Tracking Number",
+  "Inbound Tracking Number",
+  "Outgoing Tracking Number",
+  "Outbound Tracking Number",
+  "Return Tracking Number",
+  "Return Shipment Tracking",
+];
 const PRICING_REVIEW_FLAGS_STORAGE_KEY = "milfordPricingReviewFlags";
 const PRICING_REVIEW_FLAG_REASONS = [
   { value: "", label: "Choose reason" },
@@ -283,6 +328,7 @@ function createStaffIntakeState(options = {}) {
     createdQuoteSignature: options.createdQuoteSignature || "",
     createdRecords: options.createdRecords || [],
     quoteEmailQueued: Boolean(options.quoteEmailQueued),
+    guideTarget: options.guideTarget || "gear",
   };
 }
 
@@ -320,6 +366,7 @@ async function loadRecords(options = {}) {
     const demoRecords = allRecords.filter(isDemoRecord);
     records = SHOW_DEMO_ORDERS ? allRecords : allRecords.filter((record) => !isDemoRecord(record));
     orders = buildOrders(records);
+    staffQueueGuideTargetOverride = "";
     if (options.selectQuoteRef) {
       selectedOrderId = orderIdForQuoteRef(options.selectQuoteRef) || selectedOrderId;
     }
@@ -330,6 +377,8 @@ async function loadRecords(options = {}) {
     workspaceEl.hidden = false;
     renderQueue();
     renderDetail();
+    updateStaffHistoryButtons();
+    updateBugReportLink();
     setStatus(demoRecords.length && !SHOW_DEMO_ORDERS ? `Orders loaded. ${demoRecords.length} demo order${demoRecords.length === 1 ? "" : "s"} hidden.` : "Orders loaded.");
   } catch (error) {
     records = [];
@@ -338,6 +387,8 @@ async function loadRecords(options = {}) {
     selectedItemId = null;
     renderQueue();
     renderDetail();
+    updateStaffHistoryButtons();
+    updateBugReportLink();
     setStatus(error.message || "Unable to load orders.", true);
   } finally {
     loadButton.disabled = false;
@@ -417,6 +468,8 @@ function buildOrders(items) {
 function renderQueue() {
   const filtered = visibleOrders();
   countEl.textContent = `${filtered.length} ${activeFilterLabel(activeFilter)} order${filtered.length === 1 ? "" : "s"}`;
+  updateStaffHistoryButtons();
+  updateBugReportLink();
 
   if (!filtered.length) {
     listEl.innerHTML = `<div class="staff-empty-card">No orders in this view.</div>`;
@@ -427,9 +480,11 @@ function renderQueue() {
   listEl.querySelectorAll("[data-order-id]").forEach((button) => {
     button.addEventListener("click", () => {
       selectedOrderId = button.dataset.orderId;
+      staffQueueGuideTargetOverride = "";
       syncSelectedItem();
       renderQueue();
       renderDetail();
+      updateBugReportLink();
     });
   });
 }
@@ -455,8 +510,8 @@ function renderOrderCard(order) {
 function orderStatusLabel(order) {
   if (order.workflow.isComplete) return "Complete";
   const needsManualReview = order.items.some((item) => staffWorkflowText(item.fields).includes("manual review"));
-  if (needsManualReview && order.workflow.current.key === "shipped") return "Next: Manual review";
-  return `Next: ${order.workflow.current.label}`;
+  if (needsManualReview && order.workflow.current?.key === "shipped") return "Next: Manual review";
+  return order.workflow.current ? `Next: ${order.workflow.current.label}` : "Complete";
 }
 
 function renderDetail() {
@@ -470,19 +525,23 @@ function renderDetail() {
         <p>Open an order, switch between each gear tab, complete intake, then send the final quote for customer decisions.</p>
       </div>
     `;
+    updateBugReportLink();
     return;
   }
 
   const fields = record.fields || {};
   const accessories = accessoryListFor(fields);
   const parsed = parseStaffNotes(fields["Staff Notes"]);
+  const received = itemPhysicallyReceived(record);
+  const inspectionReason = inspectionReasonForDisplay(fields, parsed);
   const baseOffer = numberOrNull(fields["Milford Offer"]) ?? 0;
   const calculatedAdjustedOffer = calculateOffer(fields, parsed, accessories, baseOffer);
   const adjustedOffer = reviewRequiresCustomerDecision(fields, parsed, accessories)
     ? calculatedAdjustedOffer
     : numberOrNull(fields["Final Offer"]) ?? calculatedAdjustedOffer;
-  const paymentMethod = paymentMethodValue(fields);
+  const paymentMethod = paymentMethodValue(orderPayoutFields(order, fields));
   const defaultDecision = staffDecisionForRecord(record, order, adjustedOffer, parsed, accessories);
+  const orderLocked = completedOrderLocked(order);
 
   detailEl.innerHTML = `
     <article class="staff-intake">
@@ -507,13 +566,15 @@ function renderDetail() {
         </div>
         <div class="staff-offer-box">
           <span>Item quote</span>
-          <strong>$${formatMoney(adjustedOffer)}</strong>
+          <strong>$${formatMoney(adjustedOffer)} cash</strong>
+          <small class="staff-offer-store-credit">$${formatMoney(storeCreditOffer(adjustedOffer))} store credit</small>
           <small>${escapeHtml(fields.Status || "New")}</small>
         </div>
       </header>
 
-      <form class="staff-review-form" id="staff-review-form">
-        <section class="staff-review-section">
+      <form class="staff-review-form${orderLocked ? " is-locked" : ""}" id="staff-review-form">
+        ${orderLocked ? `<p class="staff-order-locked-note">Order locked. Unlock the completed order before editing item details.</p>` : ""}
+        <section class="staff-review-section" data-staff-queue-guide="receive">
           <div class="staff-section-title">
             <span>1</span>
             <div>
@@ -523,7 +584,7 @@ function renderDetail() {
           </div>
           <div class="staff-receive-grid">
             <label class="staff-check-row">
-              <input type="checkbox" id="received-check" ${!parsed.notReceived && (parsed.received || staffRecordLooksReceived(fields)) ? "checked" : ""} />
+              <input type="checkbox" id="received-check" ${received ? "checked" : ""} />
               This item has been received
             </label>
             <label class="staff-check-row staff-check-row-warning">
@@ -533,7 +594,7 @@ function renderDetail() {
           </div>
         </section>
 
-        <section class="staff-review-section">
+        <section class="staff-review-section" data-staff-queue-guide="included">
           <div class="staff-section-title">
             <span>2</span>
             <div>
@@ -545,12 +606,12 @@ function renderDetail() {
             ${accessories.map((item) => renderAccessory(item, parsed)).join("")}
           </div>
           <label class="staff-check-row">
-            <input type="checkbox" id="all-accessories-check" ${parsed.allAccessories || accessories.every((item) => parsed.accessories[item.name] !== false) ? "checked" : ""} />
+            <input type="checkbox" id="all-accessories-check" ${parsed.allAccessories ? "checked" : ""} />
             All recommended accessories included
           </label>
         </section>
 
-        <section class="staff-review-section">
+        <section class="staff-review-section" data-staff-queue-guide="condition">
           <div class="staff-section-title">
             <span>3</span>
             <div>
@@ -560,11 +621,11 @@ function renderDetail() {
           </div>
           ${renderStaffConditionContext(fields)}
           <div class="staff-condition-grid">
-            ${Object.keys(CONDITION_MULTIPLIERS).map((condition) => renderCondition(condition, parsed.verifiedCondition || fields.Condition)).join("")}
+            ${Object.keys(CONDITION_MULTIPLIERS).map((condition) => renderCondition(condition, parsed.verifiedCondition)).join("")}
           </div>
         </section>
 
-        <section class="staff-review-section">
+        <section class="staff-review-section" data-staff-queue-guide="quote">
           <div class="staff-section-title">
             <span>4</span>
             <div>
@@ -606,30 +667,26 @@ function renderDetail() {
           </div>
           <label class="field">
             <span>Adjustment reason / inspection notes</span>
-            <textarea id="inspection-notes" rows="5" placeholder="Example: Customer selected Excellent, but inspection found heavy body wear and missing charger.">${escapeHtml(parsed.reason || fields["Decline Reason"] || "")}</textarea>
+            <textarea id="inspection-notes" rows="5" placeholder="Example: Customer selected Excellent, but inspection found heavy body wear and missing charger.">${escapeHtml(inspectionReason)}</textarea>
           </label>
-        </section>
-
-        <section class="staff-actions-panel" aria-label="Item workflow actions">
-          <div class="staff-actions-heading">
-            <strong>Item workflow actions</strong>
-            <span>Top buttons save the listed item status only. Email customer buttons send the matching customer email separately.</span>
+          <div class="staff-finish-evaluation-row">
+            <button class="primary-action staff-finish-evaluation-button" type="button" id="finish-item-evaluation">
+              ${escapeHtml(finishEvaluationButtonLabel(order, record))}
+            </button>
           </div>
-          <div class="staff-action-steps">
-            ${renderStaffActionSteps(fields, parsed)}
-          </div>
-          <p class="staff-actions-note">
-            Tracking automation note: when incoming delivery tracking is connected, a delivered scan can trigger the received email automatically. Until then, email the customer from step 1 after the package is checked in.
-          </p>
         </section>
       </form>
 
       ${renderOrderDecisionPanel(order)}
       ${renderPayoutPanel(order, fields, paymentMethod)}
+      ${renderStaffActionsPanel(record, parsed, order)}
     </article>
   `;
 
   bindDetail(record, accessories);
+  updateStaffQueueGuidance();
+  updateBugReportLink();
+  updateStaffHistoryButtons();
 }
 
 function renderOrderHeader(order, currentRecord, currentCashOffer) {
@@ -658,6 +715,9 @@ function renderOrderHeader(order, currentRecord, currentCashOffer) {
 
 function renderOrderSellerContact(order = {}, fields = {}) {
   const contact = sellerContactValues(order, fields);
+  const orderLocked = completedOrderLocked(order);
+  const lockedAttr = orderLocked ? "disabled" : "";
+  const lockedTitle = orderLocked ? "Unlock completed order to edit contact details." : "Edit contact";
   const contactRows = [
     contact.addressHtml && contact.addressText
       ? `<a class="staff-contact-link staff-contact-link-address" href="${escapeAttr(mapsSearchUrl(contact.addressText))}" target="_blank" rel="noreferrer">${contact.addressHtml}</a>`
@@ -676,40 +736,40 @@ function renderOrderSellerContact(order = {}, fields = {}) {
         <div class="staff-order-contact">
           ${contactRows.length ? contactRows.map((row) => `<p>${row}</p>`).join("") : `<p class="staff-order-contact-empty">No contact details on file.</p>`}
         </div>
-        <button class="secondary-action staff-contact-edit-button" type="button" id="edit-customer-contact" aria-expanded="false" aria-controls="staff-contact-editor">Edit contact</button>
+        <button class="secondary-action staff-contact-edit-button" type="button" id="edit-customer-contact" aria-expanded="false" aria-controls="staff-contact-editor" title="${escapeAttr(lockedTitle)}" ${lockedAttr}>Edit contact</button>
       </div>
       <div class="staff-contact-editor" id="staff-contact-editor" hidden>
         <div class="staff-address-grid">
           <label class="field">
             <span>Street</span>
-            <input id="staff-address-street" autocomplete="off" value="${escapeAttr(contact.street)}" />
+            <input id="staff-address-street" autocomplete="off" value="${escapeAttr(contact.street)}" ${lockedAttr} />
           </label>
           <label class="field">
             <span>City</span>
-            <input id="staff-address-city" autocomplete="off" value="${escapeAttr(contact.city)}" />
+            <input id="staff-address-city" autocomplete="off" value="${escapeAttr(contact.city)}" ${lockedAttr} />
           </label>
           <label class="field">
             <span>State</span>
-            <input id="staff-address-state" autocomplete="off" maxlength="2" value="${escapeAttr(contact.state)}" />
+            <input id="staff-address-state" autocomplete="off" maxlength="2" value="${escapeAttr(contact.state)}" ${lockedAttr} />
           </label>
           <label class="field">
             <span>ZIP</span>
-            <input id="staff-address-zip" autocomplete="off" value="${escapeAttr(contact.zip)}" />
+            <input id="staff-address-zip" autocomplete="off" value="${escapeAttr(contact.zip)}" ${lockedAttr} />
           </label>
           <label class="field">
             <span>Email</span>
-            <input id="staff-contact-email" type="email" autocomplete="off" value="${escapeAttr(contact.email)}" />
+            <input id="staff-contact-email" type="email" autocomplete="off" value="${escapeAttr(contact.email)}" ${lockedAttr} />
           </label>
           <label class="field">
             <span>Phone</span>
-            <input id="staff-contact-phone" autocomplete="off" value="${escapeAttr(contact.phone)}" />
+            <input id="staff-contact-phone" autocomplete="off" value="${escapeAttr(contact.phone)}" ${lockedAttr} />
           </label>
         </div>
         <label class="staff-check-row staff-address-confirm">
-          <input type="checkbox" id="staff-address-confirmed" ${hasAddress ? "checked" : ""} />
+          <input type="checkbox" id="staff-address-confirmed" ${hasAddress ? "checked" : ""} ${lockedAttr} />
           Customer confirmed this contact information
         </label>
-        <button class="secondary-action staff-admin-action" type="button" id="save-customer-address">Save contact</button>
+        <button class="secondary-action staff-admin-action" type="button" id="save-customer-address" ${lockedAttr}>Save contact</button>
       </div>
     </div>
   `;
@@ -734,6 +794,17 @@ function sellerContactValues(order = {}, fields = {}) {
   };
 }
 
+function sellerAddressForOrder(order = {}) {
+  const fields = order.items?.[0]?.fields || {};
+  const contact = sellerContactValues(order, fields);
+  return {
+    street: String(contact.street || "").trim(),
+    city: String(contact.city || "").trim(),
+    state: String(contact.state || "").trim().toUpperCase(),
+    zip: String(contact.zip || "").trim(),
+  };
+}
+
 function formatStaffPhone(phone = "") {
   const raw = String(phone || "").trim();
   const digits = raw.replace(/\D/g, "");
@@ -753,6 +824,17 @@ function staffPhoneHref(phone = "") {
 
 function mapsSearchUrl(address = "") {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+}
+
+function upsTrackingUrl(trackingNumber = "") {
+  const clean = String(trackingNumber || "").trim();
+  return clean ? `https://www.ups.com/track?tracknum=${encodeURIComponent(clean)}` : "";
+}
+
+function trackingLink(trackingNumber = "", label = trackingNumber) {
+  const clean = String(trackingNumber || "").trim();
+  if (!clean || clean === "-") return "-";
+  return `<a href="${escapeAttr(upsTrackingUrl(clean))}" target="_blank" rel="noreferrer">${escapeHtml(label || clean)}</a>`;
 }
 
 function renderOfferAmountSummary(kind, cashAmount) {
@@ -782,7 +864,10 @@ function setOfferAmountSummary(kind, cashAmount) {
 
 function renderOrderInfoGrid(order, fields, baseOffer, paymentMethod) {
   const delivery = staffDeliveryFromFields(fields);
-  const shipping = shippingPanelState(fields, delivery);
+  const shipping = shippingPanelState(fields, delivery, order);
+  const orderLocked = completedOrderLocked(order);
+  const inboundActionDisabled = shipping.inboundDisabled || (orderLocked && !shipping.labelUrl);
+  const outboundActionDisabled = shipping.outboundDisabled || (orderLocked && !shipping.returnLabelUrl);
   return `
     <div class="staff-info-grid staff-order-info-grid">
       <section>
@@ -802,26 +887,32 @@ function renderOrderInfoGrid(order, fields, baseOffer, paymentMethod) {
         <dl class="staff-logistics-list">
           <div>
             <dt>Inbound label</dt>
-            <dd>${shipping.labelUrl ? `<a href="${escapeAttr(shipping.labelUrl)}" target="_blank" rel="noreferrer">Open inbound label</a>` : escapeHtml(shipping.labelText)}</dd>
+            <dd>${escapeHtml(shipping.labelStatusText)}</dd>
           </div>
           <div>
             <dt>Inbound tracking</dt>
-            <dd>${escapeHtml(incomingTrackingNumber(fields))}</dd>
+            <dd>${trackingLink(incomingTrackingNumber(fields))}</dd>
           </div>
           <div>
             <dt>Return tracking</dt>
-            <dd>${escapeHtml(outgoingTrackingNumber(fields))}</dd>
+            <dd>${trackingLink(shipping.returnTrackingText)}</dd>
           </div>
         </dl>
         <div class="staff-shipping-actions">
           <div class="staff-shipping-action">
-            <button class="secondary-action staff-admin-action" type="button" id="create-shipping-label" title="${escapeAttr(shipping.inboundReason)}" ${shipping.inboundDisabled ? "disabled" : ""}>${escapeHtml(shipping.inboundButtonLabel)}</button>
+            <button class="secondary-action staff-admin-action" type="button" id="create-shipping-label" title="${escapeAttr(orderLocked && !shipping.labelUrl ? "Unlock completed order to create an inbound label." : shipping.inboundReason)}" ${inboundActionDisabled ? "disabled" : ""}>${escapeHtml(shipping.inboundButtonLabel)}</button>
             <small>${escapeHtml(shipping.inboundReason)}</small>
           </div>
           <div class="staff-shipping-action">
-            <button class="secondary-action staff-admin-action" type="button" id="create-outbound-label" title="${escapeAttr(shipping.outboundReason)}" disabled>Return label not connected</button>
+            <button class="secondary-action staff-admin-action" type="button" id="create-outbound-label" title="${escapeAttr(orderLocked && !shipping.returnLabelUrl ? "Unlock completed order to create an outbound label." : shipping.outboundReason)}" ${outboundActionDisabled ? "disabled" : ""}>${escapeHtml(shipping.outboundButtonLabel)}</button>
             <small>${escapeHtml(shipping.outboundReason)}</small>
           </div>
+          ${shipping.showReturnPackingSlip ? `
+            <div class="staff-shipping-action">
+              <button class="secondary-action staff-admin-action" type="button" id="print-return-packing-slip-top">Print return packing slip</button>
+              <small>Print this slip for the box returning customer gear.</small>
+            </div>
+          ` : ""}
         </div>
         <p>Payout: ${escapeHtml(paymentMethodLabel(paymentMethod))}</p>
       </section>
@@ -829,32 +920,49 @@ function renderOrderInfoGrid(order, fields, baseOffer, paymentMethod) {
   `;
 }
 
-function shippingPanelState(fields = {}, delivery = "") {
+function shippingPanelState(fields = {}, delivery = "", order = selectedOrder()) {
   const isDropoff = delivery === "In-store drop-off";
   const hasAddress = sellerContactHasAddress(fields);
-  const labelUrl = fields["Shippo Label URL"] || "";
-  const inboundDisabled = isDropoff || !hasAddress;
+  const inboundLabel = inboundLabelMetadataForOrder(order);
+  const labelUrl = inboundLabel.labelUrl || fields["Shippo Label URL"] || "";
+  const returnLabel = returnLabelMetadataForOrder(order);
+  const hasReturnItems = orderHasReturnItems(order);
+  const returnLabelUrl = returnLabel.labelUrl || "";
+  const inboundDisabled = !labelUrl && (isDropoff || !hasAddress);
   const title = isDropoff ? "In-store dropoff" : "Mail-in shipping";
   const copy = isDropoff
     ? "This order was created as a counter/dropoff quote, so staff should already have the gear. No customer-to-Milford inbound label is needed."
-    : "Use the inbound label for customer-to-Milford shipments. Return labels are separate and are not connected yet.";
+    : "Use the scan-based inbound label for customer-to-Milford shipments. Create outbound labels only for gear the customer asked Milford Photo to send back.";
   const inboundReason = labelUrl
-    ? "Existing inbound label is linked above. Create another only if the first label needs to be replaced."
+    ? "Existing inbound label is on file. This opens the same label instead of creating another."
     : isDropoff
       ? "In-store dropoff assumes the gear is already with Milford Photo."
       : hasAddress
-        ? "Creates a prepaid customer-to-Milford label and emails it to the customer."
+        ? "Creates a scan-based prepaid customer-to-Milford label and emails it to the customer."
         : "Add and save the customer address before creating an inbound label.";
+  const outboundReason = returnLabelUrl
+    ? `Return label created${returnLabel.trackingNumber ? `, tracking ${returnLabel.trackingNumber}` : ""}.`
+    : !hasReturnItems
+      ? "No customer-return items are selected for this order."
+      : hasAddress
+        ? "Creates scan-based prepaid Milford-to-customer postage for the selected return item(s)."
+        : "Add and save the customer address before creating an outbound label.";
 
   return {
     title,
     copy,
     labelUrl,
     labelText: isDropoff ? "Not needed for in-store dropoff" : "No inbound label yet",
-    inboundButtonLabel: labelUrl ? "Replace inbound label" : "Create inbound label",
+    labelStatusText: labelUrl ? "Inbound label on file" : (isDropoff ? "Not needed for in-store dropoff" : "No inbound label yet"),
+    returnTrackingText: returnLabel.trackingNumber || outgoingTrackingNumber(fields),
+    returnLabelUrl,
+    inboundButtonLabel: labelUrl ? "Open inbound label" : "Create inbound label",
     inboundDisabled,
     inboundReason,
-    outboundReason: "Return-label purchasing is not connected yet. Use the return workflow/email, then handle any return label manually.",
+    outboundButtonLabel: returnLabelUrl ? "Open outbound label" : "Create outbound label",
+    outboundDisabled: !returnLabelUrl && (!hasReturnItems || !hasAddress),
+    outboundReason,
+    showReturnPackingSlip: hasReturnItems,
   };
 }
 
@@ -863,23 +971,61 @@ function sellerContactHasAddress(fields = {}) {
 }
 
 function renderPayoutPanel(order, fields, paymentMethod) {
-  const method = paymentMethod || paymentMethodValue(fields);
-  const storeCreditCode = noteValue(fields["Staff Notes"], "Store credit code");
-  const checkNumber = noteValue(fields["Staff Notes"], "Check number");
-  const paymentSent = staffActionCompleted("payment", fields, parseStaffNotes(fields["Staff Notes"]));
+  const payoutFields = orderPayoutFields(order, fields);
+  const payoutNotes = payoutFields["Staff Notes"] || "";
+  const method = paymentMethod || paymentMethodValue(payoutFields);
+  const storeCreditCode = noteValue(payoutNotes, "Store credit code");
+  const checkNumber = noteValue(payoutNotes, "Check number");
+  const payoutNote = noteValue(payoutNotes, "Payout notes");
+  const paymentSent = orderPaymentComplete(order) || staffActionCompleted("payment", payoutFields, parseStaffNotes(payoutNotes));
+  const customerPayout = orderCustomerPayoutSummary(order, fields, method);
+  const returnOnly = orderIsReturnOnly(order, customerPayout);
+  const returnComplete = returnOnly && orderReturnComplete(order);
+  const hasReturnItems = orderHasReturnItems(order);
+  const returnBoxed = hasReturnItems && orderReturnBoxed(order);
+  const orderLocked = completedOrderLocked(order);
+  const returnWorkflowComplete = hasReturnItems && orderReturnComplete(order);
+  const stateLabel = returnComplete
+    ? returnBoxed ? "Boxed" : "Closed"
+    : returnOnly
+      ? "Return only"
+      : paymentSent
+    ? "Sent"
+    : customerPayout
+      ? "Customer responded"
+      : method
+        ? "Selected"
+        : "Needed";
+  const paymentButtonLabel = returnOnly
+    ? returnComplete ? "Gear shipped + email sent" : "Mark gear shipped + email customer"
+    : paymentSent ? "Payment sent, resend email notification" : "Mark payment sent + email customer";
+  const boxedButtonLabel = returnBoxed
+    ? "Return items boxed / awaiting pickup"
+    : "Mark return items boxed / awaiting pickup";
+  const payoutDisabled = returnOnly || orderLocked;
+  const paymentActionDisabled = orderLocked || (returnOnly && returnComplete);
+  const boxedButtonDisabled = orderLocked || returnBoxed || returnWorkflowComplete;
   return `
-    <article class="staff-admin-card staff-payout-card">
+    <article class="staff-admin-card staff-payout-card${returnOnly ? " is-return-only" : ""}" data-staff-queue-guide="payout">
       <div class="staff-admin-card-heading">
         <div>
           <h3>Payout</h3>
-          <p>Record payout details for the order. Mark payment sent only after the check or store credit is issued.</p>
+          <p>${escapeHtml(returnOnly ? "No payout is due. Pack and ship the returned gear, then close the return and email the customer." : "Record payout details for the order. Mark payment sent only after the check or store credit is issued.")}</p>
         </div>
-        <span class="staff-admin-state ${paymentSent ? "is-ready" : method ? "is-needed" : ""}">${paymentSent ? "Sent" : method ? "Selected" : "Needed"}</span>
+        <span class="staff-admin-state ${returnComplete || paymentSent || customerPayout ? "is-ready" : method ? "is-needed" : ""}">${escapeHtml(stateLabel)}</span>
       </div>
+      ${customerPayout ? `
+        <div class="staff-customer-payout-response">
+          <span>Customer response saved</span>
+          <strong>${escapeHtml(customerPayout.title)}</strong>
+          <p>${escapeHtml(customerPayout.copy)}</p>
+        </div>
+        ${renderCustomerFulfillmentCards(customerPayout)}
+      ` : ""}
       <div class="staff-payout-grid">
         <label class="field">
           <span>Method</span>
-          <select id="payment-method">
+          <select id="payment-method" ${payoutDisabled ? "disabled" : ""}>
             <option value="">Choose method</option>
             <option value="check" ${method === "check" ? "selected" : ""}>Check</option>
             <option value="store_credit" ${method === "store_credit" ? "selected" : ""}>Store credit</option>
@@ -887,51 +1033,169 @@ function renderPayoutPanel(order, fields, paymentMethod) {
         </label>
         <label class="field">
           <span>Store credit code</span>
-          <input id="store-credit-code" autocomplete="off" value="${escapeAttr(storeCreditCode)}" placeholder="Code" />
+          <input id="store-credit-code" autocomplete="off" value="${escapeAttr(storeCreditCode)}" placeholder="Code" ${payoutDisabled ? "disabled" : ""} />
         </label>
         <label class="field">
           <span>Check number</span>
-          <input id="check-number" autocomplete="off" value="${escapeAttr(checkNumber)}" />
+          <input id="check-number" autocomplete="off" value="${escapeAttr(checkNumber)}" ${payoutDisabled ? "disabled" : ""} />
         </label>
         <label class="field">
           <span>Payout note</span>
-          <input id="payout-note" autocomplete="off" placeholder="Optional note" />
+          <input id="payout-note" autocomplete="off" value="${escapeAttr(payoutNote)}" placeholder="Optional note" ${payoutDisabled ? "disabled" : ""} />
         </label>
       </div>
-      <div class="staff-admin-actions">
-        <button class="secondary-action staff-admin-action" type="button" id="save-payout-details">Save payout details</button>
-        <button class="primary-action staff-admin-action" type="button" id="mark-payment-sent">Mark payment sent + email customer</button>
+      <div class="staff-admin-actions ${hasReturnItems ? "has-return-boxed-action" : ""}">
+        <button class="secondary-action staff-admin-action" type="button" id="save-payout-details" ${payoutDisabled ? "disabled" : ""}>Save payout details</button>
+        <button class="primary-action staff-admin-action" type="button" id="${returnOnly ? "mark-return-shipped" : "mark-payment-sent"}" ${paymentActionDisabled ? "disabled" : ""}>${escapeHtml(paymentButtonLabel)}</button>
+        ${hasReturnItems ? `<button class="secondary-action staff-admin-action" type="button" id="mark-return-boxed" ${boxedButtonDisabled ? "disabled" : ""}>${escapeHtml(boxedButtonLabel)}</button>` : ""}
       </div>
     </article>
   `;
 }
 
-function renderStaffActionSteps(fields, parsed) {
+function renderCustomerFulfillmentCards(summary) {
+  const acceptedItems = summary.acceptedItems || [];
+  const returnItems = summary.returnItems || [];
+  const returnLabel = summary.returnLabel || {};
+  const returnLabelUrl = returnLabel.labelUrl || "";
+  const payoutTitle = acceptedItems.length
+    ? `Pay ${summary.payoutAmountText} by ${summary.paymentLabel || "selected method"}`
+    : "No payout due";
+  const payoutCopy = acceptedItems.length
+    ? summary.payoutDestination
+    : "The customer did not accept any items for purchase.";
+  const returnTitle = returnItems.length
+    ? `Send back ${returnItems.length} item${returnItems.length === 1 ? "" : "s"}`
+    : "No return shipment needed";
+  const returnCopy = returnItems.length
+    ? summary.returnDestination
+    : "The customer did not request any returned gear.";
+
+  return `
+    <div class="staff-fulfillment-grid" aria-label="Customer decision staff tasks">
+      <section class="staff-fulfillment-card is-payout">
+        <span>Payout to issue</span>
+        <strong>${escapeHtml(payoutTitle)}</strong>
+        <p>${escapeHtml(payoutCopy)}</p>
+        ${acceptedItems.length ? `<ul>${acceptedItems.map((item) => `<li>${escapeHtml(item.name)} - ${escapeHtml(item.amountText)}</li>`).join("")}</ul>` : ""}
+      </section>
+      <section class="staff-fulfillment-card is-return">
+        <span>Gear to return</span>
+        <strong>${escapeHtml(returnTitle)}</strong>
+        <p>${escapeHtml(returnCopy)}</p>
+        ${returnItems.length ? `<ul>${returnItems.map((item) => `<li>${escapeHtml(item.name)}</li>`).join("")}</ul>` : ""}
+        ${returnLabel.trackingNumber ? `<p>Tracking ${trackingLink(returnLabel.trackingNumber)}</p>` : ""}
+        <div class="staff-fulfillment-actions">
+          <button class="secondary-action staff-admin-action" type="button" id="create-return-label" ${returnItems.length ? "" : "disabled"}>${escapeHtml(returnLabelUrl ? "Open outbound label" : "Create outbound label")}</button>
+          <button class="secondary-action staff-admin-action" type="button" id="print-return-packing-quote" ${returnItems.length ? "" : "disabled"}>Print packing slip</button>
+        </div>
+        ${returnItems.length ? `<small>${escapeHtml(returnLabelUrl ? "Use the Shippo outbound label for postage, then include the packing slip in the box." : "Creates a scan-based prepaid Milford-to-customer outbound label; print the packing slip separately for the box.")}</small>` : ""}
+      </section>
+    </div>
+  `;
+}
+
+function renderStaffActionSteps(record, parsed, order, locked = false) {
+  const fields = record?.fields || {};
   return STAFF_ACTION_STEPS.map((step, index) => {
-    const completed = staffActionCompleted(step.action, fields, parsed);
+    const stepDisabled = staffActionDisabled(step.action, record, order);
+    const disabled = stepDisabled || locked;
+    const completed = !stepDisabled && staffActionCompletedForRecord(step.action, record, parsed, order);
     const classes = [
       "staff-step-action",
       step.primary ? "is-primary" : "",
       step.danger ? "is-danger" : "",
       completed ? "is-complete" : "",
+      stepDisabled ? "is-disabled" : "",
+      locked ? "is-locked" : "",
     ].filter(Boolean).join(" ");
-    const meta = completed ? "Completed" : (step.statusCopy || `Saves status: ${step.status}`);
+    const meta = locked
+      ? "Order locked"
+      : stepDisabled
+        ? staffActionDisabledCopy(step.action, record, order)
+        : completed
+          ? "Completed - click to undo"
+          : (step.statusCopy || `Saves status: ${step.status}`);
     return `
       <div class="staff-action-card">
-        <button class="${classes}" type="button" data-action="${escapeAttr(step.action)}">
+        <button class="${classes}" type="button" data-action="${escapeAttr(step.action)}" data-action-mode="${disabled ? "disabled" : completed ? "undo" : "apply"}" ${disabled ? "disabled" : ""}>
           <span class="staff-step-number">${index + 1}</span>
           <span class="staff-step-copy">
             <strong>${escapeHtml(step.label)}</strong>
             <small>${escapeHtml(meta)}</small>
           </span>
         </button>
-        <button class="staff-notify-action" type="button" data-notify-action="${escapeAttr(step.action)}">
+        <button class="staff-notify-action" type="button" data-notify-action="${escapeAttr(step.action)}" ${disabled ? "disabled" : ""}>
           <span>Email customer</span>
-          <small>${escapeHtml(step.notifyLabel || "Send status update")}</small>
+          <small>${escapeHtml(locked ? "Order locked" : step.notifyLabel || "Send status update")}</small>
         </button>
       </div>
     `;
   }).join("");
+}
+
+function renderStaffActionsPanel(record, parsed, order) {
+  const completeClass = order?.workflow?.isComplete ? " is-complete" : "";
+  const locked = completedOrderLocked(order);
+  const lockedClass = locked ? " is-locked" : "";
+  return `
+    <section class="staff-actions-panel${completeClass}${lockedClass}" aria-label="Item workflow actions" data-staff-queue-guide="actions">
+      <div class="staff-actions-heading">
+        <div class="staff-actions-heading-copy">
+          <strong>Item workflow actions</strong>
+          <span>Top buttons save the listed item status only. Email customer buttons send the matching customer email separately.</span>
+        </div>
+        ${order?.workflow?.isComplete ? renderCompletedOrderLockToggle(order, locked) : ""}
+      </div>
+      <div class="staff-action-steps">
+        ${renderStaffActionSteps(record, parsed, order, locked)}
+      </div>
+      <p class="staff-actions-note">
+        Tracking automation note: when incoming delivery tracking is connected, a delivered scan can trigger the received email automatically. Until then, email the customer from step 1 after the package is checked in.
+      </p>
+    </section>
+  `;
+}
+
+function renderCompletedOrderLockToggle(order, locked) {
+  return `
+    <label class="staff-order-lock-toggle">
+      <input id="staff-order-lock-toggle" type="checkbox" ${locked ? "checked" : ""} />
+      <span class="staff-order-lock-switch" aria-hidden="true"></span>
+      <span class="staff-order-lock-copy">
+        <strong>${locked ? "Order Locked" : "Order Unlocked"}</strong>
+        <small>${locked ? "Unlock to edit completed workflow actions." : "Editing completed order."}</small>
+      </span>
+    </label>
+  `;
+}
+
+function completedOrderLocked(order = selectedOrder()) {
+  return Boolean(order?.workflow?.isComplete && !unlockedCompletedOrderIds.has(order.id));
+}
+
+function handleCompletedOrderLockToggle(order, input) {
+  if (!order?.workflow?.isComplete) return;
+  if (!input.checked) {
+    const confirmed = window.confirm("You are about to unlock an order that has been completed. Are you sure?");
+    if (!confirmed) {
+      input.checked = true;
+      setStatus("Order remains locked.");
+      return;
+    }
+    unlockedCompletedOrderIds.add(order.id);
+    renderDetail();
+    setStatus("Completed order unlocked. Use caution when editing finished workflow steps.");
+    return;
+  }
+
+  unlockedCompletedOrderIds.delete(order.id);
+  renderDetail();
+  setStatus("Completed order locked.");
+}
+
+function finishEvaluationButtonLabel(order, record) {
+  return nextOrderItemId(order, record?.id) ? "Finish item evaluation / next item" : "Finish evaluation";
 }
 
 function renderOrderProgress(order) {
@@ -943,7 +1207,7 @@ function renderOrderProgress(order) {
 
 function renderOrderStatusProgress(order) {
   return `
-    <section class="staff-order-progress staff-order-status-progress" aria-label="Order status">
+    <section class="staff-order-progress staff-order-status-progress" aria-label="Order status" data-staff-queue-guide="order">
       <div class="staff-order-progress-group">
         <div class="staff-progress-heading">
           <strong>Order status</strong>
@@ -956,14 +1220,15 @@ function renderOrderStatusProgress(order) {
 }
 
 function renderOrderItemsProgress(order) {
+  const orderLocked = completedOrderLocked(order);
   return `
-    <section class="staff-order-progress staff-order-items-progress" aria-label="Order item navigation">
+    <section class="staff-order-progress staff-order-items-progress${orderLocked ? " is-locked" : ""}" aria-label="Order item navigation" data-staff-queue-guide="items">
       <div class="staff-order-progress-group">
         <div class="staff-progress-heading">
           <strong>Items in this order</strong>
           <span class="staff-progress-heading-actions">
-            <span>Open each item to receive and evaluate it</span>
-            <button class="staff-add-item-button" type="button" data-add-order-item="${escapeAttr(order.id)}">ADD ITEM</button>
+            <span>${orderLocked ? "Order locked. Unlock to add or remove items." : "Open each item to receive and evaluate it"}</span>
+            <button class="staff-add-item-button" type="button" data-add-order-item="${escapeAttr(order.id)}" ${orderLocked ? "disabled" : ""}>ADD ITEM</button>
           </span>
         </div>
         ${renderItemTabs(order)}
@@ -976,7 +1241,13 @@ function renderWorkflow(order) {
   return `
     <nav class="staff-workflow" aria-label="Order workflow">
       ${WORKFLOW_STEPS.map((step, index) => {
-        const state = order.workflow.completed.has(step.key) ? "is-complete" : step.key === order.workflow.current.key ? "is-current" : "";
+        const state = order.workflow.skipped?.has(step.key)
+          ? "is-disabled"
+          : order.workflow.completed.has(step.key)
+            ? "is-complete"
+            : step.key === order.workflow.current?.key
+              ? "is-current"
+              : "";
         return `
           <div class="staff-workflow-step ${state}">
             <span>${index + 1}</span>
@@ -989,17 +1260,31 @@ function renderWorkflow(order) {
 }
 
 function renderItemTabs(order) {
+  const orderLocked = completedOrderLocked(order);
   return `
     <div class="staff-item-tabs" role="tablist" aria-label="Gear items in order">
       ${order.items.map((item, index) => {
         const fields = item.fields || {};
         const statusClass = itemStatusClass(item);
+        const tabStatus = itemTabStatusLabel(item);
+        const canRemove = order.items.length > 1 && !orderLocked;
+        const removeTitle = orderLocked
+          ? "Unlock completed order to remove items"
+          : canRemove
+            ? "Remove this item from the order"
+            : "Cannot remove the only item in an order";
         return `
-          <button class="staff-item-tab ${statusClass} ${item.id === selectedItemId ? "is-active" : ""}" type="button" data-item-id="${escapeAttr(item.id)}">
-            <span class="staff-item-tab-number">${index + 1}</span>
-            ${productImageMarkup(productImageForRecord(fields), "staff-item-tab-image", fields["Item Brand"])}
-            <span class="staff-item-tab-name">${escapeHtml(shortGearTitle(fields))}</span>
-          </button>
+          <div class="staff-item-tab-card ${item.id === selectedItemId ? "is-active" : ""}">
+            <button class="staff-item-tab ${statusClass} ${item.id === selectedItemId ? "is-active" : ""}" type="button" data-item-id="${escapeAttr(item.id)}">
+              <span class="staff-item-tab-number">${index + 1}</span>
+              ${productImageMarkup(productImageForRecord(fields), "staff-item-tab-image", fields["Item Brand"])}
+              <span class="staff-item-tab-copy">
+                <span class="staff-item-tab-name">${escapeHtml(shortGearTitle(fields))}</span>
+                ${tabStatus ? `<span class="staff-item-tab-status">${escapeHtml(tabStatus)}</span>` : ""}
+              </span>
+            </button>
+            <button class="staff-item-remove-button" type="button" data-remove-item-id="${escapeAttr(item.id)}" data-remove-item-name="${escapeAttr(shortGearTitle(fields))}" ${canRemove ? "" : "disabled"} title="${escapeAttr(removeTitle)}">Remove</button>
+          </div>
         `;
       }).join("")}
     </div>
@@ -1007,21 +1292,24 @@ function renderItemTabs(order) {
 }
 
 function renderOrderDecisionPanel(order) {
-  const evaluated = order.items.filter((item) => itemStatusClass(item) === "is-evaluated").length;
+  const evaluated = order.items.filter(itemIsEvaluated).length;
   const ready = evaluated === order.items.length;
   const sent = finalQuoteEmailSent(order);
+  const orderLocked = completedOrderLocked(order);
   const copy = sent
-    ? "Final quote email has already been sent. The customer can accept items or request returns from the final quote link."
+    ? "Final quote email has already been sent. Resend only if the email address was corrected or the customer needs the link again."
     : ready
       ? "All items are evaluated. Staff can send the item-by-item final quote for the customer to accept or return each item."
       : `${evaluated} of ${order.items.length} items evaluated. Finish every item before sending the final quote email.`;
+  const buttonDisabled = ready && !orderLocked ? "" : "disabled";
+  const buttonLabel = sent ? "Resend final quote email" : "Send final quote email";
   return `
-    <section class="staff-order-decision ${sent ? "is-sent" : ""}">
+    <section class="staff-order-decision ${sent ? "is-sent" : ""}" data-staff-queue-guide="final-email">
       <div>
         <h3>Final quote email</h3>
         <p>${escapeHtml(copy)}</p>
       </div>
-      <button class="primary-action" type="button" id="send-final-quote" ${ready && !sent ? "" : "disabled"}>${sent ? "Final quote email sent" : "Send final quote email"}</button>
+      <button class="primary-action" type="button" id="send-final-quote" data-resend="${sent ? "true" : "false"}" ${buttonDisabled}>${buttonLabel}</button>
     </section>
   `;
 }
@@ -1165,6 +1453,241 @@ function customerDecisionDetail(decision = {}) {
   return details.length ? `${details.join(". ")}.` : "Saved from the final quote link.";
 }
 
+function orderCustomerPayoutSummary(order = {}, fields = {}, selectedMethod = "") {
+  const decisions = orderCustomerDecisionItems(order);
+  if (!decisions.length) return null;
+
+  const sorted = [...decisions].sort((a, b) => logTimestampValue(b.submitted) - logTimestampValue(a.submitted));
+  const submitted = sorted[0]?.submitted || "";
+  const paymentPreference = sorted.find((decision) => decision.paymentPreference)?.paymentPreference
+    || paymentMethodLabel(selectedMethod)
+    || "";
+  const accepted = decisions.filter((decision) => decision.decision === "accept");
+  const returned = decisions.filter((decision) => decision.decision === "return");
+  const acceptedText = `${accepted.length} accepted item${accepted.length === 1 ? "" : "s"}`;
+  const returnedText = `${returned.length} return item${returned.length === 1 ? "" : "s"}`;
+  const payoutText = paymentPreference || "No payout selected";
+  const hasPayoutPreference = accepted.length > 0 && Boolean(paymentPreference);
+  const cashTotal = accepted.reduce((total, item) => total + item.cashAmount, 0);
+  const storeCreditTotal = accepted.reduce((total, item) => total + item.storeCreditAmount, 0);
+  const selectedPaymentValue = selectedMethod || paymentMethodValue(fields);
+  const payoutAmount = selectedPaymentValue === "store_credit" ? storeCreditTotal : cashTotal;
+  const addressText = orderAddressText(fields) || order.addressText || "";
+  const customerEmail = fields["Seller Email"] || order.email || "";
+  const paymentLabelText = paymentPreference || paymentMethodLabel(selectedPaymentValue) || "selected method";
+  const payoutDestination = selectedPaymentValue === "store_credit"
+    ? `Issue store credit to ${customerEmail || "the customer record"}.`
+    : `Mail check to ${addressText || "the saved customer mailing address"}.`;
+  const returnDestination = `Ship return gear to ${addressText || "the saved customer mailing address"}.`;
+  const returnLabel = returnLabelMetadataForOrder(order);
+  const title = hasPayoutPreference
+    ? `Customer wants to be paid by ${payoutText.toLowerCase()}.`
+    : accepted.length > 0
+      ? "Customer accepted items, but no payout method was saved."
+      : "Customer requested return only.";
+  const copy = [
+    `${acceptedText}; ${returnedText}.`,
+    hasPayoutPreference ? `Use ${payoutText.toLowerCase()} for accepted-item payout.` : "",
+    submitted ? `Submitted ${formatLogTimestamp(submitted)}.` : "",
+  ].filter(Boolean).join(" ");
+
+  return {
+    title,
+    copy,
+    acceptedCount: accepted.length,
+    returnCount: returned.length,
+    acceptedItems: accepted,
+    returnItems: returned,
+    cashTotal,
+    storeCreditTotal,
+    payoutAmount,
+    payoutAmountText: `$${formatMoney(payoutAmount)}`,
+    paymentLabel: paymentLabelText,
+    payoutDestination,
+    returnDestination,
+    addressText,
+    customerEmail,
+    submitted,
+    paymentPreference,
+    returnLabel,
+    logDetail: `${acceptedText}; ${returnedText}. ${hasPayoutPreference ? `Customer selected ${payoutText.toLowerCase()} payout.` : title}`,
+  };
+}
+
+function orderPayoutFields(order = {}, fallbackFields = {}) {
+  const items = order?.items || [];
+  const paymentRecord = items.find((record) => staffActionCompleted("payment", record.fields || {}, parseStaffNotes(record.fields?.["Staff Notes"])));
+  if (paymentRecord?.fields) return paymentRecord.fields;
+  const savedPayoutRecord = items.find((record) => {
+    const fields = record.fields || {};
+    const notes = String(fields["Staff Notes"] || "");
+    return paymentMethodValue(fields) || notes.includes("PAYOUT UPDATE");
+  });
+  if (savedPayoutRecord?.fields) return savedPayoutRecord.fields;
+  const acceptedRecord = items.find((record) => customerAcceptedItem(record));
+  return acceptedRecord?.fields || fallbackFields || {};
+}
+
+function orderCustomerDecisionItems(order = {}) {
+  return (order.items || []).map((record) => {
+    const fields = record.fields || {};
+    const latestDecision = latestCustomerDecision(fields);
+    if (!latestDecision) return null;
+    const cashAmount = adjustedCashOfferForRecord(record);
+    return {
+      ...latestDecision,
+      recordId: record.id,
+      name: shortGearTitle(fields),
+      itemName: shortGearTitle(fields),
+      cashAmount,
+      storeCreditAmount: storeCreditOffer(cashAmount),
+      amountText: `$${formatMoney(cashAmount)} cash / $${formatMoney(storeCreditOffer(cashAmount))} store credit`,
+    };
+  }).filter(Boolean);
+}
+
+function inboundLabelMetadataForOrder(order = {}) {
+  for (const record of order.items || []) {
+    const fields = record.fields || {};
+    const labelUrl = fields["Shippo Label URL"] || "";
+    const trackingNumber = incomingTrackingNumber(fields) === "-" ? "" : incomingTrackingNumber(fields);
+    const carrier = noteValue(fields["Staff Notes"], "Carrier");
+    const service = noteValue(fields["Staff Notes"], "Service");
+    if (labelUrl || trackingNumber) {
+      return { labelUrl, trackingNumber, carrier, service };
+    }
+  }
+  return { labelUrl: "", trackingNumber: "", carrier: "", service: "" };
+}
+
+function returnLabelMetadataForOrder(order = {}) {
+  const returnRecords = orderReturnItems(order);
+  const sourceRecords = returnRecords.length ? returnRecords : order.items || [];
+  for (const record of sourceRecords) {
+    const fields = record.fields || {};
+    const notes = fields["Staff Notes"] || "";
+    const labelUrl = noteValue(notes, "Return label URL");
+    const trackingNumber = noteValue(notes, "Return tracking number")
+      || fields["Outgoing Tracking Number"]
+      || fields["Outbound Tracking Number"]
+      || fields["Return Tracking Number"]
+      || fields["Return Shipment Tracking"]
+      || "";
+    const carrier = noteValue(notes, "Return carrier");
+    const service = noteValue(notes, "Return service");
+    if (labelUrl || trackingNumber) {
+      return { labelUrl, trackingNumber, carrier, service };
+    }
+  }
+  return { labelUrl: "", trackingNumber: "", carrier: "", service: "" };
+}
+
+function customerDecisionValue(record = {}) {
+  const fields = record.fields || {};
+  return latestCustomerDecision(fields)?.decision || parseStaffNotes(fields["Staff Notes"]).customerFinalDecision || "";
+}
+
+function customerReturnRequested(record = {}) {
+  return customerDecisionValue(record) === "return";
+}
+
+function customerAcceptedItem(record = {}) {
+  const status = staffWorkflowText(record.fields || {});
+  return customerDecisionValue(record) === "accept" || statusIncludesAny(status, ["accepted item", "customer accepted", "payment"]);
+}
+
+function staffReturnBoxed(record = {}) {
+  const fields = record.fields || {};
+  const parsed = parseStaffNotes(fields["Staff Notes"]);
+  const status = staffWorkflowText(fields);
+  return parsed.returnBoxed
+    || parsed.returnReadyForPickup
+    || parsed.lastAction === "return_boxed"
+    || status.includes("return items boxed")
+    || status.includes("awaiting pickup");
+}
+
+function staffReturnShipped(record = {}) {
+  const fields = record.fields || {};
+  const parsed = parseStaffNotes(fields["Staff Notes"]);
+  const status = staffWorkflowText(fields);
+  return parsed.returnShipped
+    || parsed.lastAction === "return"
+    || status.includes("items shipped to customer")
+    || status.includes("return complete");
+}
+
+function staffReturnCompleted(record = {}) {
+  return staffReturnBoxed(record) || staffReturnShipped(record);
+}
+
+function orderReturnItems(order = {}) {
+  return (order?.items || []).filter((item) => customerReturnRequested(item) || staffWorkflowText(item.fields || {}).includes("return"));
+}
+
+function orderHasReturnItems(order = {}) {
+  return orderReturnItems(order).length > 0;
+}
+
+function orderIsReturnOnly(order = {}, summary = orderCustomerPayoutSummary(order)) {
+  return Boolean(summary && summary.returnCount > 0 && summary.acceptedCount === 0);
+}
+
+function orderReturnComplete(order = {}) {
+  const returnItems = orderReturnItems(order);
+  return returnItems.length > 0 && returnItems.every(staffReturnCompleted);
+}
+
+function orderReturnBoxed(order = {}) {
+  const returnItems = orderReturnItems(order);
+  return returnItems.length > 0 && returnItems.every((record) => staffReturnBoxed(record) && !staffReturnShipped(record));
+}
+
+function orderAcceptedItems(order = {}) {
+  return (order?.items || []).filter(customerAcceptedItem);
+}
+
+function orderPaymentComplete(order = {}) {
+  const acceptedItems = orderAcceptedItems(order);
+  if (!acceptedItems.length) return orderHasPaymentSent(order);
+  return acceptedItems.every((item) => staffActionCompleted("payment", item.fields || {}, parseStaffNotes(item.fields?.["Staff Notes"]))) || orderHasPaymentSent(order);
+}
+
+function orderHasPaymentSent(order = {}) {
+  return (order?.items || []).some((item) => staffActionCompleted("payment", item.fields || {}, parseStaffNotes(item.fields?.["Staff Notes"])));
+}
+
+function staffActionCompletedForRecord(action, record = {}, parsed = {}, order = {}) {
+  if (action === "payment" && orderPaymentComplete(order)) return true;
+  return staffActionCompleted(action, record.fields || {}, parsed);
+}
+
+function staffActionDisabled(action, record = {}, order = {}) {
+  if (action === "accepted" && customerReturnRequested(record)) return true;
+  if (action === "payment" && !orderAcceptedItems(order).length) return true;
+  return action === "return" && !orderHasReturnItems(order);
+}
+
+function staffActionDisabledCopy(action, record = {}, order = {}) {
+  if (action === "accepted" && customerReturnRequested(record)) return "Not needed - customer requested return";
+  if (action === "payment" && !orderAcceptedItems(order).length) return "Not needed - no payout due";
+  if (action === "return") return "Not needed - no customer return items";
+  return "Not needed for this order";
+}
+
+function itemTabStatusLabel(record = {}) {
+  const fields = record.fields || {};
+  const parsed = parseStaffNotes(fields["Staff Notes"]);
+  const paymentComplete = staffActionCompleted("payment", fields, parsed);
+  if (customerAcceptedItem(record)) return paymentComplete ? "Sold / paid" : "Accepted - pay";
+  if (staffReturnBoxed(record) && !staffReturnShipped(record)) return "Return boxed";
+  if (customerReturnRequested(record) && !staffReturnCompleted(record)) return "Return to customer";
+  if (staffReturnCompleted(record)) return "Return complete";
+  if (paymentComplete) return "Paid";
+  if (itemIsEvaluated(record)) return "Evaluated";
+  if (itemPhysicallyReceived(record)) return "Received";
+  return "";
+}
 function staffDecisionLabel(value = "pending") {
   if (value === "accept") return "Customer accepts this item";
   if (value === "return") return "Customer wants this item returned";
@@ -1265,24 +1788,49 @@ function staffCanSetPaymentMethod(fields = {}, paymentMethod = "") {
 
 function bindDetail(record, accessories) {
   const form = document.getElementById("staff-review-form");
-  const actionButtons = Array.from(form.querySelectorAll("[data-action]"));
-  const notifyButtons = Array.from(form.querySelectorAll("[data-notify-action]"));
+  const actionButtons = Array.from(detailEl.querySelectorAll("[data-action]"));
+  const notifyButtons = Array.from(detailEl.querySelectorAll("[data-notify-action]"));
   const workflowButtons = [...actionButtons, ...notifyButtons];
   const allAccessoriesCheck = document.getElementById("all-accessories-check");
   const accessoryInputs = Array.from(form.querySelectorAll("[data-accessory]"));
   const sendFinalQuoteButton = document.getElementById("send-final-quote");
+  const finishEvaluationButton = document.getElementById("finish-item-evaluation");
   const receivedCheck = document.getElementById("received-check");
   const notReceivedCheck = document.getElementById("not-received-check");
   const fields = record.fields || {};
+  const orderLocked = completedOrderLocked(selectedOrder());
+
+  if (orderLocked && form) {
+    form.querySelectorAll("input, textarea, select, button").forEach((control) => {
+      control.disabled = true;
+      control.setAttribute("aria-disabled", "true");
+    });
+  }
 
   detailEl.querySelectorAll("[data-item-id]").forEach((button) => {
     button.addEventListener("click", () => {
       selectedItemId = button.dataset.itemId;
+      staffQueueGuideTargetOverride = "";
       renderDetail();
     });
   });
 
+  detailEl.querySelectorAll("[data-remove-item-id]").forEach((button) => {
+    button.addEventListener("click", async (event) => {
+      event.stopPropagation();
+      if (completedOrderLocked(selectedOrder())) {
+        setStatus("Order is locked. Unlock the completed order before removing items.", true);
+        return;
+      }
+      await removeOrderItem(selectedOrder(), button.dataset.removeItemId, button.dataset.removeItemName || "", button);
+    });
+  });
+
   detailEl.querySelector("[data-add-order-item]")?.addEventListener("click", () => {
+    if (completedOrderLocked(selectedOrder())) {
+      setStatus("Order is locked. Unlock the completed order before adding items.", true);
+      return;
+    }
     startAddOrderItem(selectedOrder());
   });
 
@@ -1291,15 +1839,31 @@ function bindDetail(record, accessories) {
   });
 
   document.getElementById("save-customer-address")?.addEventListener("click", async (event) => {
+    if (completedOrderLocked(selectedOrder())) {
+      setStatus("Order is locked. Unlock the completed order before saving contact changes.", true);
+      return;
+    }
     await saveCustomerAddress(selectedOrder(), event.currentTarget);
   });
 
   document.getElementById("create-shipping-label")?.addEventListener("click", async (event) => {
+    if (completedOrderLocked(selectedOrder()) && !inboundLabelMetadataForOrder(selectedOrder()).labelUrl) {
+      setStatus("Order is locked. Unlock the completed order before creating a new inbound label.", true);
+      return;
+    }
     await createShippingLabelForOrder(selectedOrder(), event.currentTarget);
   });
 
-  document.getElementById("create-outbound-label")?.addEventListener("click", () => {
-    setStatus("Return-label purchasing is not connected yet. Use the return workflow/email, then handle any return label manually.", true);
+  document.getElementById("create-outbound-label")?.addEventListener("click", async (event) => {
+    if (completedOrderLocked(selectedOrder()) && !returnLabelMetadataForOrder(selectedOrder()).labelUrl) {
+      setStatus("Order is locked. Unlock the completed order before creating a new outbound label.", true);
+      return;
+    }
+    await createReturnLabelForOrder(selectedOrder(), event.currentTarget);
+  });
+
+  document.getElementById("print-return-packing-slip-top")?.addEventListener("click", () => {
+    printReturnDocument(selectedOrder(), "packing");
   });
 
   document.getElementById("edit-customer-contact")?.addEventListener("click", (event) => {
@@ -1320,13 +1884,35 @@ function bindDetail(record, accessories) {
     await savePayoutDetails(selectedOrder(), event.currentTarget, { markSent: true, notifyCustomer: true });
   });
 
+  document.getElementById("mark-return-boxed")?.addEventListener("click", async (event) => {
+    await markReturnBoxedForOrder(selectedOrder(), event.currentTarget);
+  });
+
+  document.getElementById("mark-return-shipped")?.addEventListener("click", async (event) => {
+    await markReturnShippedForOrder(selectedOrder(), event.currentTarget);
+  });
+
+  document.getElementById("create-return-label")?.addEventListener("click", async (event) => {
+    await createReturnLabelForOrder(selectedOrder(), event.currentTarget);
+  });
+
+  document.getElementById("print-return-packing-quote")?.addEventListener("click", () => {
+    printReturnDocument(selectedOrder(), "packing");
+  });
+
+  document.getElementById("staff-order-lock-toggle")?.addEventListener("change", (event) => {
+    handleCompletedOrderLockToggle(selectedOrder(), event.currentTarget);
+  });
+
   receivedCheck?.addEventListener("change", () => {
     if (receivedCheck.checked && notReceivedCheck) notReceivedCheck.checked = false;
+    setStaffQueueGuideTarget(receivedCheck.checked ? "included" : "receive");
     updateSuggestedOffer(record, accessories);
   });
 
   notReceivedCheck?.addEventListener("change", () => {
     if (notReceivedCheck.checked && receivedCheck) receivedCheck.checked = false;
+    setStaffQueueGuideTarget(notReceivedCheck.checked ? "quote" : "receive");
     updateSuggestedOffer(record, accessories);
   });
 
@@ -1339,41 +1925,55 @@ function bindDetail(record, accessories) {
   const customOfferInput = document.getElementById("custom-offer");
   customOfferInput?.addEventListener("input", () => {
     customOfferInput.dataset.customEdited = "true";
+    setStaffQueueGuideTarget("actions");
   });
 
   allAccessoriesCheck.addEventListener("change", () => {
     accessoryInputs.forEach((input) => {
       input.checked = allAccessoriesCheck.checked;
     });
+    setStaffQueueGuideTarget("condition");
     updateSuggestedOffer(record, accessories);
   });
 
   accessoryInputs.forEach((input) => {
     input.addEventListener("change", () => {
       allAccessoriesCheck.checked = accessoryInputs.every((item) => item.checked);
+      setStaffQueueGuideTarget("condition");
     });
   });
 
   form.querySelectorAll("input[name='verified-condition']").forEach((input) => {
-    input.addEventListener("change", () => {
+    const selectCondition = () => {
       form.querySelectorAll(".staff-condition-option").forEach((option) => option.classList.remove("is-selected"));
       input.closest(".staff-condition-option").classList.add("is-selected");
-    });
+      setStaffQueueGuideTarget("quote");
+    };
+    input.addEventListener("change", selectCondition);
+    input.addEventListener("click", selectCondition);
   });
 
   form.querySelectorAll("input[name='item-decision']").forEach((input) => {
     input.addEventListener("change", () => {
       input.dataset.userSelected = "true";
+      setStaffQueueGuideTarget("actions");
       updateSuggestedOffer(record, accessories);
       refreshStaffDecisionContext(input.value);
     });
+  });
+
+  document.getElementById("inspection-notes")?.addEventListener("input", () => {
+    setStaffQueueGuideTarget("actions");
   });
 
   syncAutoInspectionNotes(fields, accessories);
 
   actionButtons.forEach((button) => {
     button.addEventListener("click", async () => {
-      await handleStaffAction(record, accessories, button.dataset.action, workflowButtons, { notifyCustomer: false });
+      await handleStaffAction(record, accessories, button.dataset.action, workflowButtons, {
+        notifyCustomer: false,
+        undo: button.dataset.actionMode === "undo",
+      });
     });
   });
 
@@ -1386,9 +1986,18 @@ function bindDetail(record, accessories) {
     });
   });
 
+  finishEvaluationButton?.addEventListener("click", async () => {
+    await finishItemEvaluation(record, accessories, [finishEvaluationButton, ...workflowButtons]);
+  });
+
   sendFinalQuoteButton.addEventListener("click", async () => {
+    const isResend = sendFinalQuoteButton.dataset.resend === "true";
+    if (isResend && !window.confirm("Resend the final quote email to the current customer email address on this order?")) {
+      setStatus("Final quote resend canceled.");
+      return;
+    }
     sendFinalQuoteButton.disabled = true;
-    await handleOrderAction(selectedOrder(), "Final Quote Sent");
+    await handleOrderAction(selectedOrder(), "Final Quote Sent", { resendFinalQuote: isResend });
   });
 }
 
@@ -1424,6 +2033,7 @@ function updateSuggestedOffer(record, accessories) {
 
 async function saveCustomerAddress(order, button) {
   if (!order?.quote) return;
+  const before = orderSnapshots(order);
   const address = {
     street: document.getElementById("staff-address-street")?.value.trim() || "",
     city: document.getElementById("staff-address-city")?.value.trim() || "",
@@ -1443,6 +2053,8 @@ async function saveCustomerAddress(order, button) {
       confirmed: Boolean(document.getElementById("staff-address-confirmed")?.checked),
     }, { staff: true });
     mergeUpdatedRecords(data.records || []);
+    pushStaffHistory("customer contact update", before, orderSnapshots(selectedOrder()));
+    staffQueueGuideTargetOverride = "";
     renderQueue();
     renderDetail();
     setStatus("Customer contact saved.");
@@ -1455,16 +2067,25 @@ async function saveCustomerAddress(order, button) {
 
 async function createShippingLabelForOrder(order, button) {
   if (!order?.quote) return;
-  if (!window.confirm("Create a prepaid customer-to-Milford inbound shipping label using the confirmed customer address, then email it to the customer? In test mode this will dry-run and will not purchase a label.")) {
+  const existing = inboundLabelMetadataForOrder(order);
+  if (existing.labelUrl) {
+    window.open(existing.labelUrl, "_blank", "noopener,noreferrer");
+    setStatus("Inbound label opened.");
+    return;
+  }
+
+  if (!window.confirm("Create a scan-based prepaid customer-to-Milford inbound shipping label using the confirmed customer address, then email it to the customer? Shippo should charge Milford only if the label is used.")) {
     setStatus("Label creation canceled.");
     return;
   }
+  const savedAddress = sellerAddressForOrder(order);
   const address = {
-    street: document.getElementById("staff-address-street")?.value.trim() || "",
-    city: document.getElementById("staff-address-city")?.value.trim() || "",
-    state: document.getElementById("staff-address-state")?.value.trim().toUpperCase() || "",
-    zip: document.getElementById("staff-address-zip")?.value.trim() || "",
+    street: document.getElementById("staff-address-street")?.value.trim() || savedAddress.street,
+    city: document.getElementById("staff-address-city")?.value.trim() || savedAddress.city,
+    state: document.getElementById("staff-address-state")?.value.trim().toUpperCase() || savedAddress.state,
+    zip: document.getElementById("staff-address-zip")?.value.trim() || savedAddress.zip,
   };
+  const before = orderSnapshots(order);
   setDetailBusy([button], true);
   setStatus("Creating inbound shipping label...");
   try {
@@ -1474,15 +2095,208 @@ async function createShippingLabelForOrder(order, button) {
       emailCustomer: true,
     }, { staff: true });
     mergeUpdatedRecords(data.records || []);
+    pushStaffHistory("inbound label creation", before, orderSnapshots(selectedOrder()));
+    staffQueueGuideTargetOverride = "";
     renderQueue();
     renderDetail();
+    if (data.label?.reused && data.label?.labelUrl) {
+      window.open(data.label.labelUrl, "_blank", "noopener,noreferrer");
+      setStatus("Existing inbound label opened. No new label was created.");
+      return;
+    }
     const dryRun = data.label?.dryRun;
-    setStatus(dryRun ? "Shippo dry run saved. Real inbound label purchasing is still disabled." : "Inbound label created and customer email queued.");
+    const dryRunReason = data.label?.message || "Shippo did not create a real label.";
+    setStatus(dryRun ? `${dryRunReason} No customer label email was sent because no printable label exists yet.` : "Inbound label created and customer email queued.");
   } catch (error) {
     setStatus(error.message || "Unable to create inbound label.", true);
   } finally {
     setDetailBusy([button], false);
   }
+}
+
+async function createReturnLabelForOrder(order, button) {
+  if (!order?.quote) return;
+  const existing = returnLabelMetadataForOrder(order);
+  if (existing.labelUrl) {
+    window.open(existing.labelUrl, "_blank", "noopener,noreferrer");
+    setStatus("Outbound label opened.");
+    return;
+  }
+
+  const returnItems = orderCustomerDecisionItems(order).filter((item) => item.decision === "return");
+  if (!returnItems.length) {
+    setStatus("No customer-return items are selected for this order.", true);
+    return;
+  }
+
+  if (!window.confirm("Create scan-based prepaid Milford-to-customer outbound postage using the saved customer address, then email the customer a return shipment update? Shippo should charge Milford only if the label is used.")) {
+    setStatus("Outbound label creation canceled.");
+    return;
+  }
+
+  const savedAddress = sellerAddressForOrder(order);
+  const address = {
+    street: document.getElementById("staff-address-street")?.value.trim() || savedAddress.street,
+    city: document.getElementById("staff-address-city")?.value.trim() || savedAddress.city,
+    state: document.getElementById("staff-address-state")?.value.trim().toUpperCase() || savedAddress.state,
+    zip: document.getElementById("staff-address-zip")?.value.trim() || savedAddress.zip,
+  };
+
+  const before = orderSnapshots(order);
+  setDetailBusy([button], true);
+  setStatus("Creating outbound shipping label...");
+  try {
+    const data = await staffPost("/api/staff/create-return-label", {
+      quoteRef: order.quote,
+      address,
+      emailCustomer: true,
+    }, { staff: true });
+    mergeUpdatedRecords(data.records || []);
+    pushStaffHistory("return label creation", before, orderSnapshots(selectedOrder()));
+    staffQueueGuideTargetOverride = "";
+    renderQueue();
+    renderDetail();
+    const dryRun = data.label?.dryRun;
+    const dryRunReason = data.label?.message || "Shippo did not create a real outbound label.";
+    if (dryRun) {
+      setStatus(`${dryRunReason} No printable outbound label exists yet.`, true);
+      return;
+    }
+    if (data.label?.labelUrl) {
+      const labelWindow = window.open(data.label.labelUrl, "_blank", "noopener,noreferrer");
+      setStatus(labelWindow ? "Outbound label created, opened, and customer return update queued." : "Outbound label created. Use Open outbound label to print it.");
+      return;
+    }
+    setStatus("Outbound label request completed, but no printable label URL was returned.", true);
+  } catch (error) {
+    setStatus(error.message || "Unable to create outbound label.", true);
+  } finally {
+    setDetailBusy([button], false);
+  }
+}
+
+async function markReturnBoxedForOrder(order, button) {
+  if (!order?.quote) return;
+  const returnRecords = orderReturnItems(order);
+  const unboxedReturnRecords = returnRecords.filter((record) => !staffReturnBoxed(record) && !staffReturnShipped(record));
+  if (!returnRecords.length) {
+    setStatus("No customer-return items are selected for this order.", true);
+    return;
+  }
+  if (!unboxedReturnRecords.length) {
+    setStatus("Return items are already boxed or closed for this order.");
+    return;
+  }
+  if (!window.confirm("Mark the return items boxed and awaiting pickup? This is a staff-only status and will not email the customer.")) {
+    setStatus("Return boxed update canceled.");
+    return;
+  }
+
+  const before = orderSnapshots(order);
+  const returnLabel = returnLabelMetadataForOrder(order);
+  setDetailBusy([button], true);
+  setStatus("Marking return items boxed...");
+  try {
+    const updatedRecords = [];
+    for (const record of unboxedReturnRecords) {
+      updatedRecords.push(await updateRecord({
+        recordId: record.id,
+        status: "Return Items Boxed - Awaiting Pickup",
+        finalOffer: adjustedCashOfferForRecord(record),
+        staffNotes: appendReturnBoxedStaffNotes(record.fields?.["Staff Notes"], returnLabel),
+        action: "return_boxed",
+        notifyCustomer: false,
+      }));
+    }
+    mergeUpdatedRecords(updatedRecords);
+    pushStaffHistory("return items boxed", before, orderSnapshots(selectedOrder()));
+    staffQueueGuideTargetOverride = "";
+    renderQueue();
+    renderDetail();
+    setStatus("Return items marked boxed and awaiting pickup. No customer email was sent.");
+  } catch (error) {
+    setStatus(error.message || "Unable to mark return items boxed.", true);
+  } finally {
+    setDetailBusy([button], false);
+  }
+}
+
+async function markReturnShippedForOrder(order, button) {
+  if (!order?.quote) return;
+  const returnRecords = orderReturnItems(order);
+  const openReturnRecords = returnRecords.filter((record) => !staffReturnCompleted(record));
+  if (!returnRecords.length) {
+    setStatus("No customer-return items are selected for this order.", true);
+    return;
+  }
+  if (!openReturnRecords.length) {
+    setStatus("Return shipment is already closed for this order.");
+    return;
+  }
+  if (!window.confirm("Mark the returned gear as shipped/closed and email the customer? Use this after the gear has been packed and handed off for return shipping.")) {
+    setStatus("Return closeout canceled.");
+    return;
+  }
+
+  const before = orderSnapshots(order);
+  const returnLabel = returnLabelMetadataForOrder(order);
+  setDetailBusy([button], true);
+  setStatus("Closing return shipment...");
+  try {
+    const updatedRecords = [];
+    for (let index = 0; index < openReturnRecords.length; index += 1) {
+      const record = openReturnRecords[index];
+      updatedRecords.push(await updateRecord({
+        recordId: record.id,
+        status: "Items Shipped to Customer",
+        finalOffer: adjustedCashOfferForRecord(record),
+        staffNotes: appendReturnShipmentStaffNotes(record.fields?.["Staff Notes"], returnLabel),
+        action: "return_shipped",
+        notifyCustomer: index === 0,
+      }));
+    }
+    mergeUpdatedRecords(updatedRecords);
+    pushStaffHistory("return shipment closeout", before, orderSnapshots(selectedOrder()));
+    staffQueueGuideTargetOverride = "";
+    renderQueue();
+    renderDetail();
+    setStatus("Return shipment marked shipped/closed and customer email queued.");
+  } catch (error) {
+    setStatus(error.message || "Unable to close return shipment.", true);
+  } finally {
+    setDetailBusy([button], false);
+  }
+}
+
+function appendReturnBoxedStaffNotes(notes = "", returnLabel = {}) {
+  const trackingNumber = returnLabel.trackingNumber || "";
+  return [
+    String(notes || "").trim(),
+    "",
+    "RETURN SHIPMENT",
+    "Return boxed: Yes",
+    "Return ready for pickup: Yes",
+    trackingNumber ? `Return tracking number: ${trackingNumber}` : "",
+    returnLabel.carrier ? `Return carrier: ${returnLabel.carrier}` : "",
+    returnLabel.service ? `Return service: ${returnLabel.service}` : "",
+    "Last staff action: return_boxed",
+    `Updated: ${new Date().toLocaleString()}`,
+  ].filter((line, index) => line || index === 1).join("\n").trim();
+}
+
+function appendReturnShipmentStaffNotes(notes = "", returnLabel = {}) {
+  const trackingNumber = returnLabel.trackingNumber || "";
+  return [
+    String(notes || "").trim(),
+    "",
+    "RETURN SHIPMENT",
+    "Return shipped: Yes",
+    trackingNumber ? `Return tracking number: ${trackingNumber}` : "",
+    returnLabel.carrier ? `Return carrier: ${returnLabel.carrier}` : "",
+    returnLabel.service ? `Return service: ${returnLabel.service}` : "",
+    "Last staff action: return",
+    `Updated: ${new Date().toLocaleString()}`,
+  ].filter((line, index) => line || index === 1).join("\n").trim();
 }
 
 async function savePayoutDetails(order, button, options = {}) {
@@ -1496,6 +2310,7 @@ async function savePayoutDetails(order, button, options = {}) {
     setStatus("Payout update canceled.");
     return;
   }
+  const before = orderSnapshots(order);
   setDetailBusy([button], true);
   setStatus(options.markSent ? "Marking payout sent..." : "Saving payout details...");
   try {
@@ -1510,6 +2325,8 @@ async function savePayoutDetails(order, button, options = {}) {
       notifyCustomer: Boolean(options.notifyCustomer),
     }, { staff: true });
     mergeUpdatedRecords(data.records || []);
+    pushStaffHistory(options.markSent ? "payment sent update" : "payout details update", before, orderSnapshots(selectedOrder()));
+    staffQueueGuideTargetOverride = "";
     renderQueue();
     renderDetail();
     setStatus(options.markSent ? "Payout marked sent and customer email queued." : "Payout details saved.");
@@ -1518,6 +2335,170 @@ async function savePayoutDetails(order, button, options = {}) {
   } finally {
     setDetailBusy([button], false);
   }
+}
+
+function printReturnDocument(order = selectedOrder(), type = "packing") {
+  const returnItems = orderCustomerDecisionItems(order).filter((item) => item.decision === "return");
+  if (!order || !returnItems.length) {
+    setStatus("No customer-return items are selected for this order.", true);
+    return;
+  }
+
+  const fields = order.items?.[0]?.fields || {};
+  const customerName = fields["Seller Name"] || order.customer || "Customer";
+  const addressText = orderAddressText(fields) || order.addressText || "";
+  const email = fields["Seller Email"] || order.email || "";
+  const phone = fields["Seller Phone"] || order.phone || "";
+  const itemDetails = returnPackingItemDetails(order);
+  const html = type === "label"
+    ? returnLabelPrintHtml({ order, customerName, addressText, email, phone, returnItems, itemDetails })
+    : returnPackingPrintHtml({ order, customerName, addressText, email, phone, returnItems, itemDetails });
+  const printWindow = window.open("", "_blank", "width=820,height=900");
+  if (!printWindow) {
+    setStatus("Please allow pop-ups so the return paperwork can open for printing.", true);
+    return;
+  }
+  printWindow.document.write(html);
+  printWindow.document.close();
+  setStatus(type === "label" ? "Return label opened for printing." : "Return packing slip opened for printing.");
+}
+
+function returnPackingItemDetails(order = selectedOrder()) {
+  return orderReturnItems(order).map((record) => {
+    const fields = record.fields || {};
+    const parsed = parseStaffNotes(fields["Staff Notes"]);
+    const accessories = accessoryListFor(fields).map((accessory) => {
+      const received = parsed.allAccessories || parsed.accessories?.[accessory.name] !== false;
+      return {
+        name: accessory.name,
+        received,
+        deduction: accessory.deduction,
+      };
+    });
+    return {
+      recordId: record.id,
+      name: gearTitle(fields),
+      conditionQuoted: fields.Condition || "",
+      conditionVerified: parsed.verifiedCondition || "",
+      finalOffer: adjustedCashOfferForRecord(record),
+      allAccessories: parsed.allAccessories,
+      receivedAccessories: accessories.filter((item) => item.received),
+      missingAccessories: accessories.filter((item) => !item.received),
+      notes: inspectionReasonForDisplay(fields, parsed),
+    };
+  });
+}
+
+function returnLabelPrintHtml(data) {
+  return returnPrintShell("Return address label", `
+    <section class="label">
+      <p class="eyebrow">Return to customer</p>
+      <h1>TO: ${escapeHtml(data.customerName)}</h1>
+      <p class="address">${escapeHtml(data.addressText || "Customer address not saved")}</p>
+      <p>${escapeHtml(data.email || "")}${data.email && data.phone ? " · " : ""}${escapeHtml(data.phone || "")}</p>
+      <p class="quote">Quote ${escapeHtml(data.order.quote || "-")}</p>
+    </section>
+    <section class="from">
+      <strong>FROM: Milford Photo Used Department</strong>
+      <span>22 River Street, Milford, CT 06460</span>
+    </section>
+    <section class="items">
+      <h2>Return items</h2>
+      <ul>${data.returnItems.map((item) => `<li>${escapeHtml(item.name)}</li>`).join("")}</ul>
+    </section>
+    <p class="note">Fallback address label only. Use Create return label in the staff dashboard for prepaid postage.</p>
+  `);
+}
+
+function returnPackingPrintHtml(data) {
+  return returnPrintShell("Return packing slip", `
+    <header>
+      <p class="eyebrow">Milford Photo Used Department</p>
+      <h1>Return packing slip</h1>
+      <p>Quote ${escapeHtml(data.order.quote || "-")}</p>
+    </header>
+    <section class="grid">
+      <div>
+        <h2>Ship to</h2>
+        <p><strong>${escapeHtml(data.customerName)}</strong></p>
+        <p>${escapeHtml(data.addressText || "Customer address not saved")}</p>
+        <p>${escapeHtml(data.email || "")}</p>
+        <p>${escapeHtml(data.phone || "")}</p>
+      </div>
+      <div>
+        <h2>Staff checklist</h2>
+        <ul>
+          <li>Pack only the return items listed below.</li>
+          <li>Include this packing slip in the box.</li>
+          <li>Attach the Shippo outbound label to the outside of the package.</li>
+          <li>After shipment is handled, mark the item return shipped/closed in the dashboard.</li>
+        </ul>
+      </div>
+    </section>
+    <section>
+      <h2>Items to return</h2>
+      <table>
+        <thead><tr><th>#</th><th>Item and accessories to pack</th><th>Condition</th></tr></thead>
+        <tbody>${data.itemDetails.map((item, index) => `
+          <tr>
+            <td>${index + 1}</td>
+            <td>
+              <strong>${escapeHtml(item.name)}</strong>
+              ${item.notes ? `<br><small>${escapeHtml(item.notes)}</small>` : ""}
+              ${item.receivedAccessories.length ? `
+                <div class="return-accessory-heading">Accessories marked received</div>
+                <ul class="return-accessory-list">
+                  ${item.receivedAccessories.map((accessory) => `
+                    <li><span class="return-accessory-box" aria-hidden="true"></span><span>${escapeHtml(accessory.name)}</span></li>
+                  `).join("")}
+                </ul>
+              ` : `<div class="return-accessory-empty">No accessories marked received.</div>`}
+            </td>
+            <td>${escapeHtml(item.conditionVerified || item.conditionQuoted || "-")}</td>
+          </tr>
+        `).join("")}</tbody>
+      </table>
+    </section>
+  `);
+}
+
+function returnPrintShell(title, body) {
+  return `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>${escapeHtml(title)}</title>
+    <style>
+      * { box-sizing: border-box; }
+      body { margin: 0; padding: 32px; color: #17181c; font-family: Arial, Helvetica, sans-serif; }
+      h1, h2, p { margin-top: 0; }
+      h1 { font-size: 34px; line-height: 1.05; }
+      h2 { font-size: 18px; }
+      .eyebrow { color: #d52127; font-size: 13px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+      .label { min-height: 360px; padding: 28px; border: 3px solid #17181c; }
+      .address { font-size: 26px; font-weight: 800; line-height: 1.2; white-space: pre-line; }
+      .quote { margin-top: 24px; font-size: 18px; font-weight: 800; }
+      .from, .items, .note, header, section { margin-top: 24px; }
+      .from { display: grid; gap: 4px; padding: 14px; border: 1px solid #d9dde5; }
+      .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+      .grid > div { padding: 16px; border: 1px solid #d9dde5; border-radius: 8px; }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { padding: 12px; border: 1px solid #d9dde5; text-align: left; }
+      th { background: #f4f6f8; text-transform: uppercase; font-size: 12px; letter-spacing: .06em; }
+      .return-accessory-heading { margin-top: 10px; color: #5f6673; font-weight: 800; }
+      .return-accessory-list { display: grid; gap: 6px; margin: 6px 0 0; padding: 0; list-style: none; }
+      .return-accessory-list li { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 8px; align-items: start; }
+      .return-accessory-box { width: 15px; height: 15px; border: 1.5px solid #5f6673; border-radius: 3px; margin-top: 1px; }
+      .return-accessory-empty { margin-top: 10px; color: #5f6673; }
+      .note { color: #5f6673; font-size: 14px; }
+      @media print { body { padding: 20px; } }
+    </style>
+  </head>
+  <body>
+    ${body}
+    <script>window.addEventListener("load", () => window.setTimeout(() => window.print(), 250));<\/script>
+  </body>
+</html>`;
 }
 
 function mergeUpdatedRecords(updatedRecords = []) {
@@ -1532,26 +2513,252 @@ function mergeUpdatedRecords(updatedRecords = []) {
   }
 }
 
+function recordSnapshot(record) {
+  if (!record?.id) return null;
+  const source = record.fields || {};
+  const fields = {};
+  STAFF_HISTORY_RESTORE_FIELDS.forEach((field) => {
+    if (Object.prototype.hasOwnProperty.call(source, field)) fields[field] = source[field] ?? "";
+  });
+  return { id: record.id, fields };
+}
+
+function orderSnapshots(order = selectedOrder()) {
+  return (order?.items || []).map(recordSnapshot).filter(Boolean);
+}
+
+function recordSnapshots(record) {
+  const snapshot = recordSnapshot(record);
+  return snapshot ? [snapshot] : [];
+}
+
+function normalizeStaffHistoryEntry(label, beforeSnapshots = [], afterSnapshots = []) {
+  const beforeById = new Map(beforeSnapshots.filter(Boolean).map((snapshot) => [snapshot.id, snapshot]));
+  const afterById = new Map(afterSnapshots.filter(Boolean).map((snapshot) => [snapshot.id, snapshot]));
+  const ids = Array.from(new Set([...beforeById.keys(), ...afterById.keys()]));
+  if (!ids.length) return null;
+
+  const before = [];
+  const after = [];
+  let changed = false;
+  ids.forEach((id) => {
+    const beforeFields = beforeById.get(id)?.fields || {};
+    const afterFields = afterById.get(id)?.fields || {};
+    const fieldNames = Array.from(new Set([...Object.keys(beforeFields), ...Object.keys(afterFields)]))
+      .filter((field) => STAFF_HISTORY_RESTORE_FIELDS.includes(field));
+    if (!fieldNames.length) return;
+
+    const normalizedBefore = {};
+    const normalizedAfter = {};
+    fieldNames.forEach((field) => {
+      normalizedBefore[field] = beforeFields[field] ?? "";
+      normalizedAfter[field] = afterFields[field] ?? "";
+    });
+    if (JSON.stringify(normalizedBefore) !== JSON.stringify(normalizedAfter)) changed = true;
+    before.push({ id, fields: normalizedBefore });
+    after.push({ id, fields: normalizedAfter });
+  });
+
+  if (!changed || !before.length || !after.length) return null;
+  return {
+    label: label || "staff change",
+    quoteRef: selectedOrder()?.quote || "",
+    selectedOrderId,
+    selectedItemId,
+    before,
+    after,
+  };
+}
+
+function pushStaffHistory(label, beforeSnapshots = [], afterSnapshots = []) {
+  const entry = normalizeStaffHistoryEntry(label, beforeSnapshots, afterSnapshots);
+  if (!entry) return;
+  staffUndoStack.push(entry);
+  if (staffUndoStack.length > STAFF_HISTORY_LIMIT) staffUndoStack = staffUndoStack.slice(-STAFF_HISTORY_LIMIT);
+  staffRedoStack = [];
+  updateStaffHistoryButtons();
+}
+
+function updateStaffHistoryButtons() {
+  if (staffUndoButton) {
+    const entry = staffUndoStack[staffUndoStack.length - 1];
+    staffUndoButton.disabled = !entry;
+    staffUndoButton.title = entry ? `Undo ${entry.label}` : "No queue changes to undo";
+  }
+  if (staffRedoButton) {
+    const entry = staffRedoStack[staffRedoStack.length - 1];
+    staffRedoButton.disabled = !entry;
+    staffRedoButton.title = entry ? `Redo ${entry.label}` : "No queue changes to redo";
+  }
+}
+
+function setStaffHistoryBusy(isBusy) {
+  if (staffUndoButton) staffUndoButton.disabled = isBusy || !staffUndoStack.length;
+  if (staffRedoButton) staffRedoButton.disabled = isBusy || !staffRedoStack.length;
+}
+
+async function restoreStaffHistory(direction = "undo") {
+  const isRedo = direction === "redo";
+  const source = isRedo ? staffRedoStack : staffUndoStack;
+  const destination = isRedo ? staffUndoStack : staffRedoStack;
+  const entry = source.pop();
+  if (!entry) {
+    updateStaffHistoryButtons();
+    return;
+  }
+
+  setStaffHistoryBusy(true);
+  setStatus(`${isRedo ? "Redoing" : "Undoing"} ${entry.label}...`);
+  try {
+    const data = await staffPost("/api/staff/restore-records", {
+      records: isRedo ? entry.after : entry.before,
+      direction: isRedo ? "redo" : "undo",
+      label: entry.label,
+      quoteRef: entry.quoteRef,
+    }, { staff: true });
+    mergeUpdatedRecords(data.records || []);
+    if (entry.selectedOrderId && orders.some((order) => order.id === entry.selectedOrderId)) {
+      selectedOrderId = entry.selectedOrderId;
+    }
+    if (entry.selectedItemId && selectedOrder()?.items?.some((item) => item.id === entry.selectedItemId)) {
+      selectedItemId = entry.selectedItemId;
+    } else {
+      syncSelectedItem();
+    }
+    staffQueueGuideTargetOverride = "";
+    destination.push(entry);
+    if (destination.length > STAFF_HISTORY_LIMIT) destination.splice(0, destination.length - STAFF_HISTORY_LIMIT);
+    renderQueue();
+    renderDetail();
+    setStatus(`${isRedo ? "Redo" : "Undo"} complete: ${entry.label}.`);
+  } catch (error) {
+    source.push(entry);
+    setStatus(error.message || `Unable to ${isRedo ? "redo" : "undo"} the last queue change.`, true);
+  } finally {
+    updateStaffHistoryButtons();
+  }
+}
+
+function bugReportMailto(order = selectedOrder(), record = selectedRecord(order)) {
+  const quote = order?.quote || "No order selected";
+  const item = record ? shortGearTitle(record.fields || {}) : "No item selected";
+  const subject = `Used gear bug report - ${quote}`;
+  const body = [
+    "Milford Photo staff bug report",
+    "",
+    `Order: ${quote}`,
+    `Customer: ${order?.customer || "No customer selected"}`,
+    `Selected item: ${item}`,
+    `Current workflow step: ${order?.workflow?.current?.label || order?.statusLabel || "Unknown"}`,
+    `Page: ${window.location.href}`,
+    "",
+    "Please describe:",
+    "1. What you were trying to do",
+    "2. What happened",
+    "3. What you expected to happen",
+    "4. Which button or step you clicked",
+    "5. Attach a screenshot if possible",
+  ].join("\n");
+  return `mailto:${BUG_REPORT_EMAIL.trim()}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+
+function updateBugReportLink() {
+  if (!staffBugReportLink) return;
+  staffBugReportLink.href = bugReportMailto();
+}
+
+async function finishItemEvaluation(record, accessories, buttons = []) {
+  const review = collectReviewState(accessories);
+  if (!review.received && !review.notReceived) {
+    setStaffQueueGuideTarget("receive");
+    setStatus("Confirm this item was received before finishing the evaluation.", true);
+    return;
+  }
+  if (!staffQueueIncludedItemsVerified(accessories)) {
+    setStaffQueueGuideTarget("included");
+    setStatus("Confirm all recommended accessories are included, or deselect anything missing.", true);
+    return;
+  }
+  if (!review.verifiedCondition) {
+    setStaffQueueGuideTarget("condition");
+    setStatus("Select the verified condition, even when it matches the original quote.", true);
+    return;
+  }
+
+  const orderBeforeUpdate = selectedOrder();
+  const nextItemId = nextOrderItemId(orderBeforeUpdate, record.id);
+  const finalOffer = numberOrNull(document.getElementById("custom-offer")?.value)
+    ?? numberOrNull(document.getElementById("suggested-offer")?.value)
+    ?? 0;
+  const reviewForNotes = {
+    ...review,
+    received: !review.notReceived,
+  };
+  const before = recordSnapshots(record);
+
+  setDetailBusy(buttons, true);
+  setStatus(nextItemId ? "Finishing item evaluation and opening the next item..." : "Finishing item evaluation...");
+  try {
+    const updated = await updateRecord({
+      recordId: record.id,
+      status: staffActionStatus("adjusted"),
+      finalOffer,
+      staffNotes: buildStaffNotes(reviewForNotes, "adjusted", finalOffer),
+      notifyCustomer: false,
+    });
+    pushStaffHistory("item evaluation update", before, recordSnapshots(updated));
+    records = records.map((item) => (item.id === record.id ? updated : item));
+    orders = buildOrders(records);
+    selectedOrderId = orderBeforeUpdate?.id || selectedOrderId;
+    selectedItemId = orderItemExists(selectedOrder(), nextItemId) ? nextItemId : updated.id;
+    staffQueueGuideTargetOverride = nextItemId ? "receive" : "";
+    renderQueue();
+    renderDetail();
+    if (nextItemId && selectedItemId === nextItemId) {
+      window.requestAnimationFrame(scrollToStaffItemStart);
+      setStatus("Item evaluation complete. Opened the next item in this order.");
+      return;
+    }
+    window.requestAnimationFrame(() => scrollToStaffQueueGuideTarget(staffQueueCurrentGuideTarget()));
+    setStatus("Item evaluation complete. Continue to the next highlighted section.");
+  } catch (error) {
+    setStatus(error.message || "Unable to finish item evaluation.", true);
+  } finally {
+    setDetailBusy(buttons, false);
+  }
+}
+
 async function handleStaffAction(record, accessories, action, buttons, options = {}) {
   const review = collectReviewState(accessories);
   const finalOffer = numberOrNull(document.getElementById("custom-offer").value)
     ?? numberOrNull(document.getElementById("suggested-offer")?.value)
     ?? 0;
-  const status = staffActionStatus(action);
+  const undo = options.undo === true;
+  const status = undo ? staffActionUndoStatus(action, record.fields || {}) : staffActionStatus(action);
   if (!status) return;
   const notifyCustomer = options.notifyCustomer === true;
   const notifyOnly = options.notifyOnly === true;
   const step = staffActionStep(action);
   const orderBeforeUpdate = selectedOrder();
-  const nextItemId = action === "adjusted" && !notifyCustomer && !notifyOnly
+  const nextItemId = action === "adjusted" && !undo && !notifyCustomer && !notifyOnly
     ? nextOrderItemId(orderBeforeUpdate, record.id)
     : "";
+  const actionForNotes = undo ? `undo_${action}` : action;
+  const reviewForNotes = undoReviewState(review, action);
+  const returnShipmentNotes = !undo && action === "return"
+    ? appendReturnShipmentStaffNotes(record.fields?.["Staff Notes"], returnLabelMetadataForOrder(orderBeforeUpdate))
+    : "";
+
+  if (undo && !confirmStaffActionUndo(action)) {
+    setStatus("Undo canceled. No item status changed.");
+    return;
+  }
 
   const body = {
     recordId: record.id,
     status,
     finalOffer,
-    staffNotes: buildStaffNotes(review, action, finalOffer),
+    staffNotes: returnShipmentNotes || buildStaffNotes(reviewForNotes, actionForNotes, finalOffer),
     notifyCustomer,
   };
   if (notifyOnly) {
@@ -1565,9 +2772,9 @@ async function handleStaffAction(record, accessories, action, buttons, options =
     if (selectedPaymentMethod) body.paymentMethod = selectedPaymentMethod;
   }
   if (action === "return") {
-    body.declineReason = review.reason || "Customer wants this item returned.";
+    body.declineReason = undo ? "" : review.reason || "Customer wants this item returned.";
   }
-  if (review.decision === "not_accepted") {
+  if (!undo && review.decision === "not_accepted") {
     body.declineReason = review.reason || "Milford cannot accept this item for resale.";
   }
 
@@ -1576,22 +2783,25 @@ async function handleStaffAction(record, accessories, action, buttons, options =
     return;
   }
 
+  const before = recordSnapshots(record);
   setDetailBusy(buttons, true);
-  setStatus(notifyOnly ? "Sending customer email..." : "Saving item update...");
+  setStatus(notifyOnly ? "Sending customer email..." : undo ? "Undoing item workflow step..." : "Saving item update...");
 
   try {
     const updated = await updateRecord(body);
+    if (!notifyOnly) pushStaffHistory(undo ? `undo ${step?.label || action}` : step?.label || "item workflow update", before, recordSnapshots(updated));
     records = records.map((item) => (item.id === record.id ? updated : item));
     orders = buildOrders(records);
     selectedOrderId = orderBeforeUpdate?.id || selectedOrderId;
     selectedItemId = orderItemExists(selectedOrder(), nextItemId) ? nextItemId : updated.id;
+    staffQueueGuideTargetOverride = nextItemId ? "receive" : "";
     renderQueue();
     renderDetail();
     if (nextItemId && selectedItemId === nextItemId) {
       window.requestAnimationFrame(scrollToStaffItemStart);
       setStatus(`Saved: ${status}. Opened the next item in this order.`);
     } else {
-      setStatus(notifyOnly ? "Customer email sent." : `Saved: ${status}.`);
+      setStatus(notifyOnly ? "Customer email sent." : undo ? `Undone: ${step?.label || "workflow step"}.` : `Saved: ${status}.`);
     }
   } catch (error) {
     setStatus(error.message || (notifyOnly ? "Unable to send customer email." : "Unable to save item update."), true);
@@ -1604,8 +2814,43 @@ function staffActionStatus(action) {
   return staffActionStep(action)?.status || "";
 }
 
+function staffActionUndoStatus(action, fields = {}) {
+  if (action === "received") {
+    const delivery = staffDeliveryFromFields(fields);
+    return delivery === "Mail-in shipment" ? "Accepted by Seller" : "Accepted by Seller - Store Dropoff";
+  }
+  return STAFF_ACTION_UNDO_STATUSES[action] || "";
+}
+
 function staffActionStep(action) {
   return STAFF_ACTION_STEPS.find((step) => step.action === action);
+}
+
+function undoReviewState(review = {}, action = "") {
+  const next = {
+    ...review,
+    accessories: { ...(review.accessories || {}) },
+    reason: cleanUndoReason(review.reason),
+  };
+  if (action === "received") {
+    next.received = false;
+    next.notReceived = false;
+  }
+  if (action === "accepted" || action === "payment" || action === "return") {
+    next.decision = "pending";
+  }
+  return next;
+}
+
+function cleanUndoReason(reason = "") {
+  const clean = String(reason || "").trim();
+  return clean === STALE_STAFF_CREATED_REASON || clean.toLowerCase() === "none" ? "" : clean;
+}
+
+function confirmStaffActionUndo(action) {
+  const step = staffActionStep(action);
+  const label = step?.label || "this workflow step";
+  return window.confirm(`Undo "${label}" for this item? This updates the item status only and does not email the customer.`);
 }
 
 function nextOrderItemId(order, currentItemId) {
@@ -1619,7 +2864,8 @@ function orderItemExists(order, itemId) {
 }
 
 function scrollToStaffItemStart() {
-  const target = document.querySelector(".staff-intake-header")
+  const target = detailEl.querySelector('[data-staff-queue-guide="items"]')
+    || document.querySelector(".staff-intake-header")
     || document.querySelector(".staff-order-progress")
     || detailEl;
   target?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -1637,8 +2883,9 @@ function confirmStaffActionEmail(action) {
   return window.confirm(`${step?.notifyLabel || "Email customer"} will send a customer email only. Staff progress will not change unless you use the internal workflow button. Continue?`);
 }
 
-async function handleOrderAction(order, status) {
+async function handleOrderAction(order, status, options = {}) {
   if (!order) return;
+  const before = orderSnapshots(order);
   setStatus("Saving order update...");
   try {
     const sendsFinalQuoteEmail = status === "Final Quote Sent";
@@ -1649,10 +2896,14 @@ async function handleOrderAction(order, status) {
         recordId: record.id,
         status,
         staffNotes: appendOrderNote(record.fields?.["Staff Notes"], status),
-        ...(sendsFinalQuoteEmail ? { notifyCustomer: index === 0 } : {}),
+        ...(sendsFinalQuoteEmail ? {
+          notifyCustomer: index === 0,
+          resendFinalQuote: options.resendFinalQuote === true,
+        } : {}),
       }));
     }
     const updatedMap = new Map(updatedRecords.map((record) => [record.id, record]));
+    pushStaffHistory(`${status} order update`, before, updatedRecords.map(recordSnapshot).filter(Boolean));
     records = records.map((record) => updatedMap.get(record.id) || record);
     orders = buildOrders(records);
     renderQueue();
@@ -1785,22 +3036,39 @@ function quoteSubmissionLogEntries(order) {
 }
 
 function customerDecisionLogEntries(order) {
-  return order.items.flatMap((record) => {
-    const fields = record.fields || {};
-    const decisions = parseCustomerDecisionBlocks(fields["Staff Notes"]);
-    return decisions.map((decision) => ({
-      timestamp: decision.submitted,
-      actorType: "customer",
-      actorLabel: "Customer",
-      title: decision.decision === "return" ? "Customer requested item return" : "Customer accepted item",
-      detail: `${shortGearTitle(fields)} - ${decision.decision === "return" ? "return to customer" : "sell to Milford Photo"}.`,
-      meta: decision.paymentPreference ? `Payout preference: ${decision.paymentPreference}` : "",
-    }));
-  });
+  return [
+    customerDecisionSummaryLogEntry(order),
+    ...order.items.flatMap((record) => {
+      const fields = record.fields || {};
+      const decisions = parseCustomerDecisionBlocks(fields["Staff Notes"]);
+      return decisions.map((decision) => ({
+        timestamp: decision.submitted,
+        actorType: "customer",
+        actorLabel: "Customer",
+        title: decision.decision === "return" ? "Customer requested item return" : "Customer accepted item",
+        detail: `${shortGearTitle(fields)} - ${decision.decision === "return" ? "return to customer" : "sell to Milford Photo"}.`,
+        meta: decision.paymentPreference ? `Payout preference: ${decision.paymentPreference}` : "",
+      }));
+    }),
+  ].filter(Boolean);
+}
+
+function customerDecisionSummaryLogEntry(order) {
+  const summary = orderCustomerPayoutSummary(order);
+  if (!summary) return null;
+  return {
+    timestamp: summary.submitted,
+    actorType: "customer",
+    actorLabel: "Customer",
+    title: "Customer submitted final quote decision",
+    detail: summary.logDetail,
+    meta: summary.paymentPreference ? `Payout preference: ${summary.paymentPreference}` : "",
+  };
 }
 
 function staffActionLogEntry(record) {
   const fields = record.fields || {};
+  const action = String(fields.Action || fields["New Status"] || "");
   const priorOffer = numberOrNull(fields["Prior Offer"]);
   const newOffer = numberOrNull(fields["New Offer"]);
   const offerMeta = priorOffer !== null && newOffer !== null && priorOffer !== newOffer
@@ -1809,9 +3077,9 @@ function staffActionLogEntry(record) {
   const statusMeta = [fields["Prior Status"], fields["New Status"]].filter(Boolean).join(" -> ");
   return {
     timestamp: fields.Timestamp,
-    actorType: "staff",
-    actorLabel: `Staff: ${fields["Staff User"] || "unknown"}`,
-    title: staffActionTitle(fields.Action || fields["New Status"]),
+    actorType: action === "customer_final_decision" ? "customer" : "staff",
+    actorLabel: action === "customer_final_decision" ? "Customer" : `Staff: ${fields["Staff User"] || "unknown"}`,
+    title: staffActionTitle(action),
     detail: [statusMeta, offerMeta].filter(Boolean).join(" "),
     meta: compactLogNotes(fields.Notes || ""),
   };
@@ -1854,6 +3122,9 @@ function parseCustomerDecisionBlocks(notes = "") {
 
 function staffActionTitle(value = "") {
   const text = String(value || "").toLowerCase();
+  if (text.includes("customer_final_decision")) return "Customer submitted final quote decision";
+  if (text.includes("return_label_created")) return "Staff created outbound label";
+  if (text.includes("return_label_dry_run")) return "Outbound label dry run";
   if (text.includes("payment")) return "Staff marked payment sent";
   if (text.includes("return")) return "Staff started return";
   if (text.includes("final quote")) return "Staff sent final quote";
@@ -1929,6 +3200,48 @@ async function updateRecord(body) {
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.error || `Request failed with ${response.status}`);
   return data.record || { id: body.recordId, fields: body };
+}
+
+async function removeOrderItem(order, recordId, itemName, button) {
+  if (!order || !recordId) return;
+  if (order.items.length <= 1) {
+    setStatus("This is the only item in the order. Add another item or close the order instead of removing it.", true);
+    return;
+  }
+
+  const item = order.items.find((record) => record.id === recordId);
+  const fields = item?.fields || {};
+  const displayName = itemName || shortGearTitle(fields) || "this item";
+  const quoteRef = fields["Quote Reference"] || order.quoteRefs?.[0] || order.quote || "";
+  const nextItemId = nextRemainingOrderItemId(order, recordId);
+  const confirmed = window.confirm(`Remove ${displayName} from ${quoteRef || "this order"}? This deletes the item from the staff order and does not email the customer.`);
+  if (!confirmed) {
+    setStatus("Remove item canceled.");
+    return;
+  }
+
+  button.disabled = true;
+  setStatus(`Removing ${displayName}...`);
+  try {
+    await staffPost("/api/staff/remove-item", {
+      recordId,
+      quoteRef,
+    }, { staff: true });
+    await loadRecords({ selectQuoteRef: quoteRef, selectRecordId: nextItemId });
+    setStatus(`${displayName} removed from ${quoteRef || "the order"}. No customer email was sent.`);
+  } catch (error) {
+    button.disabled = false;
+    setStatus(error.message || "Unable to remove this item.", true);
+  }
+}
+
+function nextRemainingOrderItemId(order, removedRecordId) {
+  const index = order?.items?.findIndex((item) => item.id === removedRecordId) ?? -1;
+  if (index < 0) return order?.items?.find((item) => item.id !== removedRecordId)?.id || "";
+  return order.items[index + 1]?.id
+    || order.items[index - 1]?.id
+    || order.items.find((item) => item.id !== removedRecordId)?.id
+    || "";
 }
 
 async function openPricingReview() {
@@ -2417,7 +3730,7 @@ function renderStaffIntake() {
 	          ${renderStaffIntakeConditionPicker()}
 	        </section>
 
-	        <section class="staff-review-section">
+        <section class="staff-review-section" id="staff-intake-included-section">
 	          <div class="staff-section-title">
 	            <span>2</span>
 	            <div>
@@ -2435,12 +3748,13 @@ function renderStaffIntake() {
 		            <textarea id="staff-intake-item-notes" rows="2" placeholder="Mention mount, kit details, shutter count, missing parts, known issues, or accessories."></textarea>
 		          </label>
 
-	          <div class="form-actions staff-intake-actions">
-	            <button class="primary-action staff-intake-add-action" type="button" id="staff-intake-add-item">${escapeHtml(heading.button)}</button>
-	          </div>
-	        </section>
+          <div class="form-actions staff-intake-actions">
+            <button class="primary-action staff-intake-add-action" type="button" id="staff-intake-add-item">${escapeHtml(heading.button)}</button>
+            ${staffIntakeIsAddingToOrder() ? "" : `<button class="secondary-action staff-intake-finalize-action" type="button" id="staff-intake-finalize">Finalize quote</button>`}
+          </div>
+        </section>
 
-	        <section class="staff-review-section">
+        <section class="staff-review-section">
 	          <div class="staff-section-title staff-offer-preview-title">
 	            <span>3</span>
 	            <div>
@@ -2471,7 +3785,7 @@ function renderStaffIntake() {
 	          </section>
 	        </section>
 
-	        <section class="staff-review-section">
+        <section class="staff-review-section" id="staff-intake-customer-section">
 	          <div class="staff-section-title">
 	            <span>4</span>
 	            <div>
@@ -2680,6 +3994,7 @@ function bindStaffIntake() {
   renderStaffIntakeReferencePricing();
   updateStaffIntakeConditionPicker();
   updateStaffIntakeSubmitButtons();
+  updateStaffIntakeGuidance();
 
   search.addEventListener("change", applyStaffIntakeGearSearch);
   search.addEventListener("focus", renderStaffIntakeGearSearchResults);
@@ -2708,6 +4023,7 @@ function bindStaffIntake() {
     updateStaffIntakeManualFields();
     renderStaffIntakeIncludedItems();
     queueStaffIntakeCurrentPreview();
+    updateStaffIntakeGuidance();
   });
   brand.addEventListener("change", () => {
     clearStaffIntakeSearch();
@@ -2716,17 +4032,32 @@ function bindStaffIntake() {
     updateStaffIntakeManualFields();
     renderStaffIntakeIncludedItems();
     queueStaffIntakeCurrentPreview();
+    updateStaffIntakeGuidance();
   });
   model.addEventListener("change", () => {
     clearStaffIntakeSearch();
     updateStaffIntakeMountField();
     updateStaffIntakeManualFields();
     queueStaffIntakeCurrentPreview();
+    updateStaffIntakeGuidance();
   });
-  lensMount.addEventListener("change", queueStaffIntakeCurrentPreview);
-  manualBrand.addEventListener("input", queueStaffIntakeCurrentPreview);
-  manualModel.addEventListener("input", queueStaffIntakeCurrentPreview);
-  notes.addEventListener("input", queueStaffIntakeCurrentPreview);
+  lensMount.addEventListener("change", () => {
+    queueStaffIntakeCurrentPreview();
+    updateStaffIntakeGuidance();
+  });
+  manualBrand.addEventListener("input", () => {
+    queueStaffIntakeCurrentPreview();
+    updateStaffIntakeGuidance();
+  });
+  manualModel.addEventListener("input", () => {
+    queueStaffIntakeCurrentPreview();
+    updateStaffIntakeGuidance();
+  });
+  notes.addEventListener("focus", () => setStaffIntakeGuideTarget("add"));
+  notes.addEventListener("input", () => {
+    queueStaffIntakeCurrentPreview();
+    setStaffIntakeGuideTarget("add");
+  });
   document.getElementById("staff-intake-condition-toggle")?.addEventListener("click", () => {
     const options = document.getElementById("staff-intake-condition-options");
     toggleStaffIntakeConditionOptions(Boolean(options?.hidden));
@@ -2736,6 +4067,7 @@ function bindStaffIntake() {
       updateStaffIntakeConditionPicker();
       toggleStaffIntakeConditionOptions(false);
       queueStaffIntakeCurrentPreview();
+      setStaffIntakeGuideTarget("included");
     });
   });
   form.querySelectorAll('input[name="staff-intake-delivery"]').forEach((input) => {
@@ -2746,6 +4078,7 @@ function bindStaffIntake() {
   });
   updateStaffIntakeDeliveryUi();
   document.getElementById("staff-intake-add-item").addEventListener("click", addStaffIntakeItem);
+  document.getElementById("staff-intake-finalize")?.addEventListener("click", finalizeStaffIntakeQuote);
   document.getElementById("staff-intake-cancel").addEventListener("click", () => {
     selectedOrderId = staffIntakeState.orderId || visibleOrders()[0]?.id || orders[0]?.id || null;
     syncSelectedItem();
@@ -2881,14 +4214,46 @@ function productImageForRecord(fields = {}) {
     brand: fields["Item Brand"],
     category: fields.Category,
     model: fields["Item Model"],
+    catalogModel: catalogModelFromRecord(fields),
+    imageKey: imageKeyFromRecord(fields),
   });
 }
 
 function productImageFor(item = {}) {
   const overrides =
     typeof window !== "undefined" && window.MP_PRODUCT_IMAGE_OVERRIDES ? window.MP_PRODUCT_IMAGE_OVERRIDES : {};
+  if (item.imageKey && overrides[item.imageKey]) return overrides[item.imageKey];
+  if (item.catalogModel) {
+    const catalogKey = productImageKey(item.brand, item.category, item.catalogModel);
+    if (overrides[catalogKey]) return overrides[catalogKey];
+  }
   const key = productImageKey(item.brand, item.category, item.model);
-  return overrides[key] || null;
+  if (overrides[key]) return overrides[key];
+  return productImageFuzzyMatch(overrides, item.brand, item.category, item.model);
+}
+
+function catalogModelFromRecord(fields = {}) {
+  return noteValue(fields["Seller Notes"], "Catalog model")
+    || noteValue(fields["Staff Notes"], "Catalog model")
+    || "";
+}
+
+function imageKeyFromRecord(fields = {}) {
+  return noteValue(fields["Seller Notes"], "Image key")
+    || noteValue(fields["Staff Notes"], "Image key")
+    || "";
+}
+
+function productImageFuzzyMatch(overrides = {}, brand = "", category = "", model = "") {
+  const normalizedBrand = normalizeProductImageText(brand);
+  const normalizedCategory = normalizeProductImageCategory(category);
+  const normalizedModel = normalizeProductImageText(model);
+  if (!normalizedBrand || !normalizedCategory || !normalizedModel) return null;
+  const base = [normalizedBrand, normalizedCategory, normalizedModel].join("|");
+  const matchKey = Object.keys(overrides)
+    .sort()
+    .find((key) => key === base || key.startsWith(`${base} (`) || key.startsWith(`${base} -`));
+  return matchKey ? overrides[matchKey] : null;
 }
 
 function productImageKey(brand = "", category = "", model = "") {
@@ -2967,6 +4332,7 @@ function applyStaffIntakeGearSearchOption(match) {
   search.value = match.label;
   hideStaffIntakeGearSearchResults();
   queueStaffIntakeCurrentPreview();
+  setStaffIntakeGuideTarget("condition");
 }
 
 function clearStaffIntakeSearch() {
@@ -3059,11 +4425,12 @@ function renderStaffIntakeIncludedItems() {
         <span>Staff can adjust the final offer after physical inspection.</span>
       </div>
     `;
+    updateStaffIntakeGuidance();
     return;
-	  }
-	  container.innerHTML = `
-	    <div class="staff-accessory-grid staff-intake-included-list">
-	      ${items.map((item) => `
+  }
+  container.innerHTML = `
+    <div class="staff-accessory-grid staff-intake-included-list">
+      ${items.map((item) => `
         <label class="staff-accessory-item">
           <input type="checkbox" data-staff-intake-included="${escapeAttr(item.name)}" data-staff-intake-adjustment="${escapeAttr(item.value)}" ${item.checked ? "checked" : ""} />
           <span>${escapeHtml(item.name)}</span>
@@ -3072,7 +4439,7 @@ function renderStaffIntakeIncludedItems() {
       `).join("")}
     </div>
     <label class="staff-check-row staff-intake-all-accessories">
-      <input type="checkbox" id="staff-intake-all-included-check" checked />
+      <input type="checkbox" id="staff-intake-all-included-check" />
       <strong>All recommended accessories included</strong>
     </label>
   `;
@@ -3089,6 +4456,7 @@ function renderStaffIntakeIncludedItems() {
     if (impact) impact.textContent = staffIntakeAccessoryImpactText(input.dataset.staffIntakeAdjustment, input.checked);
     syncAllIncluded();
     queueStaffIntakeCurrentPreview();
+    setStaffIntakeGuideTarget("add");
   }));
   if (allIncluded) {
     allIncluded.addEventListener("change", () => {
@@ -3099,9 +4467,12 @@ function renderStaffIntakeIncludedItems() {
       });
       syncAllIncluded();
       queueStaffIntakeCurrentPreview();
+      setStaffIntakeGuideTarget("add");
     });
   }
-  syncAllIncluded();
+  allIncluded?.addEventListener("focus", () => setStaffIntakeGuideTarget("add"));
+  includedInputs.forEach((input) => input.addEventListener("focus", () => setStaffIntakeGuideTarget("add")));
+  updateStaffIntakeGuidance();
 }
 
 function staffIntakeAccessoryImpactText(value, checked) {
@@ -3110,12 +4481,73 @@ function staffIntakeAccessoryImpactText(value, checked) {
   return `-$${formatMoney(amount)}`;
 }
 
+function setStaffIntakeGuideTarget(target) {
+  staffIntakeState.guideTarget = target || "gear";
+  updateStaffIntakeGuidance();
+}
+
+function updateStaffIntakeGuidance() {
+  document.querySelectorAll(".staff-intake-guide-active").forEach((element) => {
+    element.classList.remove("staff-intake-guide-active");
+  });
+
+  const target = staffIntakeCurrentGuideTarget();
+  const targetSelector = {
+    gear: "#staff-intake-gear-section",
+    condition: ".staff-intake-condition-picker",
+    included: "#staff-intake-included-section",
+    add: "#staff-intake-add-item",
+    customer: "#staff-intake-customer-section",
+  }[target];
+  const element = targetSelector ? document.querySelector(targetSelector) : null;
+  element?.classList.add("staff-intake-guide-active");
+}
+
+function staffIntakeCurrentGuideTarget() {
+  if (!document.getElementById("staff-intake-form")) return "";
+  if (staffIntakeState.guideTarget === "customer") return "customer";
+  if (!staffIntakeGearSelectionComplete()) return "gear";
+  if (!document.querySelector('input[name="staff-intake-condition"]:checked')) return "condition";
+  if (staffIntakeState.guideTarget === "add") return "add";
+  return "included";
+}
+
+function staffIntakeGearSelectionComplete() {
+  const category = document.getElementById("staff-intake-category")?.value || "";
+  const selectedBrand = document.getElementById("staff-intake-brand")?.value || "";
+  const selectedModel = document.getElementById("staff-intake-model")?.value || "";
+  const manualBrand = document.getElementById("staff-intake-manual-brand")?.value.trim() || "";
+  const manualModel = document.getElementById("staff-intake-manual-model")?.value.trim() || "";
+  const validMounts = staffIntakeMountOptions();
+  const mountRequired = validMounts.length > 1;
+  const mount = document.getElementById("staff-intake-lens-mount")?.value.trim() || "";
+  if (!category || !selectedBrand || !selectedModel) return false;
+  if (selectedBrand === MANUAL_BRAND && !manualBrand) return false;
+  if (selectedModel === MANUAL_MODEL && !manualModel) return false;
+  if (mountRequired && (!mount || !validMounts.includes(mount))) return false;
+  return true;
+}
+
+function finalizeStaffIntakeQuote() {
+  if (!staffIntakeState.cart.length) {
+    setStatus("Add at least one item before finalizing the quote.", true);
+    setStaffIntakeGuideTarget("gear");
+    scrollToStaffIntakeGearStart();
+    return;
+  }
+  setStaffIntakeGuideTarget("customer");
+  document.getElementById("staff-intake-customer-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  document.getElementById("staff-intake-seller-name")?.focus({ preventScroll: true });
+  setStatus("Add the customer details, then create, email, or open the quote.");
+}
+
 async function addStaffIntakeItem() {
   const item = readStaffIntakeItem();
   if (!item) return;
   const button = document.getElementById("staff-intake-add-item");
   button.disabled = true;
   staffIntakeState.cart.push(item);
+  setStaffIntakeGuideTarget("gear");
   clearStaffIntakeItemForm();
   resetStaffIntakeCurrentPreview();
   renderStaffIntakeCurrentPreview();
@@ -3155,6 +4587,7 @@ function readStaffIntakeItem(options = {}) {
   ].filter(Boolean).join("\n");
 
   if (!category || !selectedBrand || !selectedModel || !brand || !model || model === MANUAL_MODEL || (requiresMount && (!mount || !validMounts.includes(mount)))) {
+    setStaffIntakeGuideTarget("gear");
     if (!options.silent) {
       const message = !category
         ? "Select a category for the in-store item."
@@ -3171,6 +4604,7 @@ function readStaffIntakeItem(options = {}) {
   }
 
   if (!condition) {
+    setStaffIntakeGuideTarget("condition");
     if (!options.silent) {
       setStatus("Choose a condition before adding this item.", true);
       toggleStaffIntakeConditionOptions(true);
@@ -3292,7 +4726,7 @@ function staffIntakeDeliveryRoutingLabel(quote = {}) {
 function staffIntakeDeliveryRoutingCopy(quote = {}) {
   if (staffIntakeIsAddingToOrder()) return quote.routing?.message || "Ready to quote";
   if (staffIntakeDeliveryMethod() === "dropoff") {
-    return "Counter/dropoff selected. No customer-to-Milford inbound label is needed.";
+    return "Counter / in-store dropoff. No customer-to-Milford inbound label is needed.";
   }
   return quote.routing?.message || "Ready to quote";
 }
@@ -3888,6 +5322,7 @@ function clearStaffIntakeItemForm() {
   updateStaffIntakeMountField();
   renderStaffIntakeIncludedItems();
   renderStaffIntakeReferencePricing();
+  setStaffIntakeGuideTarget("gear");
 }
 
 function showStaffIntakeToast(message) {
@@ -3921,7 +5356,7 @@ async function staffPost(path, payload, options = {}) {
 }
 
 function collectReviewState(accessories) {
-  const verifiedCondition = document.querySelector("input[name='verified-condition']:checked")?.value || "Excellent";
+  const verifiedCondition = document.querySelector("input[name='verified-condition']:checked")?.value || "";
   const accessoryState = {};
   document.querySelectorAll("[data-accessory]").forEach((input) => {
     accessoryState[input.dataset.accessory] = Boolean(input.checked);
@@ -4064,6 +5499,7 @@ function noteValue(notes = "", label = "") {
   const prefix = `${label}:`;
   return String(notes || "")
     .split(/\r?\n/)
+    .reverse()
     .find((line) => line.trim().toLowerCase().startsWith(prefix.toLowerCase()))
     ?.slice(prefix.length)
     .trim() || "";
@@ -4081,12 +5517,30 @@ function quoteSourceLabel(fields = {}) {
   return source || "Unknown";
 }
 
-function staffRecordLooksReceived(fields = {}) {
-  return staffWorkflowText(fields).includes("received");
-}
-
 function staffWorkflowText(fields = {}) {
   return `${fields.Status || ""} ${fields["Workflow Step"] || ""}`.toLowerCase();
+}
+
+function staffRecordLooksReceived(fields = {}) {
+  return fieldsPhysicallyReceived(fields);
+}
+
+function itemPhysicallyReceived(record = {}) {
+  return fieldsPhysicallyReceived(record.fields || {});
+}
+
+function fieldsPhysicallyReceived(fields = {}) {
+  const parsed = parseStaffNotes(fields["Staff Notes"]);
+  if (parsed.notReceived) return false;
+  if (parsed.received) return true;
+  if (parsed.receivedRecorded) return false;
+  const status = staffWorkflowText(fields);
+  return statusIncludesAny(status, ["received", "inspection"]);
+}
+
+function inspectionReasonForDisplay(fields = {}, parsed = parseStaffNotes(fields["Staff Notes"])) {
+  const reason = String(parsed.reason || fields["Decline Reason"] || "").trim();
+  return reason === STALE_STAFF_CREATED_REASON || reason.toLowerCase() === "none" ? "" : reason;
 }
 
 function incomingTrackingNumber(fields = {}) {
@@ -4101,30 +5555,103 @@ function outgoingTrackingNumber(fields = {}) {
     || fields["Outbound Tracking Number"]
     || fields["Return Tracking Number"]
     || fields["Return Shipment Tracking"]
+    || noteValue(fields["Staff Notes"], "Return tracking number")
     || "-";
 }
 
 function staffActionCompleted(action, fields = {}, parsed = {}) {
   const status = staffWorkflowText(fields);
+  const received = fieldsPhysicallyReceived(fields);
   if (action === "received") {
-    return parsed.received
-      || statusIncludesAny(status, ["received", "inspection", "evaluated", "final", "accepted item", "customer accepted", "payment", "return"]);
+    return received;
   }
   if (action === "save") {
-    return statusIncludesAny(status, ["inspection", "evaluated", "final", "accepted item", "customer accepted", "payment", "return"]);
+    return received && statusIncludesAny(status, ["inspection", "evaluated", "final", "accepted item", "customer accepted", "payment", "return"]);
   }
   if (action === "adjusted") {
-    return statusIncludesAny(status, ["evaluated", "final", "accepted item", "customer accepted", "payment", "return"]);
+    return received && statusIncludesAny(status, ["evaluated", "final", "accepted item", "customer accepted", "payment", "return"]);
   }
   if (action === "accepted") {
     return statusIncludesAny(status, ["accepted item", "customer accepted", "payment"]);
   }
-  if (action === "payment") return status.includes("payment");
-  if (action === "return") return status.includes("return");
+  if (action === "payment") return status.includes("payment") || /payment sent:\s*yes/i.test(String(fields["Staff Notes"] || ""));
+  if (action === "return") {
+    return parsed.lastAction === "return"
+      || parsed.lastAction === "return_boxed"
+      || parsed.returnBoxed
+      || parsed.returnReadyForPickup
+      || status.includes("return items boxed")
+      || status.includes("awaiting pickup")
+      || status.includes("items shipped to customer")
+      || status.includes("return complete");
+  }
   return false;
 }
 
+function setStaffQueueGuideTarget(target) {
+  staffQueueGuideTargetOverride = target || "";
+  updateStaffQueueGuidance();
+}
+
+function staffQueueIncludedItemsVerified(accessories = []) {
+  const accessoryInputs = Array.from(document.querySelectorAll("[data-accessory]"));
+  if (!accessories.length && !accessoryInputs.length) return true;
+  const allAccessoriesCheck = document.getElementById("all-accessories-check");
+  return Boolean(allAccessoriesCheck?.checked) || accessoryInputs.some((input) => !input.checked);
+}
+
+function updateStaffQueueGuidance() {
+  document.querySelectorAll(".staff-queue-guide-active, .staff-queue-guide-complete").forEach((element) => {
+    element.classList.remove("staff-queue-guide-active");
+    element.classList.remove("staff-queue-guide-complete");
+  });
+
+  const order = selectedOrder();
+  const record = selectedRecord(order);
+  const target = staffQueueGuideTargetOverride || staffQueueCurrentGuideTarget(order, record);
+  if (!target) return;
+
+  const element = detailEl.querySelector(`[data-staff-queue-guide="${target}"]`);
+  const isCompleteActionTarget = target === "actions" && order?.workflow?.isComplete;
+  element?.classList.add(isCompleteActionTarget ? "staff-queue-guide-complete" : "staff-queue-guide-active");
+}
+
+function staffQueueCurrentGuideTarget(order = selectedOrder(), record = selectedRecord(order)) {
+  if (!order || !record || !document.getElementById("staff-review-form")) return "";
+  const fields = record.fields || {};
+  const parsed = parseStaffNotes(fields["Staff Notes"]);
+  const selectedItemEvaluated = itemIsEvaluated(record);
+
+  if (!selectedItemEvaluated) {
+    if (!itemPhysicallyReceived(record) && !parsed.notReceived) return "receive";
+    if (!staffActionCompleted("save", fields, parsed)) return "included";
+    if (!parsed.verifiedCondition) return "condition";
+    return "quote";
+  }
+
+  const nextItemNeedingReview = (order.items || []).find((item) => !itemIsEvaluated(item));
+  if (nextItemNeedingReview) return "items";
+
+  if (!finalQuoteEmailSent(order)) return "final-email";
+
+  if (order.workflow?.isComplete || orderPaymentComplete(order)) return "actions";
+
+  const currentStep = order.workflow?.current?.key || "";
+  if (currentStep === "payout") return "payout";
+  if (currentStep === "return") return "actions";
+  if (currentStep === "customer") return latestCustomerDecision(fields) ? "actions" : "final-email";
+
+  return currentStep ? "order" : "";
+}
+
+function scrollToStaffQueueGuideTarget(target) {
+  if (!target) return;
+  const element = detailEl.querySelector(`[data-staff-queue-guide="${target}"]`);
+  element?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 function finalQuoteEmailSent(order) {
+  if (orderCustomerDecisionItems(order).length) return true;
   return (order?.items || []).some((item) => {
     const status = staffWorkflowText(item.fields);
     return statusIncludesAny(status, [
@@ -4207,7 +5734,7 @@ function buildStaffNotes(review, action, finalOffer) {
     `Customer decision: ${review.decision}`,
     `Final offer: $${finalOffer}`,
     `Last staff action: ${action}`,
-    `Reason / notes: ${review.reason || "None"}`,
+    `Reason / notes: ${review.reason || ""}`,
     `Updated: ${new Date().toLocaleString()}`,
   ].join("\n");
 }
@@ -4225,13 +5752,18 @@ function appendOrderNote(notes = "", status) {
 function parseStaffNotes(notes = "") {
   const parsed = {
     received: false,
+    receivedRecorded: false,
     notReceived: false,
     allAccessories: false,
     verifiedCondition: "",
     accessories: {},
     decision: "pending",
     customerFinalDecision: "",
+    lastAction: "",
     reason: "",
+    returnBoxed: false,
+    returnReadyForPickup: false,
+    returnShipped: false,
   };
   let inCustomerFinalQuoteDecision = false;
   let inAccessoryCheck = false;
@@ -4260,6 +5792,7 @@ function parseStaffNotes(notes = "") {
     }
     if (clean.startsWith("Received:")) {
       const receivedText = clean.toLowerCase();
+      parsed.receivedRecorded = true;
       parsed.received = clean.includes("Yes") && !receivedText.includes("not received");
       if (receivedText.includes("not received")) parsed.notReceived = true;
     }
@@ -4270,6 +5803,10 @@ function parseStaffNotes(notes = "") {
       parsed.decision = clean.replace("Customer decision:", "").trim() || "pending";
       if (inCustomerFinalQuoteDecision) parsed.customerFinalDecision = parsed.decision;
     }
+    if (clean.startsWith("Last staff action:")) parsed.lastAction = clean.replace("Last staff action:", "").trim();
+    if (clean.startsWith("Return boxed:")) parsed.returnBoxed = clean.includes("Yes");
+    if (clean.startsWith("Return ready for pickup:")) parsed.returnReadyForPickup = clean.includes("Yes");
+    if (clean.startsWith("Return shipped:")) parsed.returnShipped = clean.includes("Yes");
     if (clean === "Accessory check:") {
       inAccessoryCheck = true;
       return;
@@ -4295,30 +5832,47 @@ function parseStaffNotes(notes = "") {
 }
 
 function staffNoteLineStartsNewField(clean = "") {
-  return /^(INTAKE REVIEW|ORDER UPDATE|CUSTOMER FINAL QUOTE DECISION|Received:|Item not received:|All recommended accessories included:|Verified condition:|Accessory check:|Customer decision:|Final offer:|Last staff action:|Updated:)/i.test(clean);
+  return /^(INTAKE REVIEW|ORDER UPDATE|CUSTOMER FINAL QUOTE DECISION|RETURN SHIPMENT|Received:|Item not received:|All recommended accessories included:|Verified condition:|Accessory check:|Customer decision:|Final offer:|Return boxed:|Return ready for pickup:|Return shipped:|Last staff action:|Updated:)/i.test(clean);
 }
 
 function workflowState(order) {
-  const statuses = order.items.map((item) => staffWorkflowText(item.fields));
+  const items = order.items || [];
+  const statuses = items.map((item) => staffWorkflowText(item.fields));
+  const acceptedItems = orderAcceptedItems(order);
+  const returnItems = orderReturnItems(order);
+  const hasCustomerDecision = acceptedItems.length > 0 || returnItems.length > 0;
+  const paymentComplete = !acceptedItems.length || orderPaymentComplete(order);
+  const returnsComplete = !returnItems.length || returnItems.every(staffReturnCompleted);
   const completed = new Set(["initial"]);
+  const skipped = new Set();
+  if (hasCustomerDecision && !returnItems.length) skipped.add("return");
   if (statuses.some((status) => status.includes("label") || status.includes("accepted") || status.includes("shipped") || status.includes("received") || status.includes("inspection") || status.includes("evaluated") || status.includes("final") || status.includes("payment") || status.includes("return"))) completed.add("shipped");
-  if (statuses.some((status) => status.includes("received") || status.includes("inspection") || status.includes("evaluated") || status.includes("final") || status.includes("accepted item") || status.includes("customer accepted") || status.includes("payment") || status.includes("return"))) completed.add("received");
-  if (allItemsEvaluated(statuses)) completed.add("evaluated");
-  if (statuses.some((status) => status.includes("final quote") || status.includes("accepted item") || status.includes("customer accepted") || status.includes("payment") || status.includes("return"))) completed.add("final");
-  if (statuses.some((status) => status.includes("accepted item") || status.includes("return item") || status.includes("customer accepted") || status.includes("payment"))) completed.add("customer");
-  if (statuses.some((status) => status.includes("payment"))) completed.add("payout");
-  if (statuses.some((status) => status.includes("return") || status.includes("payment"))) completed.add("return");
+  if (allItemsReceived(items)) completed.add("received");
+  if (allItemsEvaluated(items)) completed.add("evaluated");
+  if (completed.has("evaluated") && statuses.some((status) => status.includes("final quote") || status.includes("accepted item") || status.includes("customer accepted") || status.includes("payment") || status.includes("return"))) completed.add("final");
+  if (completed.has("final") && (hasCustomerDecision || statuses.some((status) => status.includes("accepted item") || status.includes("return item") || status.includes("customer accepted") || status.includes("payment")))) completed.add("customer");
+  if (completed.has("customer") && paymentComplete) completed.add("payout");
+  if (returnItems.length && completed.has("customer") && paymentComplete && returnsComplete) completed.add("return");
 
-  const current = WORKFLOW_STEPS.find((step) => !completed.has(step.key)) || WORKFLOW_STEPS[WORKFLOW_STEPS.length - 1];
-  return { completed, current, isComplete: completed.size >= WORKFLOW_STEPS.length };
+  const current = WORKFLOW_STEPS.find((step) => !completed.has(step.key) && !skipped.has(step.key)) || null;
+  const isComplete = WORKFLOW_STEPS.every((step) => completed.has(step.key) || skipped.has(step.key));
+  return { completed, skipped, current, isComplete };
 }
 
 function workflowStepDisplayLabel(step) {
   return step.label;
 }
 
-function allItemsEvaluated(statuses) {
-  return statuses.length > 0 && statuses.every(itemIsEvaluatedStatus);
+function allItemsReceived(items = []) {
+  return items.length > 0 && items.every(itemPhysicallyReceived);
+}
+
+function allItemsEvaluated(items = []) {
+  return items.length > 0 && items.every(itemIsEvaluated);
+}
+
+function itemIsEvaluated(item = {}) {
+  return itemPhysicallyReceived(item) && itemIsEvaluatedStatus(staffWorkflowText(item.fields || {}));
 }
 
 function itemIsEvaluatedStatus(status) {
@@ -4369,7 +5923,13 @@ function normalizeGroupValue(value) {
 }
 
 function itemStatusClass(record) {
+  if (customerAcceptedItem(record)) {
+    const fields = record.fields || {};
+    return staffActionCompleted("payment", fields, parseStaffNotes(fields["Staff Notes"])) ? "is-paid" : "is-evaluated";
+  }
   const status = staffWorkflowText(record.fields);
+  if (staffReturnCompleted(record)) return "is-return-complete";
+  if (customerReturnRequested(record)) return "is-return-requested";
   if (status.includes("return") || status.includes("declined")) return "is-return";
   if (status.includes("evaluated") || status.includes("final") || status.includes("accepted item") || status.includes("payment")) return "is-evaluated";
   if (status.includes("received") || status.includes("inspection")) return "is-progress";
@@ -4411,7 +5971,7 @@ function adjustedCashOfferForRecord(record) {
 }
 
 function storeCreditOffer(cashAmount) {
-  return Math.round((Number(cashAmount) || 0) * (1 + STORE_CREDIT_BONUS));
+  return Math.floor((Number(cashAmount) || 0) * (1 + STORE_CREDIT_BONUS));
 }
 
 function updateOrderTotalCard(order, currentRecord, currentCashOffer) {
@@ -4468,7 +6028,7 @@ function filterOrders(items, filter) {
     if (filter === "received") return statuses.some((status) => status.includes("received") || status.includes("inspection") || status.includes("evaluated"));
     if (filter === "done") return statuses.every((status) => status.includes("payment") || status.includes("declined") || status.includes("return"));
     if (filter === "active") return !statuses.every((status) => status.includes("payment") || status.includes("declined") || status.includes("return"));
-    return order.workflow.current.key === filter || order.workflow.completed.has(filter);
+    return order.workflow.current?.key === filter || order.workflow.completed.has(filter);
   });
 }
 
@@ -4502,7 +6062,7 @@ function sortOrdersForQueue(items) {
   if (activeSort === "customer") return sorted.sort((a, b) => a.customer.localeCompare(b.customer));
   if (activeSort === "value") return sorted.sort((a, b) => (b.totals.final || b.totals.original) - (a.totals.final || a.totals.original));
   if (activeSort === "next_action" || activeSort === "first_received") {
-    return sorted.sort((a, b) => workflowRank(a.workflow.current.key) - workflowRank(b.workflow.current.key) || newestOrderTime(b) - newestOrderTime(a));
+    return sorted.sort((a, b) => workflowRank(a.workflow.current?.key) - workflowRank(b.workflow.current?.key) || newestOrderTime(b) - newestOrderTime(a));
   }
   return sorted.sort((a, b) => newestOrderTime(b) - newestOrderTime(a));
 }
@@ -4959,6 +6519,9 @@ function escapeAttr(value) {
 
 loadButton.addEventListener("click", loadRecords);
 refreshButton.addEventListener("click", loadRecords);
+staffUndoButton?.addEventListener("click", () => restoreStaffHistory("undo"));
+staffRedoButton?.addEventListener("click", () => restoreStaffHistory("redo"));
+staffBugReportLink?.addEventListener("click", () => updateBugReportLink());
 pricingReviewButton?.addEventListener("click", openPricingReview);
 startStaffIntakeButton?.addEventListener("click", startStaffIntake);
 intakeQueueButton?.addEventListener("click", openStaffIntakeQueue);
