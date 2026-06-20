@@ -66,7 +66,6 @@ const SCRAPED_PRODUCT_IMAGE_OVERRIDES =
   typeof window !== "undefined" && window.MP_PRODUCT_IMAGE_OVERRIDES ? window.MP_PRODUCT_IMAGE_OVERRIDES : {};
 
 const PRODUCT_IMAGE_OVERRIDES = {
-  ...SCRAPED_PRODUCT_IMAGE_OVERRIDES,
   "canon|digital camera|eos r1": {
     src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/zKX3tO1Y418zyXvWDdhMyA?w=228&h=228&p=1&a=1&q=display",
     alt: "Canon EOS R1 mirrorless camera body",
@@ -91,6 +90,7 @@ const PRODUCT_IMAGE_OVERRIDES = {
     src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/LyWF9ixt27HyPRXeLYug8w?w=228&h=228&p=1&a=1&q=display",
     alt: "Canon RF 70-200mm f/2.8L IS USM lens",
   },
+  ...SCRAPED_PRODUCT_IMAGE_OVERRIDES,
 };
 
 const MANUFACTURER_LOGO_LABELS = {
@@ -223,8 +223,6 @@ const els = {
   currentOfferCredit: byId("current-offer-credit"),
   summaryCash: byId("summary-cash"),
   summarySubtitle: byId("summary-subtitle"),
-  summaryCreditCard: byId("summary-credit-card"),
-  summaryCreditFeature: byId("summary-credit-feature"),
   summaryShippingStatus: byId("summary-shipping-status"),
   summaryShippingLabel: byId("summary-shipping-label"),
   summaryShippingTitle: byId("summary-shipping-title"),
@@ -344,6 +342,7 @@ function bindEvents() {
   els.getQuote.addEventListener("click", getQuote);
   els.submitForm.addEventListener("submit", submitQuote);
   els.printQuote.addEventListener("click", printPackingQuote);
+  els.labelLink.addEventListener("click", openShippingLabelForPrint);
 
   document.querySelectorAll("[data-step-target]").forEach((button) => {
     button.addEventListener("click", () => setStep(button.dataset.stepTarget));
@@ -573,6 +572,11 @@ function productImageForOption(option) {
 }
 
 function productImageFor(item = {}) {
+  if (item.imageKey && PRODUCT_IMAGE_OVERRIDES[item.imageKey]) return PRODUCT_IMAGE_OVERRIDES[item.imageKey];
+  if (item.catalogModel) {
+    const catalogKey = productImageKey(item.brand, item.category, item.catalogModel);
+    if (PRODUCT_IMAGE_OVERRIDES[catalogKey]) return PRODUCT_IMAGE_OVERRIDES[catalogKey];
+  }
   const key = productImageKey(item.brand, item.category, item.model);
   return PRODUCT_IMAGE_OVERRIDES[key] || null;
 }
@@ -1195,6 +1199,8 @@ function readItemForm(options = {}) {
     brand,
     category: selectedCategory,
     catalogCategory: catalogItem ? catalogCategory : "",
+    catalogModel: catalogItem?.name || "",
+    imageKey: catalogItem ? productImageKey(brand, selectedCategory, catalogItem.name) : "",
     model,
     year: catalogItem?.year || "",
     condition,
@@ -1407,6 +1413,10 @@ async function submitQuote(event) {
     setStep("done");
     els.doneStep.scrollIntoView({ block: "start" });
   } catch (error) {
+    if (isAddressCorrectionError(error)) {
+      handleAddressCorrectionError(error);
+      return;
+    }
     setStatus(error.message || "Unable to submit the quote right now.", "error");
   } finally {
     els.submitQuote.disabled = false;
@@ -1421,8 +1431,43 @@ async function apiPost(path, payload) {
     body: JSON.stringify(payload),
   });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error || data.detail || `Request failed with ${response.status}`);
+  if (!response.ok) {
+    const error = new Error(data.error || data.detail || `Request failed with ${response.status}`);
+    error.status = response.status;
+    error.payload = data;
+    error.field = data.field || "";
+    error.action = data.action || "";
+    error.detail = data.detail || "";
+    throw error;
+  }
   return data;
+}
+
+function isAddressCorrectionError(error = {}) {
+  const message = String(error.message || error.detail || "").toLowerCase();
+  return (
+    error.field === "address" ||
+    error.action === "correct_address" ||
+    (error.status === 422 && message.includes("address"))
+  );
+}
+
+function handleAddressCorrectionError(error = {}) {
+  resetShippingConfirmation();
+  setStep("details");
+  updateSubmitQuoteButtonLabel({ force: true });
+  setStatus(
+    error.message || "We cannot find this address. Please verify your mailing address and try again.",
+    "error",
+  );
+  const target = els.street || els.city || els.stateField || els.zip;
+  if (!target) return;
+  target.scrollIntoView({ block: "center", behavior: "smooth" });
+  try {
+    target.focus({ preventScroll: true });
+  } catch {
+    target.focus();
+  }
 }
 
 function renderCurrentOffer() {
@@ -1534,12 +1579,12 @@ function renderQuote(quote) {
   els.acceptQuote.disabled = Boolean(quote.routing.declinedOnly);
 }
 
-function renderQuoteItem(item) {
+function renderQuoteItem(item, index = 0) {
   const statusClass = item.status === "quoted" ? "quoted" : item.status === "declined" ? "declined" : "review";
   const price = item.offerAmount ? money.format(item.offerAmount) : item.status === "declined" ? "$0" : "Review";
   const credit = item.storeCreditAmount ? `${money.format(item.storeCreditAmount)} store credit` : "";
   const reviewCopy = item.status === "quoted" ? "" : item.message || "";
-  const image = productImageFor(item);
+  const image = productImageFor(state.cart[index] || item);
   const followUpClass = reviewCopy ? " quote-item-has-note" : "";
 
   return `
@@ -1568,8 +1613,6 @@ function renderSummary() {
     els.quoteRef.textContent = "Draft";
     els.summaryCash.textContent = "Pricing...";
     els.summarySubtitle.textContent = "Pricing added items.";
-    els.summaryCreditFeature.textContent = "-";
-    els.summaryCreditCard.hidden = true;
     updateSummaryShipping({
       title: "Checking shipping eligibility...",
       copy: "Quotes above $250 receive free shipping.",
@@ -1581,8 +1624,6 @@ function renderSummary() {
     els.quoteRef.textContent = "Draft";
     els.summaryCash.textContent = state.cart.length ? `${state.cart.length} item${state.cart.length === 1 ? "" : "s"}` : "Add gear";
     els.summarySubtitle.textContent = state.cart.length ? "Pricing will update automatically." : "Your offer will appear here as you add gear.";
-    els.summaryCreditFeature.textContent = "-";
-    els.summaryCreditCard.hidden = true;
     updateSummaryShipping({
       title: "Quotes above $250 receive free shipping.",
       copy: state.cart.length ? "Shipping eligibility updates after pricing." : "Mail-in is still available, or you can drop off in-store.",
@@ -1598,8 +1639,6 @@ function renderSummary() {
     : state.quote.totals.cash
       ? `Offer valid through ${formatDate(state.quote.expiresAt)}`
       : "Manual review request";
-  els.summaryCreditFeature.textContent = state.quote.totals.storeCredit ? money.format(state.quote.totals.storeCredit) : "-";
-  els.summaryCreditCard.hidden = !state.quote.totals.storeCredit;
   if (declinedOnly) {
     updateSummaryShipping({
       title: "Shipping reviewed after quote.",
@@ -1637,21 +1676,25 @@ function renderDone(result) {
   els.doneReference.textContent = quoteRef ? `Quote ${quoteRef}` : "Quote received";
   els.doneTitle.textContent = copy.panelTitle;
   els.doneCopy.textContent = copy.panelCopy;
-  els.printQuote.textContent = deliveryForResult(result) === "dropoff" ? "Print dropoff quote" : "Print packing quote";
+  setDocumentActionLabel(
+    els.printQuote,
+    "A",
+    deliveryForResult(result) === "dropoff" ? "Print dropoff quote" : "Print packing quote",
+  );
   els.doneNextSteps.innerHTML = renderDoneNextSteps(result);
   const actionsSlot = byId("done-roadmap-actions-slot");
   if (actionsSlot && els.doneActions) actionsSlot.appendChild(els.doneActions);
 
   const showLabelAction = shouldShowShippingLabelAction(result);
   if (result.labelUrl) {
-    els.labelLink.href = result.labelUrl;
-    els.labelLink.textContent = "Print shipping label";
+    els.labelLink.href = shippingLabelPrintHref(result, quoteRef);
+    setDocumentActionLabel(els.labelLink, "B", "Print shipping label");
     els.labelLink.hidden = false;
     els.labelLink.classList.remove("is-disabled");
     els.labelLink.removeAttribute("aria-disabled");
   } else if (showLabelAction) {
     els.labelLink.removeAttribute("href");
-    els.labelLink.textContent = "Print shipping label";
+    setDocumentActionLabel(els.labelLink, "B", "Shipping label pending");
     els.labelLink.hidden = false;
     els.labelLink.classList.add("is-disabled");
     els.labelLink.setAttribute("aria-disabled", "true");
@@ -1662,6 +1705,12 @@ function renderDone(result) {
     els.labelLink.hidden = true;
   }
   renderSummary();
+}
+
+function setDocumentActionLabel(element, marker, label) {
+  if (!element) return;
+  element.innerHTML = `<span class="document-action-marker" aria-hidden="true">${escapeHtml(marker)}</span><span>${escapeHtml(label)}</span>`;
+  element.setAttribute("aria-label", label);
 }
 
 function deliveryForResult(result = {}) {
@@ -1834,14 +1883,14 @@ function updateDeliveryFields() {
   resizeParentFrame();
 }
 
-function updateSubmitQuoteButtonLabel() {
+function updateSubmitQuoteButtonLabel({ force = false } = {}) {
   const delivery = selectedRadioValue("delivery") || "ship";
   const label = delivery === "dropoff"
     ? "Finalize quote"
     : requiresShippingConfirmation(delivery) && !els.shippingReviewCard.hidden
       ? "Create prepaid label"
       : "Ship your gear";
-  if (els.submitQuote && els.submitQuote.textContent !== "Submitting...") {
+  if (els.submitQuote && (force || els.submitQuote.textContent !== "Submitting...")) {
     els.submitQuote.textContent = label;
   }
   if (els.doneStepLabel) {
@@ -1910,16 +1959,68 @@ function printPackingQuote() {
     return;
   }
 
+  let printWindow = null;
+  try {
+    printWindow = window.open("", "_blank");
+  } catch {
+    printWindow = null;
+  }
+
   const printUrl = URL.createObjectURL(new Blob([packingQuoteHtml()], { type: "text/html" }));
-  const printWindow = window.open(printUrl, "_blank");
-  if (!printWindow) {
-    URL.revokeObjectURL(printUrl);
-    setStatus("Please allow pop-ups so the packing quote can open for printing.", "error");
+  if (printWindow) {
+    printWindow.location.href = printUrl;
+    printWindow.focus();
+    setStatus("Opening the packing quote for printing.", "success");
+    window.setTimeout(() => URL.revokeObjectURL(printUrl), 60000);
     return;
   }
 
-  printWindow.focus();
+  window.location.href = printUrl;
+  setStatus("Opening the packing quote in this tab.", "success");
   window.setTimeout(() => URL.revokeObjectURL(printUrl), 60000);
+}
+
+function openShippingLabelForPrint(event) {
+  const labelUrl = els.labelLink.getAttribute("href");
+  const labelUnavailable =
+    !labelUrl || els.labelLink.hidden || els.labelLink.classList.contains("is-disabled");
+
+  if (labelUnavailable) {
+    event.preventDefault();
+    setStatus("The shipping label is not ready yet. Milford Photo will email it when it is available.", "error");
+    return;
+  }
+
+  event.preventDefault();
+  const printWindow = window.open(labelUrl, "_blank");
+  if (!printWindow) {
+    window.location.href = labelUrl;
+    return;
+  }
+
+  setStatus("Opening the shipping label for printing.", "success");
+  printWindow.focus();
+}
+
+function shippingLabelPrintHref(result = {}, quoteRef = "") {
+  if (result.labelPrintUrl) return result.labelPrintUrl;
+  const labelUrl = result.directLabelUrl || result.labelUrl || "";
+  if (!labelUrl) return "";
+  if (!isShippoLabelUrl(labelUrl)) return labelUrl;
+
+  const printUrl = new URL(`${API_BASE}/shipping-label`);
+  printUrl.searchParams.set("url", labelUrl);
+  if (quoteRef) printUrl.searchParams.set("quote", quoteRef);
+  return printUrl.toString();
+}
+
+function isShippoLabelUrl(value = "") {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && url.hostname === "deliver.goshippo.com";
+  } catch {
+    return false;
+  }
 }
 
 function packingQuoteHtml() {
