@@ -196,7 +196,7 @@ function renderPayout() {
         <div class="final-payout-summary-copy">
           <span>Quote summary</span>
           <strong id="final-quote-ref">${escapeHtml(state.quoteRef || "-")}</strong>
-          <small id="final-cash-copy">Final cash offer for accepted items</small>
+          <small id="final-cash-copy">Final offer for accepted items</small>
         </div>
         <div class="final-payout-total">
           <span id="final-total-label">Total accepted offer</span>
@@ -943,7 +943,7 @@ function demoFinalRecords(quoteRef) {
 }
 
 function payoutLabel(value) {
-  if (value === "paypal" || value === "bank_transfer") return "PayPal";
+  if (value === "paypal" || value === "bank_transfer") return "Check";
   if (value === "store_credit") return "Store credit";
   if (value === "check") return "Check";
   return "Choose payout method";

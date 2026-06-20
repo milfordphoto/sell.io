@@ -566,7 +566,7 @@ function renderDetail() {
         </div>
         <div class="staff-offer-box">
           <span>Item quote</span>
-          <strong>$${formatMoney(adjustedOffer)} cash</strong>
+          <strong>$${formatMoney(adjustedOffer)}</strong>
           <small class="staff-offer-store-credit">$${formatMoney(storeCreditOffer(adjustedOffer))} store credit</small>
           <small>${escapeHtml(fields.Status || "New")}</small>
         </div>
@@ -705,7 +705,7 @@ function renderOrderHeader(order, currentRecord, currentCashOffer) {
       </div>
       <div class="staff-order-total" id="staff-order-total-card">
         <span>Order offer total</span>
-        <strong data-order-cash-total>$${formatMoney(totals.cash)} cash</strong>
+        <strong data-order-cash-total>$${formatMoney(totals.cash)}</strong>
         <small data-order-store-credit-total>$${formatMoney(totals.storeCredit)} store credit</small>
         <small data-order-original-total>Original quote: $${formatMoney(totals.original)}</small>
       </div>
@@ -841,7 +841,7 @@ function renderOfferAmountSummary(kind, cashAmount) {
   const cash = numberOrNull(cashAmount) ?? 0;
   return `
     <small class="staff-offer-amount-summary" data-offer-summary="${escapeAttr(kind)}">
-      <span data-offer-cash>$${escapeHtml(formatMoney(cash))} cash</span>
+      <span data-offer-cash>$${escapeHtml(formatMoney(cash))}</span>
       <span data-offer-store-credit>$${escapeHtml(formatMoney(storeCreditOffer(cash)))} store credit</span>
     </small>
   `;
@@ -858,7 +858,7 @@ function setOfferAmountSummary(kind, cashAmount) {
   const cash = numberOrNull(cashAmount) ?? 0;
   const cashEl = summary.querySelector("[data-offer-cash]");
   const storeCreditEl = summary.querySelector("[data-offer-store-credit]");
-  if (cashEl) cashEl.textContent = `$${formatMoney(cash)} cash`;
+  if (cashEl) cashEl.textContent = `$${formatMoney(cash)}`;
   if (storeCreditEl) storeCreditEl.textContent = `$${formatMoney(storeCreditOffer(cash))} store credit`;
 }
 
@@ -872,7 +872,7 @@ function renderOrderInfoGrid(order, fields, baseOffer, paymentMethod) {
     <div class="staff-info-grid staff-order-info-grid">
       <section>
         <h3>Original quote</h3>
-        <p>Selected item cash offer: <strong>$${formatMoney(baseOffer)}</strong></p>
+        <p>Selected item offer: <strong>$${formatMoney(baseOffer)}</strong></p>
         <p>Order total: <strong>$${formatMoney(order.totals.original)}</strong></p>
         <p>Market estimate: ${moneyOrDash(fields["eBay Median Price"])}</p>
         <p>Quote source: ${escapeHtml(quoteSourceLabel(fields))}</p>
@@ -1448,8 +1448,9 @@ function customerDecisionLabel(decision = "") {
 
 function customerDecisionDetail(decision = {}) {
   const details = [];
+  const paymentPreference = paymentPreferenceDisplay(decision.paymentPreference);
   if (decision.submitted) details.push(`Submitted ${formatLogTimestamp(decision.submitted)}`);
-  if (decision.paymentPreference) details.push(`Payout preference: ${decision.paymentPreference}`);
+  if (paymentPreference) details.push(`Payout preference: ${paymentPreference}`);
   return details.length ? `${details.join(". ")}.` : "Saved from the final quote link.";
 }
 
@@ -1459,7 +1460,7 @@ function orderCustomerPayoutSummary(order = {}, fields = {}, selectedMethod = ""
 
   const sorted = [...decisions].sort((a, b) => logTimestampValue(b.submitted) - logTimestampValue(a.submitted));
   const submitted = sorted[0]?.submitted || "";
-  const paymentPreference = sorted.find((decision) => decision.paymentPreference)?.paymentPreference
+  const paymentPreference = paymentPreferenceDisplay(sorted.find((decision) => decision.paymentPreference)?.paymentPreference)
     || paymentMethodLabel(selectedMethod)
     || "";
   const accepted = decisions.filter((decision) => decision.decision === "accept");
@@ -1541,7 +1542,7 @@ function orderCustomerDecisionItems(order = {}) {
       itemName: shortGearTitle(fields),
       cashAmount,
       storeCreditAmount: storeCreditOffer(cashAmount),
-      amountText: `$${formatMoney(cashAmount)} cash / $${formatMoney(storeCreditOffer(cashAmount))} store credit`,
+      amountText: `$${formatMoney(cashAmount)} / $${formatMoney(storeCreditOffer(cashAmount))} store credit`,
     };
   }).filter(Boolean);
 }
@@ -1767,16 +1768,21 @@ function paymentMethodValue(fields = {}) {
   if (!raw) return "";
   const normalized = String(raw || "").toLowerCase();
   if (normalized.includes("store")) return "store_credit";
-  if (normalized.includes("paypal") || normalized.includes("bank")) return "paypal";
   if (normalized.includes("check")) return "check";
   return "";
 }
 
 function paymentMethodLabel(value = "") {
-  if (value === "paypal") return "PayPal";
   if (value === "store_credit") return "Store credit";
   if (value === "check") return "Check";
   return "Customer chooses after final quote";
+}
+
+function paymentPreferenceDisplay(value = "") {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (normalized.includes("store")) return "Store credit";
+  if (normalized.includes("check")) return "Check";
+  return "";
 }
 
 function staffCanSetPaymentMethod(fields = {}, paymentMethod = "") {
@@ -1997,7 +2003,11 @@ function bindDetail(record, accessories) {
       return;
     }
     sendFinalQuoteButton.disabled = true;
-    await handleOrderAction(selectedOrder(), "Final Quote Sent", { resendFinalQuote: isResend });
+    try {
+      await handleOrderAction(selectedOrder(), "Final Quote Sent", { resendFinalQuote: isResend });
+    } finally {
+      if (document.body.contains(sendFinalQuoteButton)) sendFinalQuoteButton.disabled = false;
+    }
   });
 }
 
@@ -3047,7 +3057,7 @@ function customerDecisionLogEntries(order) {
         actorLabel: "Customer",
         title: decision.decision === "return" ? "Customer requested item return" : "Customer accepted item",
         detail: `${shortGearTitle(fields)} - ${decision.decision === "return" ? "return to customer" : "sell to Milford Photo"}.`,
-        meta: decision.paymentPreference ? `Payout preference: ${decision.paymentPreference}` : "",
+        meta: paymentPreferenceDisplay(decision.paymentPreference) ? `Payout preference: ${paymentPreferenceDisplay(decision.paymentPreference)}` : "",
       }));
     }),
   ].filter(Boolean);
@@ -3300,7 +3310,7 @@ function renderPricingReview() {
         <label>
           <span>Sort</span>
           <select id="pricing-review-sort">
-            <option value="highest_cash">Highest cash offer</option>
+            <option value="highest_cash">Highest offer</option>
             <option value="alphabetical">Alphabetical A-Z</option>
             <option value="newest_model">Newest model year</option>
             <option value="oldest_model">Oldest model year</option>
@@ -3324,7 +3334,7 @@ function renderPricingReview() {
             <tr>
               <th>Item</th>
               <th>Category</th>
-              <th>Cash</th>
+              <th>Offer</th>
               <th>Resale</th>
               <th>Basis</th>
               <th>Reviewed</th>
@@ -3563,7 +3573,7 @@ async function submitPricingReviewFlagFeedback(row = {}, reason = "") {
     `Pricing review flag: ${reasonLabel}`,
     `Item: ${itemName}`,
     `Category: ${row.category || "-"}`,
-    `Cash offer: ${row.cashOffer ? `$${formatMoney(row.cashOffer)}` : "-"}`,
+    `Offer: ${row.cashOffer ? `$${formatMoney(row.cashOffer)}` : "-"}`,
     `Target resale: ${row.targetResalePrice ? `$${formatMoney(row.targetResalePrice)}` : "-"}`,
     `Pricing basis: ${row.pricingBasis || row.source || "-"}`,
     `Reviewed: ${row.priceLastReviewed || "-"}`,
@@ -3924,7 +3934,6 @@ function renderNewQuoteCustomerFields() {
         <select id="staff-intake-payment-preference">
           <option value="">Customer chooses after final quote</option>
           <option value="check">Check</option>
-          <option value="paypal">PayPal</option>
           <option value="store_credit">Store credit</option>
         </select>
       </label>
@@ -5864,7 +5873,7 @@ function workflowState(order) {
   if (statuses.some((status) => status.includes("label") || status.includes("accepted") || status.includes("shipped") || status.includes("received") || status.includes("inspection") || status.includes("evaluated") || status.includes("final") || status.includes("payment") || status.includes("return"))) completed.add("shipped");
   if (allItemsReceived(items)) completed.add("received");
   if (allItemsEvaluated(items)) completed.add("evaluated");
-  if (completed.has("evaluated") && statuses.some((status) => status.includes("final quote") || status.includes("accepted item") || status.includes("customer accepted") || status.includes("payment") || status.includes("return"))) completed.add("final");
+  if (completed.has("evaluated") && (finalQuoteEmailSent(order) || statuses.some((status) => status.includes("accepted item") || status.includes("customer accepted") || status.includes("payment") || status.includes("return")))) completed.add("final");
   if (completed.has("final") && (hasCustomerDecision || statuses.some((status) => status.includes("accepted item") || status.includes("return item") || status.includes("customer accepted") || status.includes("payment")))) completed.add("customer");
   if (completed.has("customer") && paymentComplete) completed.add("payout");
   if (returnItems.length && completed.has("customer") && paymentComplete && returnsComplete) completed.add("return");
@@ -5996,7 +6005,7 @@ function updateOrderTotalCard(order, currentRecord, currentCashOffer) {
   const cashEl = card.querySelector("[data-order-cash-total]");
   const storeCreditEl = card.querySelector("[data-order-store-credit-total]");
   const originalEl = card.querySelector("[data-order-original-total]");
-  if (cashEl) cashEl.textContent = `$${formatMoney(totals.cash)} cash`;
+  if (cashEl) cashEl.textContent = `$${formatMoney(totals.cash)}`;
   if (storeCreditEl) storeCreditEl.textContent = `$${formatMoney(totals.storeCredit)} store credit`;
   if (originalEl) originalEl.textContent = `Original quote: $${formatMoney(totals.original)}`;
 }

@@ -107,7 +107,8 @@ function renderStatus(data = {}) {
         <h3>Delivery</h3>
         <p>${escapeHtml(data.delivery || "-")}</p>
         <p>${data.labelReady ? "Prepaid label ready" : "No active label shown"}</p>
-        <p>Tracking: ${escapeHtml(data.trackingNumber || "-")}</p>
+        <p>Inbound tracking: ${escapeHtml(data.trackingNumber || "-")}</p>
+        ${data.returnTrackingNumber ? `<p>Return tracking: ${escapeHtml(data.returnTrackingNumber)}</p>` : ""}
       </article>
       <article>
         <h3>Payout</h3>

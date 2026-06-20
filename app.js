@@ -46,7 +46,7 @@ const CONDITION_LABELS = {
 const STEP_COPY = {
   gear: {
     title: "Get an instant offer for your used camera gear",
-    intro: "Get a price online, ship it in or bring it to Milford Photo, and choose cash or 10% more in store credit after inspection.",
+    intro: "Get a price online, ship it in or bring it to Milford Photo, and choose check payment or 10% more in store credit after inspection.",
   },
   quote: {
     title: "Review your instant offer",
@@ -2115,7 +2115,7 @@ function packingQuoteHtml() {
 
     <section class="grid">
       <div class="box">
-        <h2>Cash offer</h2>
+        <h2>Offer</h2>
         <p class="total">${escapeHtml(quote.totals?.cash ? money.format(quote.totals.cash) : "Review")}</p>
       </div>
       <div class="box">
@@ -2132,7 +2132,7 @@ function packingQuoteHtml() {
             <th>#</th>
             <th>Item</th>
             <th>Condition</th>
-            <th>Cash offer</th>
+            <th>Offer</th>
             <th>Store credit</th>
           </tr>
         </thead>

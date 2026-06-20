@@ -6,7 +6,7 @@
     <title>Milford Photo Used Gear Intake Dashboard</title>
     <meta name="description" content="Milford Photo used equipment staff intake dashboard." />
     <meta name="robots" content="noindex,nofollow" />
-    <link rel="stylesheet" href="./styles.css?v=20260607-email-sender-fix" />
+    <link rel="stylesheet" href="./styles.css?v=20260617-overnight-workflow" />
   </head>
   <body>
     <main class="mp-used-app staff-app">
@@ -46,8 +46,13 @@
               <div>
                 <strong id="record-count">No quotes loaded</strong>
                 <span id="staff-status"></span>
+                <a class="staff-bug-report-link" id="staff-bug-report-link" href="mailto:mikewilson.filmmaker@gmail.com?subject=Used%20gear%20bug%20report" target="_blank" rel="noreferrer">Report bug</a>
               </div>
-              <button class="secondary-action" type="button" id="refresh-records">Refresh</button>
+              <div class="staff-toolbar-actions">
+                <button class="secondary-action staff-history-action" type="button" id="staff-undo" disabled>Undo</button>
+                <button class="secondary-action staff-history-action" type="button" id="staff-redo" disabled>Redo</button>
+                <button class="secondary-action" type="button" id="refresh-records">Refresh</button>
+              </div>
             </div>
             <div class="staff-filter-row" role="tablist" aria-label="Queue filters">
               <button class="staff-filter is-active" type="button" data-filter="active">Active</button>
@@ -76,7 +81,7 @@
     <script src="./catalog-leica-hasselblad.js?v=20260607-email-sender-fix"></script>
     <script src="./catalog-modern-supplement.js?v=20260607-email-sender-fix"></script>
     <script src="./catalog.js?v=20260607-email-sender-fix"></script>
-    <script src="./product-images.js?v=20260610-product-images-640b57d"></script>
-    <script src="./staff.js?v=20260607-email-sender-fix"></script>
+    <script src="./product-images.js?v=20260616-product-images-cleanup-2"></script>
+    <script src="./staff.js?v=20260617-overnight-workflow"></script>
   </body>
 </html>
