@@ -1,4 +1,4 @@
-// Auto-generated from Milford/Dakis exports and conservative manufacturer matches on 2026-06-14.
+// Auto-generated from Milford/Dakis exports and conservative manufacturer matches on 2026-06-20.
 // Conservative matches only: existing quote catalog key -> product image URL.
 (function () {
   window.MP_PRODUCT_IMAGE_OVERRIDES = Object.freeze({
@@ -1210,10 +1210,6 @@
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/hTAcu8bUziBKg2XvS71bNw?w=228&h=228&p=1&a=1&q=display",
       alt: "Fujifilm GF 250mm f/4 R LM OIS WR",
     },
-    "fujifilm|lens|gf 500mm f/5.6 r lm ois wr": {
-      src: "./product-assets/fujifilm-gf-500mm-f5.6-r-lm-ois-wr.png",
-      alt: "Fujifilm GF 500mm f/5.6 R LM OIS WR",
-    },
     "fujifilm|lens|gf 30mm f/3.5 r wr": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/KTrsyW7gm4uwQNi4DKRZXA?w=228&h=228&p=1&a=1&q=display",
       alt: "Fujifilm GF 30mm f/3.5 R WR",
@@ -1233,6 +1229,10 @@
     "fujifilm|lens|gf 45mm f/2.8 r wr": {
       src: "https://fujifilm-x.b-cdn.net/wp-content/uploads/2017/09/2_thum_gf45mmf2-8-r-wr.jpg?width=480&height=480",
       alt: "Fujifilm GF 45mm f/2.8 R WR",
+    },
+    "fujifilm|lens|gf 500mm f/5.6 r lm ois wr": {
+      src: "./product-assets/fujifilm-gf-500mm-f5.6-r-lm-ois-wr.png",
+      alt: "Fujifilm GF 500mm f/5.6 R LM OIS WR",
     },
     "fujifilm|lens|gf 50mm f/3.5 r lm wr": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/u5grFuwtJGN_a1o1B7rENA?w=228&h=228&p=1&a=1&q=display",
@@ -1357,6 +1357,42 @@
     "fujifilm|lens|xf 8mm f/3.5 r wr": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/A-N5Ki6zpodW5KEgISpD9g?w=228&h=228&p=1&a=1&q=display",
       alt: "Fujifilm XF 8mm f/3.5 R WR",
+    },
+    "gitzo|tripod / support|centre ball head gh1382qd": {
+      src: "./product-assets/gitzo-centre-ball-head-gh1382qd.png",
+      alt: "Gitzo Centre Ball Head GH1382QD",
+    },
+    "gitzo|tripod / support|fluid video head gh3382qd": {
+      src: "./product-assets/gitzo-centre-ball-head-gh3382qd.png",
+      alt: "Gitzo Fluid Video Head GH3382QD",
+    },
+    "gitzo|tripod / support|mountaineer series 1 gt1542": {
+      src: "./product-assets/gitzo-mountaineer-series-1-gt1542.png",
+      alt: "Gitzo Mountaineer Series 1 GT1542",
+    },
+    "gitzo|tripod / support|mountaineer series 2 gt2542": {
+      src: "./product-assets/gitzo-mountaineer-series-2-gt2542.png",
+      alt: "Gitzo Mountaineer Series 2 GT2542",
+    },
+    "gitzo|tripod / support|mountaineer series 3 gt3542": {
+      src: "./product-assets/gitzo-mountaineer-series-3-gt3542.png",
+      alt: "Gitzo Mountaineer Series 3 GT3542",
+    },
+    "gitzo|tripod / support|mountaineer series 3 gt3543xls": {
+      src: "./product-assets/gitzo-mountaineer-series-3-gt3543xls.png",
+      alt: "Gitzo Mountaineer Series 3 GT3543XLS",
+    },
+    "gitzo|tripod / support|systematic series 5 gt5563gs": {
+      src: "./product-assets/gitzo-systematic-series-5-gt5563gs.png",
+      alt: "Gitzo Systematic Series 5 GT5563GS",
+    },
+    "gitzo|tripod / support|traveler series 1 gt1545t": {
+      src: "./product-assets/gitzo-traveler-series-1-gt1545t.png",
+      alt: "Gitzo Traveler Series 1 GT1545T",
+    },
+    "gitzo|tripod / support|traveler series 2 gt2545t": {
+      src: "./product-assets/gitzo-traveler-series-2-gt2545t.png",
+      alt: "Gitzo Traveler Series 2 GT2545T",
     },
     "godox|flash / strobe|ad200pro pocket flash": {
       src: "https://www.godox.com/static/upload/image/20220330/1648603335165744.jpg",
@@ -1669,6 +1705,22 @@
     "leica|lens|vario-elmarit-sl 24-90mm f/2.8-4 asph.": {
       src: "https://leica-camera.com/sites/default/files/styles/meta_tag_product_image/public/pm-27847-11176__Vario-Elmarit-SL_24-90_f2_8-4_0.png?itok=3324EZU7",
       alt: "Leica Vario-Elmarit-SL 24-90mm f/2.8-4 ASPH.",
+    },
+    "manfrotto|tripod / support|055xpro3 tripod": {
+      src: "./product-assets/manfrotto-055xpro3-tripod.png",
+      alt: "Manfrotto 055XPRO3 Tripod",
+    },
+    "manfrotto|tripod / support|190xpro4 tripod": {
+      src: "./product-assets/manfrotto-190xpro4-tripod.png",
+      alt: "Manfrotto 190XPRO4 Tripod",
+    },
+    "manfrotto|tripod / support|504x fluid video head": {
+      src: "./product-assets/manfrotto-504x-fluid-video-head.png",
+      alt: "Manfrotto 504X Fluid Video Head",
+    },
+    "manfrotto|tripod / support|ball head 496rc2": {
+      src: "./product-assets/manfrotto-496rc2-ball-head.png",
+      alt: "Manfrotto Ball Head 496RC2",
     },
     "nikon|digital camera|d1": {
       src: "https://imaging.nikon.com/imaging/information/products_history/img/1999/product_d1.jpg",
@@ -2654,13 +2706,13 @@
       src: "./product-assets/om-mzuiko-8-25mm-f4-pro.png",
       alt: "Olympus / OM System M.Zuiko 8-25mm f/4 PRO",
     },
-    "olympus / om system|lens|m.zuiko 9-18mm f/4-5.6": {
-      src: "./product-assets/om-mzuiko-9-18mm-f4-5.6.png",
-      alt: "Olympus / OM System M.Zuiko 9-18mm f/4-5.6",
-    },
     "olympus / om system|lens|m.zuiko 8mm f/1.8 fisheye pro": {
       src: "https://learnandsupport.getolympus.com/sites/default/files/styles/thumb_200px/public/2018-04/m.zuiko_ed_8mm_f1.8_pro_fisheye.jpg?itok=gECkjO_T",
       alt: "Olympus / OM System M.Zuiko 8mm f/1.8 Fisheye PRO",
+    },
+    "olympus / om system|lens|m.zuiko 9-18mm f/4-5.6": {
+      src: "./product-assets/om-mzuiko-9-18mm-f4-5.6.png",
+      alt: "Olympus / OM System M.Zuiko 9-18mm f/4-5.6",
     },
     "olympus / om system|lens|m.zuiko 90mm f/3.5 macro is pro": {
       src: "https://nala.explore.omsystem.com/media/catalog/product/9/0/90mm_keypanel1.jpg?width=800&height=&optimize=medium&fit=bounds",
@@ -2970,13 +3022,13 @@
       src: "https://www.ricoh-imaging.co.jp/english/products/filmcamera/35mm/image/p_mz-s.jpg",
       alt: "Pentax MZ-S",
     },
-    "profoto|flash / strobe|a2": {
-      src: "https://www.profoto.com/globalassets/inriver/resources/901250_a_a2_right.png",
-      alt: "Profoto A2",
-    },
     "profoto|flash / strobe|a1x airttl": {
       src: "./product-assets/profoto-a1x-airttl.png",
       alt: "Profoto A1X AirTTL",
+    },
+    "profoto|flash / strobe|a2": {
+      src: "https://www.profoto.com/globalassets/inriver/resources/901250_a_a2_right.png",
+      alt: "Profoto A2",
     },
     "profoto|flash / strobe|b10 airttl": {
       src: "./product-assets/profoto-b10-airttl.png",
@@ -3874,6 +3926,10 @@
       src: "https://tamron-americas.com/wp-content/uploads/2026/04/f072-1200-x-1200-wht.webp",
       alt: "Tamron 90mm f/2.8 Di III VXD Macro",
     },
+    "tamron|lens|af 18-200mm f/3.5-6.3 xr di ii ld aspherical (if)": {
+      src: "./product-assets/tamron-af-18-200mm-f3.5-6.3-xr-di-ii-ld-aspherical-if.png",
+      alt: "Tamron AF 18-200mm f/3.5-6.3 XR Di II LD Aspherical (IF)",
+    },
     "tamron|lens|af 70-300mm f/4-5.6 di ld macro 1:2": {
       src: "https://www.tamron.com/global/consumer/pc_file/file/a005_main.webp",
       alt: "Tamron AF 70-300mm f/4-5.6 Di LD Macro 1:2",
@@ -3938,9 +3994,25 @@
       src: "https://www.tamron.com/global/consumer/pc_file/file/b001_main.webp",
       alt: "Tamron SP AF 10-24mm f/3.5-4.5 Di II LD Aspherical (IF)",
     },
+    "tamron|lens|sp af 17-50mm f/2.8 xr di ii vc ld aspherical (if)": {
+      src: "./product-assets/tamron-sp-af-17-50mm-f2.8-xr-di-ii-vc-ld-aspherical-if.png",
+      alt: "Tamron SP AF 17-50mm f/2.8 XR Di II VC LD Aspherical (IF)",
+    },
+    "tamron|lens|sp af 180mm f/3.5 di ld (if) macro": {
+      src: "./product-assets/tamron-sp-af-180mm-f3.5-di-ld-if-macro.png",
+      alt: "Tamron SP AF 180mm f/3.5 Di LD (IF) Macro",
+    },
+    "tamron|lens|sp af 200-500mm f/5-6.3 di ld (if)": {
+      src: "./product-assets/tamron-sp-af-200-500mm-f5-6.3-di-ld-if.png",
+      alt: "Tamron SP AF 200-500mm f/5-6.3 Di LD (IF)",
+    },
     "tamron|lens|sp af 60mm f/2 di ii ld (if) 1:1 macro": {
       src: "https://www.tamron.com/global/consumer/pc_file/file/g005_main.webp",
       alt: "Tamron SP AF 60mm f/2 Di II LD (IF) 1:1 Macro",
+    },
+    "tamron|lens|sp af 90mm f/2.8 di macro": {
+      src: "./product-assets/tamron-sp-af-90mm-f2.8-di-macro.png",
+      alt: "Tamron SP AF 90mm f/2.8 Di Macro",
     },
     "tokina|lens|at-x 100mm f/2.8 pro d macro": {
       src: "https://tokinalens.com/images/catalog/product/5ab25a8e1e7df.png?w=1200&fit=max",
@@ -4213,58 +4285,6 @@
     "zeiss|lens|otus ml 85mm f/1.4 (mirrorless)": {
       src: "https://www.zeiss.com/content/dam/pno/images/photography/products/lenses-for-mirrorless-system-cameras/otus-ml-lenses/models/zeiss-otus-ml-1485.jpg/_jcr_content/renditions/original./zeiss-otus-ml-1485.jpg",
       alt: "Zeiss Otus ML 85mm f/1.4",
-    },
-    "gitzo|tripod / support|centre ball head gh1382qd": {
-      src: "./product-assets/gitzo-centre-ball-head-gh1382qd.png",
-      alt: "Gitzo Centre Ball Head GH1382QD",
-    },
-    "gitzo|tripod / support|fluid video head gh3382qd": {
-      src: "./product-assets/gitzo-centre-ball-head-gh3382qd.png",
-      alt: "Gitzo Fluid Video Head GH3382QD",
-    },
-    "gitzo|tripod / support|mountaineer series 1 gt1542": {
-      src: "./product-assets/gitzo-mountaineer-series-1-gt1542.png",
-      alt: "Gitzo Mountaineer Series 1 GT1542",
-    },
-    "gitzo|tripod / support|mountaineer series 2 gt2542": {
-      src: "./product-assets/gitzo-mountaineer-series-2-gt2542.png",
-      alt: "Gitzo Mountaineer Series 2 GT2542",
-    },
-    "gitzo|tripod / support|mountaineer series 3 gt3542": {
-      src: "./product-assets/gitzo-mountaineer-series-3-gt3542.png",
-      alt: "Gitzo Mountaineer Series 3 GT3542",
-    },
-    "gitzo|tripod / support|mountaineer series 3 gt3543xls": {
-      src: "./product-assets/gitzo-mountaineer-series-3-gt3543xls.png",
-      alt: "Gitzo Mountaineer Series 3 GT3543XLS",
-    },
-    "gitzo|tripod / support|systematic series 5 gt5563gs": {
-      src: "./product-assets/gitzo-systematic-series-5-gt5563gs.png",
-      alt: "Gitzo Systematic Series 5 GT5563GS",
-    },
-    "gitzo|tripod / support|traveler series 1 gt1545t": {
-      src: "./product-assets/gitzo-traveler-series-1-gt1545t.png",
-      alt: "Gitzo Traveler Series 1 GT1545T",
-    },
-    "gitzo|tripod / support|traveler series 2 gt2545t": {
-      src: "./product-assets/gitzo-traveler-series-2-gt2545t.png",
-      alt: "Gitzo Traveler Series 2 GT2545T",
-    },
-    "manfrotto|tripod / support|055xpro3 tripod": {
-      src: "./product-assets/manfrotto-055xpro3-tripod.png",
-      alt: "Manfrotto 055XPRO3 Tripod",
-    },
-    "manfrotto|tripod / support|190xpro4 tripod": {
-      src: "./product-assets/manfrotto-190xpro4-tripod.png",
-      alt: "Manfrotto 190XPRO4 Tripod",
-    },
-    "manfrotto|tripod / support|ball head 496rc2": {
-      src: "./product-assets/manfrotto-496rc2-ball-head.png",
-      alt: "Manfrotto Ball Head 496RC2",
-    },
-    "manfrotto|tripod / support|504x fluid video head": {
-      src: "./product-assets/manfrotto-504x-fluid-video-head.png",
-      alt: "Manfrotto 504X Fluid Video Head",
     },
   });
 })();
