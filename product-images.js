@@ -2822,6 +2822,10 @@
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/yYqWHy4R7eVkKtLwnHfbpg?w=228&h=228&p=1&a=1&q=display",
       alt: "Panasonic Lumix G 25mm f/1.7",
     },
+    "panasonic|lens|lumix g vario 35-100mm f/2.8 ii": {
+      src: "./product-assets/panasonic-lumix-g-vario-35-100mm-f2.8-ii.png",
+      alt: "Panasonic Lumix G Vario 35-100mm f/2.8 II",
+    },
     "panasonic|lens|lumix g 42.5mm f/1.2 nocticron": {
       src: "https://shop.panasonic.com/cdn/shop/products/qrogdi8zjvqiav47iot8.jpg?v=1779299415&width=600",
       alt: "Panasonic Lumix G 42.5mm f/1.2 Nocticron",
@@ -3797,6 +3801,10 @@
     "tamron|lens|18-300mm f/3.5-6.3 di iii-a vc vxd": {
       src: "https://tamron-americas.com/wp-content/uploads/2026/04/b061-1200-x-1200-wht.webp",
       alt: "Tamron 18-300mm f/3.5-6.3 Di III-A VC VXD",
+    },
+    "tamron|lens|18-200mm f/3.5-6.3 di ii vc": {
+      src: "./product-assets/tamron-18-200mm-f3.5-6.3-di-ii-vc.png",
+      alt: "Tamron 18-200mm f/3.5-6.3 Di II VC",
     },
     "tamron|lens|18-400mm f/3.5-6.3 di ii vc hld": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/By-3Waa-fdq15mnb_WIQ9A?w=228&h=228&p=1&a=1&q=display",
