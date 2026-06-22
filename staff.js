@@ -3,7 +3,9 @@ const API_BASE = resolveApiBase();
 const TEST_EMPLOYEE = "employee";
 const TEST_PASSWORD = "password";
 const STAFF_SECRET = CONFIG.staffSecret || TEST_PASSWORD;
-const SHOW_DEMO_ORDERS = new URLSearchParams(window.location.search).get("showDemo") === "1";
+const STAFF_URL_PARAMS = new URLSearchParams(window.location.search);
+const SHOW_DEMO_ORDERS = STAFF_URL_PARAMS.get("showDemo") === "1";
+const DEEP_LINK_QUOTE_REF = String(STAFF_URL_PARAMS.get("order") || STAFF_URL_PARAMS.get("quote") || STAFF_URL_PARAMS.get("quoteRef") || "").trim();
 const STORE_CREDIT_BONUS = 0.1;
 const MANUAL_BRAND = "__manual_brand";
 const MANUAL_MODEL = "__manual_model";
@@ -368,6 +370,8 @@ async function loadRecords(options = {}) {
     orders = buildOrders(records);
     staffQueueGuideTargetOverride = "";
     if (options.selectQuoteRef) {
+      activeFilter = "all";
+      if (staffFilterSelect) staffFilterSelect.value = "all";
       selectedOrderId = orderIdForQuoteRef(options.selectQuoteRef) || selectedOrderId;
     }
     if (options.selectRecordId) selectedItemId = options.selectRecordId;
@@ -394,6 +398,10 @@ async function loadRecords(options = {}) {
     loadButton.disabled = false;
     refreshButton.disabled = false;
   }
+}
+
+function deepLinkLoadOptions() {
+  return DEEP_LINK_QUOTE_REF ? { selectQuoteRef: DEEP_LINK_QUOTE_REF } : {};
 }
 
 function staffAuthHeaders() {
@@ -6541,8 +6549,8 @@ function escapeAttr(value) {
   return escapeHtml(value);
 }
 
-loadButton.addEventListener("click", loadRecords);
-refreshButton.addEventListener("click", loadRecords);
+loadButton.addEventListener("click", () => loadRecords(deepLinkLoadOptions()));
+refreshButton.addEventListener("click", () => loadRecords(deepLinkLoadOptions()));
 staffUndoButton?.addEventListener("click", () => restoreStaffHistory("undo"));
 staffRedoButton?.addEventListener("click", () => restoreStaffHistory("redo"));
 staffBugReportLink?.addEventListener("click", () => updateBugReportLink());
@@ -6590,13 +6598,13 @@ usernameInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter") passwordInput.focus();
 });
 passwordInput.addEventListener("keydown", (event) => {
-  if (event.key === "Enter") loadRecords();
+  if (event.key === "Enter") loadRecords(deepLinkLoadOptions());
 });
 
 if ((CONFIG.staffAuthMode === "cookie" || CONFIG.staffAuthMode === "secret") && CONFIG.autoLoadStaff) {
-  loadRecords();
+  loadRecords(deepLinkLoadOptions());
 } else if (new URLSearchParams(window.location.search).get("staffTest") === "1") {
   usernameInput.value = TEST_EMPLOYEE;
   passwordInput.value = TEST_PASSWORD;
-  loadRecords();
+  loadRecords(deepLinkLoadOptions());
 }
