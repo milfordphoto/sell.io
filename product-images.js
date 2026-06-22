@@ -994,9 +994,17 @@
       src: "https://elinchrom.com/images/prod1000/el10232-ELB500TTL.jpg",
       alt: "Elinchrom ELB 500 TTL",
     },
+    "elinchrom|flash / strobe|elc 125": {
+      src: "./product-assets/elinchrom-elc-125.png",
+      alt: "Elinchrom ELC 125",
+    },
     "elinchrom|flash / strobe|elc 500": {
       src: "https://www.elinchrom.com/images/prod1000/Elinchrom-ELC500.jpg",
       alt: "Elinchrom ELC 500",
+    },
+    "elinchrom|flash / strobe|d-lite rx 4": {
+      src: "./product-assets/elinchrom-d-lite-rx-4.png",
+      alt: "Elinchrom D-Lite RX 4",
     },
     "elinchrom|flash / strobe|one off camera flash": {
       src: "https://www.elinchrom.com/images/prod1000/el20932-ONE-kit-002.jpg",
@@ -3042,9 +3050,17 @@
       src: "./product-assets/profoto-b10-plus-airttl.png",
       alt: "Profoto B10 Plus AirTTL",
     },
+    "profoto|flash / strobe|b1x 500 airttl": {
+      src: "./product-assets/profoto-b1x-500-airttl.png",
+      alt: "Profoto B1X 500 AirTTL",
+    },
     "profoto|flash / strobe|b10x airttl": {
       src: "./product-assets/profoto-b10x-airttl.png",
       alt: "Profoto B10X AirTTL",
+    },
+    "profoto|flash / strobe|d2 1000 airttl monolight": {
+      src: "./product-assets/profoto-d2-1000-airttl-monolight.png",
+      alt: "Profoto D2 1000 AirTTL Monolight",
     },
     "profoto|flash / strobe|d2 500 airttl monolight": {
       src: "./product-assets/profoto-d2-500-airttl-monolight.png",
