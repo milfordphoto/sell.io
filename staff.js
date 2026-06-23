@@ -585,7 +585,7 @@ function renderDetail() {
   const parsed = parseStaffNotes(fields["Staff Notes"]);
   const received = itemPhysicallyReceived(record);
   const inspectionReason = inspectionReasonForDisplay(fields, parsed);
-  const baseOffer = numberOrNull(fields["Milford Offer"]) ?? 0;
+  const baseOffer = staffIntakeBaselineOffer(fields);
   const calculatedAdjustedOffer = calculateOffer(fields, parsed, accessories, baseOffer);
   const adjustedOffer = reviewRequiresCustomerDecision(fields, parsed, accessories)
     ? calculatedAdjustedOffer
@@ -2187,7 +2187,7 @@ function bindDetail(record, accessories) {
 function updateSuggestedOffer(record, accessories) {
   const fields = record.fields || {};
   const review = collectReviewState(accessories);
-  const originalOffer = numberOrNull(fields["Milford Offer"]) ?? 0;
+  const originalOffer = staffIntakeBaselineOffer(fields);
   const adjustedOffer = calculateOffer(fields, review, accessories, originalOffer);
   const suggestedInput = document.getElementById("suggested-offer");
   const customInput = document.getElementById("custom-offer");
@@ -5738,6 +5738,15 @@ function calculateOffer(fields, review, accessories, fallbackOffer) {
   return Math.max(0, Math.floor(conditionOffer - missingTotal));
 }
 
+function staffIntakeBaselineOffer(fields = {}) {
+  const originalOffer = numberOrNull(fields["Milford Offer"]);
+  const preparedOffer = numberOrNull(fields["Final Offer"]);
+  if ((originalOffer ?? 0) <= 0 && preparedOffer !== null && preparedOffer > 0) {
+    return preparedOffer;
+  }
+  return originalOffer ?? preparedOffer ?? 0;
+}
+
 function syncAutoInspectionNotes(fields = {}, accessories = [], review = collectReviewState(accessories)) {
   const notesInput = document.getElementById("inspection-notes");
   if (!notesInput || document.activeElement === notesInput) return;
@@ -6373,7 +6382,7 @@ function orderOfferTotals(order, currentRecord, currentCashOffer) {
 
 function adjustedCashOfferForRecord(record) {
   const fields = record?.fields || {};
-  const original = numberOrNull(fields["Milford Offer"]) ?? 0;
+  const original = staffIntakeBaselineOffer(fields);
   const review = parseStaffNotes(fields["Staff Notes"]);
   const accessories = accessoryListFor(fields);
   const calculated = calculateOffer(fields, review, accessories, original);
