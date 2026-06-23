@@ -3038,9 +3038,17 @@
       src: "./product-assets/profoto-a1x-airttl.png",
       alt: "Profoto A1X AirTTL",
     },
+    "profoto|flash / strobe|a1 airttl studio light": {
+      src: "./product-assets/profoto-a1-airttl-studio-light.png",
+      alt: "Profoto A1 AirTTL Studio Light",
+    },
     "profoto|flash / strobe|a2": {
       src: "https://www.profoto.com/globalassets/inriver/resources/901250_a_a2_right.png",
       alt: "Profoto A2",
+    },
+    "profoto|flash / strobe|b2 250 airttl": {
+      src: "./product-assets/profoto-b2-250-airttl.png",
+      alt: "Profoto B2 250 AirTTL",
     },
     "profoto|flash / strobe|b10 airttl": {
       src: "./product-assets/profoto-b10-airttl.png",
