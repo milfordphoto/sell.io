@@ -6,6 +6,7 @@ const STAFF_SECRET = CONFIG.staffSecret || TEST_PASSWORD;
 const STAFF_URL_PARAMS = new URLSearchParams(window.location.search);
 const SHOW_DEMO_ORDERS = STAFF_URL_PARAMS.get("showDemo") === "1";
 const DEEP_LINK_QUOTE_REF = String(STAFF_URL_PARAMS.get("order") || STAFF_URL_PARAMS.get("quote") || STAFF_URL_PARAMS.get("quoteRef") || "").trim();
+const DEEP_LINK_QUEUE = String(STAFF_URL_PARAMS.get("queue") || STAFF_URL_PARAMS.get("view") || "").trim().toLowerCase();
 const STORE_CREDIT_BONUS = 0.1;
 const MANUAL_BRAND = "__manual_brand";
 const MANUAL_MODEL = "__manual_model";
@@ -37,6 +38,40 @@ const MANUFACTURER_LOGO_LABELS = {
   samyang: "Samyang",
   godox: "Godox",
   profoto: "Profoto",
+  rollei: "Rollei",
+  manfrotto: "Manfrotto",
+  gitzo: "Gitzo",
+  westcott: "Westcott",
+  elinchrom: "Elinchrom",
+};
+
+const MANUFACTURER_LOGO_DOMAINS = {
+  canon: "canon.com",
+  nikon: "nikonusa.com",
+  sony: "sony.com",
+  fujifilm: "fujifilm.com",
+  fuji: "fujifilm.com",
+  olympus: "olympus-global.com",
+  "om system": "explore.omsystem.com",
+  panasonic: "panasonic.com",
+  lumix: "lumix-pro.com",
+  pentax: "ricoh-imaging.co.jp",
+  leica: "leica-camera.com",
+  hasselblad: "hasselblad.com",
+  sigma: "sigmaphoto.com",
+  tamron: "tamron-americas.com",
+  tokina: "tokinalens.com",
+  zeiss: "zeiss.com",
+  voigtlander: "voigtlaender.de",
+  rokinon: "rokinon.com",
+  samyang: "samyanglens.com",
+  godox: "godox.com",
+  profoto: "profoto.com",
+  rollei: "rollei.com",
+  manfrotto: "manfrotto.com",
+  gitzo: "gitzo.com",
+  westcott: "fjwestcott.com",
+  elinchrom: "elinchrom.com",
 };
 
 const FALLBACK_CATEGORIES = [
@@ -47,7 +82,6 @@ const FALLBACK_CATEGORIES = [
   "Tripod / Support",
   "Bags & Cases",
   "Filters",
-  "Video / Cinema Gear",
   MANUAL_CATEGORY,
 ];
 
@@ -59,7 +93,6 @@ const SIMPLE_CATEGORIES = [
   "Tripod / Support",
   "Bags & Cases",
   "Filters",
-  "Video / Cinema Gear",
   MANUAL_CATEGORY,
 ];
 
@@ -224,6 +257,8 @@ const WORKFLOW_STEPS = [
   { key: "return", label: "Return / Close" },
 ];
 
+const MANUAL_QUOTE_STEP = { key: "manual", label: "Quote Review" };
+
 const usernameInput = document.getElementById("staff-username");
 const passwordInput = document.getElementById("staff-password");
 const loadButton = document.getElementById("load-records");
@@ -233,6 +268,7 @@ const staffRedoButton = document.getElementById("staff-redo");
 const staffBugReportLink = document.getElementById("staff-bug-report-link");
 const pricingReviewButton = document.getElementById("open-pricing-review");
 const startStaffIntakeButton = document.getElementById("start-staff-intake");
+const quoteReviewButton = document.getElementById("open-quote-review");
 const intakeQueueButton = document.getElementById("open-intake-queue");
 const staffSearchInput = document.getElementById("staff-search");
 const staffFilterSelect = document.getElementById("staff-filter");
@@ -369,9 +405,10 @@ async function loadRecords(options = {}) {
     records = SHOW_DEMO_ORDERS ? allRecords : allRecords.filter((record) => !isDemoRecord(record));
     orders = buildOrders(records);
     staffQueueGuideTargetOverride = "";
-    if (options.selectQuoteRef) {
-      activeFilter = "all";
-      if (staffFilterSelect) staffFilterSelect.value = "all";
+    if (options.selectQuoteRef || options.selectQueue) {
+      const queue = String(options.selectQueue || "").toLowerCase();
+      activeFilter = queue === "quote-review" || queue === "manual" ? "manual" : queue === "intake" ? "active" : "all";
+      if (staffFilterSelect) staffFilterSelect.value = activeFilter;
       selectedOrderId = orderIdForQuoteRef(options.selectQuoteRef) || selectedOrderId;
     }
     if (options.selectRecordId) selectedItemId = options.selectRecordId;
@@ -401,7 +438,10 @@ async function loadRecords(options = {}) {
 }
 
 function deepLinkLoadOptions() {
-  return DEEP_LINK_QUOTE_REF ? { selectQuoteRef: DEEP_LINK_QUOTE_REF } : {};
+  return {
+    ...(DEEP_LINK_QUOTE_REF ? { selectQuoteRef: DEEP_LINK_QUOTE_REF } : {}),
+    ...(DEEP_LINK_QUEUE ? { selectQueue: DEEP_LINK_QUEUE } : {}),
+  };
 }
 
 function staffAuthHeaders() {
@@ -517,8 +557,11 @@ function renderOrderCard(order) {
 
 function orderStatusLabel(order) {
   if (order.workflow.isComplete) return "Complete";
-  const needsManualReview = order.items.some((item) => staffWorkflowText(item.fields).includes("manual review"));
-  if (needsManualReview && order.workflow.current?.key === "shipped") return "Next: Manual review";
+  if (order.workflow.current?.key === "manual" || order.workflow.manualQuoteOutstanding) {
+    const activeManualItems = orderManualQuoteActiveItems(order);
+    const allPriced = activeManualItems.length > 0 && activeManualItems.every(itemManualQuoteIsPriced);
+    return allPriced ? "Next: Email quote" : "Next: Quote review";
+  }
   return order.workflow.current ? `Next: ${order.workflow.current.label}` : "Complete";
 }
 
@@ -550,6 +593,7 @@ function renderDetail() {
   const paymentMethod = paymentMethodValue(orderPayoutFields(order, fields));
   const defaultDecision = staffDecisionForRecord(record, order, adjustedOffer, parsed, accessories);
   const orderLocked = completedOrderLocked(order);
+  const quoteReviewMode = itemNeedsInitialQuote(record);
 
   detailEl.innerHTML = `
     <article class="staff-intake">
@@ -582,112 +626,28 @@ function renderDetail() {
 
       <form class="staff-review-form${orderLocked ? " is-locked" : ""}" id="staff-review-form">
         ${orderLocked ? `<p class="staff-order-locked-note">Order locked. Unlock the completed order before editing item details.</p>` : ""}
-        <section class="staff-review-section" data-staff-queue-guide="receive">
-          <div class="staff-section-title">
-            <span>1</span>
-            <div>
-              <h3>Receive this item</h3>
-              <p>Confirm this specific piece of gear arrived in the box or in-store dropoff.</p>
-            </div>
-          </div>
-          <div class="staff-receive-grid">
-            <label class="staff-check-row">
-              <input type="checkbox" id="received-check" ${received ? "checked" : ""} />
-              This item has been received
-            </label>
-            <label class="staff-check-row staff-check-row-warning">
-              <input type="checkbox" id="not-received-check" ${parsed.notReceived ? "checked" : ""} />
-              This item was NOT received
-            </label>
-          </div>
-        </section>
-
-        <section class="staff-review-section" data-staff-queue-guide="included">
-          <div class="staff-section-title">
-            <span>2</span>
-            <div>
-              <h3>Verify included items</h3>
-              <p>Check what arrived. Missing recommended accessories can lower the final offer.</p>
-            </div>
-          </div>
-          <div class="staff-accessory-grid">
-            ${accessories.map((item) => renderAccessory(item, parsed)).join("")}
-          </div>
-          <label class="staff-check-row">
-            <input type="checkbox" id="all-accessories-check" ${parsed.allAccessories ? "checked" : ""} />
-            All recommended accessories included
-          </label>
-        </section>
-
-        <section class="staff-review-section" data-staff-queue-guide="condition">
-          <div class="staff-section-title">
-            <span>3</span>
-            <div>
-              <h3>Verify condition</h3>
-              <p>Changing the grade recalculates the adjusted offer.</p>
-            </div>
-          </div>
-          ${renderStaffConditionContext(fields)}
-          <div class="staff-condition-grid">
-            ${Object.keys(CONDITION_MULTIPLIERS).map((condition) => renderCondition(condition, parsed.verifiedCondition)).join("")}
-          </div>
-        </section>
-
-        <section class="staff-review-section" data-staff-queue-guide="quote">
-          <div class="staff-section-title">
-            <span>4</span>
-            <div>
-              <h3>Final item quote</h3>
-              <p>Set the final item offer. Unchanged or higher offers default to acceptance; reduced offers wait for customer confirmation.</p>
-            </div>
-          </div>
-          <div class="staff-adjust-grid">
-            <label class="field">
-              <span>Instant quote offer</span>
-              <input id="suggested-offer" type="number" min="0" step="1" value="${baseOffer}" readonly />
-              ${renderOfferAmountSummary("instant", baseOffer)}
-            </label>
-            <label class="field">
-              <span>Adjusted offer</span>
-              <input id="custom-offer" type="number" min="0" step="1" value="${adjustedOffer}" />
-              ${renderOfferAmountSummary("adjusted", adjustedOffer)}
-            </label>
-          </div>
-          ${renderStaffReferencePricing(fields)}
-          ${renderStaffDecisionContext(record, order, defaultDecision)}
-          <div class="staff-decision-grid">
-            <label class="staff-decision-card">
-              <input type="radio" name="item-decision" value="pending" ${defaultDecision === "pending" ? "checked" : ""} />
-              <span>Await customer decision</span>
-            </label>
-            <label class="staff-decision-card">
-              <input type="radio" name="item-decision" value="accept" ${defaultDecision === "accept" ? "checked" : ""} />
-              <span>Customer accepts this item</span>
-            </label>
-            <label class="staff-decision-card">
-              <input type="radio" name="item-decision" value="return" ${defaultDecision === "return" ? "checked" : ""} />
-              <span>Customer wants this item returned</span>
-            </label>
-            <label class="staff-decision-card staff-decision-card-decline">
-              <input type="radio" name="item-decision" value="not_accepted" ${defaultDecision === "not_accepted" ? "checked" : ""} />
-              <span>Not accepted by Milford Photo</span>
-            </label>
-          </div>
-          <label class="field">
-            <span>Adjustment reason / inspection notes</span>
-            <textarea id="inspection-notes" rows="5" placeholder="Example: Customer selected Excellent, but inspection found heavy body wear and missing charger.">${escapeHtml(inspectionReason)}</textarea>
-          </label>
-          <div class="staff-finish-evaluation-row">
-            <button class="primary-action staff-finish-evaluation-button" type="button" id="finish-item-evaluation">
-              ${escapeHtml(finishEvaluationButtonLabel(order, record))}
-            </button>
-          </div>
-        </section>
+        ${quoteReviewMode ? "" : `
+          ${renderStaffReceiveSection(received, parsed)}
+          ${renderStaffAccessoriesSection(accessories, parsed)}
+          ${renderStaffConditionSection(fields, parsed)}
+        `}
+        ${renderStaffItemQuoteSection({
+          order,
+          record,
+          fields,
+          baseOffer,
+          adjustedOffer,
+          inspectionReason,
+          defaultDecision,
+          quoteReviewMode,
+        })}
       </form>
 
-      ${renderOrderDecisionPanel(order)}
-      ${renderPayoutPanel(order, fields, paymentMethod)}
-      ${renderStaffActionsPanel(record, parsed, order)}
+      ${order.workflow?.manualQuoteOutstanding ? "" : `
+        ${renderOrderDecisionPanel(order)}
+        ${renderPayoutPanel(order, fields, paymentMethod)}
+        ${renderStaffActionsPanel(record, parsed, order)}
+      `}
     </article>
   `;
 
@@ -780,6 +740,190 @@ function renderOrderSellerContact(order = {}, fields = {}) {
         <button class="secondary-action staff-admin-action" type="button" id="save-customer-address" ${lockedAttr}>Save contact</button>
       </div>
     </div>
+  `;
+}
+
+function renderStaffReceiveSection(received, parsed) {
+  return `
+    <section class="staff-review-section" data-staff-queue-guide="receive">
+      <div class="staff-section-title">
+        <span>1</span>
+        <div>
+          <h3>Receive this item</h3>
+          <p>Confirm this specific piece of gear arrived in the box or in-store dropoff.</p>
+        </div>
+      </div>
+      <div class="staff-receive-grid">
+        <label class="staff-check-row">
+          <input type="checkbox" id="received-check" ${received ? "checked" : ""} />
+          This item has been received
+        </label>
+        <label class="staff-check-row staff-check-row-warning">
+          <input type="checkbox" id="not-received-check" ${parsed.notReceived ? "checked" : ""} />
+          This item was NOT received
+        </label>
+      </div>
+    </section>
+  `;
+}
+
+function renderStaffAccessoriesSection(accessories, parsed) {
+  return `
+    <section class="staff-review-section" data-staff-queue-guide="included">
+      <div class="staff-section-title">
+        <span>2</span>
+        <div>
+          <h3>Verify included items</h3>
+          <p>Check what arrived. Missing recommended accessories can lower the final offer.</p>
+        </div>
+      </div>
+      <div class="staff-accessory-grid">
+        ${accessories.map((item) => renderAccessory(item, parsed)).join("")}
+      </div>
+      <label class="staff-check-row">
+        <input type="checkbox" id="all-accessories-check" ${parsed.allAccessories ? "checked" : ""} />
+        All recommended accessories included
+      </label>
+    </section>
+  `;
+}
+
+function renderStaffConditionSection(fields, parsed) {
+  return `
+    <section class="staff-review-section" data-staff-queue-guide="condition">
+      <div class="staff-section-title">
+        <span>3</span>
+        <div>
+          <h3>Verify condition</h3>
+          <p>Changing the grade recalculates the adjusted offer.</p>
+        </div>
+      </div>
+      ${renderStaffConditionContext(fields)}
+      <div class="staff-condition-grid">
+        ${Object.keys(CONDITION_MULTIPLIERS).map((condition) => renderCondition(condition, parsed.verifiedCondition)).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function renderStaffItemQuoteSection({
+  order,
+  record,
+  fields,
+  baseOffer,
+  adjustedOffer,
+  inspectionReason,
+  defaultDecision,
+  quoteReviewMode = false,
+}) {
+  const guideTarget = quoteReviewMode ? "manual-quote" : "quote";
+  const stepNumber = quoteReviewMode ? "1" : "4";
+  const title = quoteReviewMode ? "Initial item quote" : "Final item quote";
+  const copy = quoteReviewMode
+    ? "Set the starting offer for this manual-review item before emailing the prepared quote to the customer."
+    : "Set the final item offer. Unchanged or higher offers default to acceptance; reduced offers wait for customer confirmation.";
+  const baseLabel = quoteReviewMode ? "Current table offer" : "Instant quote offer";
+  const adjustedLabel = quoteReviewMode ? "Manual offer" : "Adjusted offer";
+  const notesLabel = quoteReviewMode ? "Quote notes" : "Adjustment reason / inspection notes";
+  const notesPlaceholder = quoteReviewMode
+    ? "Example: Compared MPB, KEH, B&H used, and eBay sold before setting this offer."
+    : "Example: Customer selected Excellent, but inspection found heavy body wear and missing charger.";
+  const reviewActions = quoteReviewMode
+    ? renderQuoteReviewActions(order, record)
+    : renderFinalQuoteDecisionControls(record, order, defaultDecision);
+
+  return `
+    <section class="staff-review-section${quoteReviewMode ? " staff-quote-review-section" : ""}" data-staff-queue-guide="${escapeAttr(guideTarget)}">
+      <div class="staff-section-title">
+        <span>${escapeHtml(stepNumber)}</span>
+        <div>
+          <h3>${escapeHtml(title)}</h3>
+          <p>${escapeHtml(copy)}</p>
+        </div>
+      </div>
+      <div class="staff-adjust-grid">
+        <label class="field">
+          <span>${escapeHtml(baseLabel)}</span>
+          <input id="suggested-offer" type="number" min="0" step="1" value="${baseOffer}" readonly />
+          ${renderOfferAmountSummary("instant", baseOffer)}
+        </label>
+        <label class="field">
+          <span>${escapeHtml(adjustedLabel)}</span>
+          <input id="custom-offer" type="number" min="0" step="1" value="${adjustedOffer}" />
+          ${renderOfferAmountSummary("adjusted", adjustedOffer)}
+        </label>
+      </div>
+      ${renderStaffReferencePricing(fields)}
+      ${reviewActions}
+      <label class="field">
+        <span>${escapeHtml(notesLabel)}</span>
+        <textarea id="inspection-notes" rows="5" placeholder="${escapeAttr(notesPlaceholder)}">${escapeHtml(inspectionReason)}</textarea>
+      </label>
+      <div class="staff-finish-evaluation-row${quoteReviewMode ? " staff-quote-review-actions" : ""}">
+        <button class="primary-action staff-finish-evaluation-button" type="button" id="finish-item-evaluation">
+          ${escapeHtml(quoteReviewMode ? initialQuoteButtonLabel(order, record) : finishEvaluationButtonLabel(order, record))}
+        </button>
+        ${quoteReviewMode ? renderQuoteReviewEmailButton(order) : ""}
+      </div>
+    </section>
+  `;
+}
+
+function renderFinalQuoteDecisionControls(record, order, defaultDecision) {
+  return `
+    ${renderStaffDecisionContext(record, order, defaultDecision)}
+    <div class="staff-decision-grid">
+      <label class="staff-decision-card">
+        <input type="radio" name="item-decision" value="pending" ${defaultDecision === "pending" ? "checked" : ""} />
+        <span>Await customer decision</span>
+      </label>
+      <label class="staff-decision-card">
+        <input type="radio" name="item-decision" value="accept" ${defaultDecision === "accept" ? "checked" : ""} />
+        <span>Customer accepts this item</span>
+      </label>
+      <label class="staff-decision-card">
+        <input type="radio" name="item-decision" value="return" ${defaultDecision === "return" ? "checked" : ""} />
+        <span>Customer wants this item returned</span>
+      </label>
+      <label class="staff-decision-card staff-decision-card-decline">
+        <input type="radio" name="item-decision" value="not_accepted" ${defaultDecision === "not_accepted" ? "checked" : ""} />
+        <span>Not accepted by Milford Photo</span>
+      </label>
+    </div>
+  `;
+}
+
+function renderQuoteReviewActions(order, record) {
+  const activeItems = orderManualQuoteActiveItems(order);
+  const unpricedItems = activeItems.filter((item) => !itemManualQuoteIsPriced(item));
+  const allPriced = activeItems.length > 0 && unpricedItems.length === 0;
+  const currentPriced = itemManualQuoteIsPriced(record);
+  const readyCopy = allPriced
+    ? "Every quote-review item has a price. Email the prepared quote; mail-in orders will include the packing quote and prepaid inbound label when the label is created."
+    : `${unpricedItems.length} manual-review price${unpricedItems.length === 1 ? "" : "s"} still needed before the prepared quote can be emailed.`;
+  return `
+    <div class="staff-final-decision-context staff-quote-review-context ${allPriced ? "is-ready" : "is-unsent"}">
+      <div>
+        <span>Quote review</span>
+        <strong>${escapeHtml(currentPriced ? "Item price saved" : "Price needed")}</strong>
+        <p>${escapeHtml(currentPriced ? "This item has a manual offer saved. Adjust it here if needed." : "Enter the offer for this item, then save it before emailing the customer.")}</p>
+      </div>
+      <div>
+        <span>Prepared quote email</span>
+        <strong>${escapeHtml(allPriced ? "Ready to send" : "Not ready yet")}</strong>
+        <p>${escapeHtml(readyCopy)}</p>
+      </div>
+    </div>
+  `;
+}
+
+function renderQuoteReviewEmailButton(order) {
+  const activeItems = orderManualQuoteActiveItems(order);
+  const allPriced = activeItems.length > 0 && activeItems.every(itemManualQuoteIsPriced);
+  return `
+    <button class="secondary-action staff-finish-evaluation-button" type="button" id="send-manual-quote-email" ${allPriced ? "" : "disabled"}>
+      Email prepared quote
+    </button>
   `;
 }
 
@@ -1206,6 +1350,11 @@ function finishEvaluationButtonLabel(order, record) {
   return nextOrderItemId(order, record?.id) ? "Finish item evaluation / next item" : "Finish evaluation";
 }
 
+function initialQuoteButtonLabel(order, record) {
+  const nextManualItem = nextManualQuoteItem(order, record?.id);
+  return nextManualItem ? "Save item quote / next manual item" : "Save item quote";
+}
+
 function renderOrderProgress(order) {
   return `
     ${renderOrderStatusProgress(order)}
@@ -1246,9 +1395,10 @@ function renderOrderItemsProgress(order) {
 }
 
 function renderWorkflow(order) {
+  const workflowSteps = order.workflow?.steps || WORKFLOW_STEPS;
   return `
     <nav class="staff-workflow" aria-label="Order workflow">
-      ${WORKFLOW_STEPS.map((step, index) => {
+      ${workflowSteps.map((step, index) => {
         const state = order.workflow.skipped?.has(step.key)
           ? "is-disabled"
           : order.workflow.completed.has(step.key)
@@ -1688,6 +1838,7 @@ function itemTabStatusLabel(record = {}) {
   const fields = record.fields || {};
   const parsed = parseStaffNotes(fields["Staff Notes"]);
   const paymentComplete = staffActionCompleted("payment", fields, parsed);
+  if (itemNeedsInitialQuote(record)) return itemManualQuoteIsPriced(record) ? "Price saved" : "Needs price";
   if (customerAcceptedItem(record)) return paymentComplete ? "Sold / paid" : "Accepted - pay";
   if (staffReturnBoxed(record) && !staffReturnShipped(record)) return "Return boxed";
   if (customerReturnRequested(record) && !staffReturnCompleted(record)) return "Return to customer";
@@ -1802,6 +1953,7 @@ function staffCanSetPaymentMethod(fields = {}, paymentMethod = "") {
 
 function bindDetail(record, accessories) {
   const form = document.getElementById("staff-review-form");
+  if (!form) return;
   const actionButtons = Array.from(detailEl.querySelectorAll("[data-action]"));
   const notifyButtons = Array.from(detailEl.querySelectorAll("[data-notify-action]"));
   const workflowButtons = [...actionButtons, ...notifyButtons];
@@ -1813,6 +1965,7 @@ function bindDetail(record, accessories) {
   const notReceivedCheck = document.getElementById("not-received-check");
   const fields = record.fields || {};
   const orderLocked = completedOrderLocked(selectedOrder());
+  const quoteReviewMode = itemNeedsInitialQuote(record);
 
   if (orderLocked && form) {
     form.querySelectorAll("input, textarea, select, button").forEach((control) => {
@@ -1880,6 +2033,14 @@ function bindDetail(record, accessories) {
     printReturnDocument(selectedOrder(), "packing");
   });
 
+  document.getElementById("save-manual-quote")?.addEventListener("click", async (event) => {
+    await saveManualQuoteForRecord(selectedOrder(), event.currentTarget.dataset.recordId, event.currentTarget);
+  });
+
+  document.getElementById("send-manual-quote-email")?.addEventListener("click", async (event) => {
+    await sendManualQuoteEmail(selectedOrder(), event.currentTarget);
+  });
+
   document.getElementById("edit-customer-contact")?.addEventListener("click", (event) => {
     const editor = document.getElementById("staff-contact-editor");
     if (!editor) return;
@@ -1939,10 +2100,10 @@ function bindDetail(record, accessories) {
   const customOfferInput = document.getElementById("custom-offer");
   customOfferInput?.addEventListener("input", () => {
     customOfferInput.dataset.customEdited = "true";
-    setStaffQueueGuideTarget("actions");
+    setStaffQueueGuideTarget(quoteReviewMode ? "manual-quote" : "actions");
   });
 
-  allAccessoriesCheck.addEventListener("change", () => {
+  allAccessoriesCheck?.addEventListener("change", () => {
     accessoryInputs.forEach((input) => {
       input.checked = allAccessoriesCheck.checked;
     });
@@ -1952,7 +2113,7 @@ function bindDetail(record, accessories) {
 
   accessoryInputs.forEach((input) => {
     input.addEventListener("change", () => {
-      allAccessoriesCheck.checked = accessoryInputs.every((item) => item.checked);
+      if (allAccessoriesCheck) allAccessoriesCheck.checked = accessoryInputs.every((item) => item.checked);
       setStaffQueueGuideTarget("condition");
     });
   });
@@ -2001,10 +2162,14 @@ function bindDetail(record, accessories) {
   });
 
   finishEvaluationButton?.addEventListener("click", async () => {
+    if (itemNeedsInitialQuote(record)) {
+      await saveManualQuoteForRecord(selectedOrder(), record.id, finishEvaluationButton);
+      return;
+    }
     await finishItemEvaluation(record, accessories, [finishEvaluationButton, ...workflowButtons]);
   });
 
-  sendFinalQuoteButton.addEventListener("click", async () => {
+  sendFinalQuoteButton?.addEventListener("click", async () => {
     const isResend = sendFinalQuoteButton.dataset.resend === "true";
     if (isResend && !window.confirm("Resend the final quote email to the current customer email address on this order?")) {
       setStatus("Final quote resend canceled.");
@@ -2078,6 +2243,88 @@ async function saveCustomerAddress(order, button) {
     setStatus("Customer contact saved.");
   } catch (error) {
     setStatus(error.message || "Unable to save customer contact.", true);
+  } finally {
+    setDetailBusy([button], false);
+  }
+}
+
+async function saveManualQuoteForRecord(order, recordId, button) {
+  if (!order?.quote || !recordId) return;
+  const record = order.items.find((item) => item.id === recordId);
+  if (!record) {
+    setStatus("Choose a quote-review item before saving an offer.", true);
+    return;
+  }
+  const amountInput = document.getElementById("manual-quote-offer") || document.getElementById("custom-offer");
+  const amount = numberOrNull(amountInput?.value);
+  if (!amount || amount <= 0) {
+    setStatus("Enter an offer greater than $0 before saving.", true);
+    return;
+  }
+
+  const before = orderSnapshots(order);
+  setDetailBusy([button], true);
+  setStatus("Saving quote review offer...");
+  try {
+    const updated = await updateRecord({
+      recordId,
+      status: "Manual Quote Ready",
+      finalOffer: amount,
+      staffNotes: appendManualQuoteStaffNotes(record.fields?.["Staff Notes"], amount, false),
+      notifyCustomer: false,
+    });
+    mergeUpdatedRecords([updated]);
+    pushStaffHistory("quote review offer saved", before, orderSnapshots(selectedOrder()));
+    const refreshedOrder = selectedOrder();
+    const nextManualItem = nextManualQuoteItem(refreshedOrder, recordId);
+    if (nextManualItem) selectedItemId = nextManualItem.id;
+    staffQueueGuideTargetOverride = nextManualItem ? "manual-quote" : "";
+    renderQueue();
+    renderDetail();
+    setStatus(nextManualItem
+      ? "Offer saved. Opened the next quote-review item that needs a price."
+      : "Offer saved. Email the prepared quote after all quote-review items have prices.");
+  } catch (error) {
+    setStatus(error.message || "Unable to save the quote review offer.", true);
+  } finally {
+    setDetailBusy([button], false);
+  }
+}
+
+async function sendManualQuoteEmail(order, button) {
+  if (!order?.quote) return;
+  const unpricedItems = orderManualQuoteActiveItems(order).filter((item) => !itemManualQuoteIsPriced(item));
+  if (unpricedItems.length) {
+    setStatus(`Add an offer for ${unpricedItems.length} quote-review item${unpricedItems.length === 1 ? "" : "s"} before emailing the quote.`, true);
+    return;
+  }
+  if (!window.confirm("Email this prepared quote to the customer and create the prepaid inbound label now?")) {
+    setStatus("Prepared quote email canceled.");
+    return;
+  }
+
+  const before = orderSnapshots(order);
+  setDetailBusy([button], true);
+  setStatus("Emailing prepared quote...");
+  try {
+    const data = await staffPost("/api/staff/email-quote", {
+      quoteRef: order.quote,
+      to: order.email,
+    }, { staff: true });
+    mergeUpdatedRecords(data.records || []);
+    pushStaffHistory("prepared quote emailed", before, orderSnapshots(selectedOrder()));
+    staffQueueGuideTargetOverride = "";
+    renderQueue();
+    renderDetail();
+    const labelReady = Boolean(data.labelResult?.labelUrl || data.labelPrintUrl);
+    const labelMessage = data.labelResult?.message || data.labelResult?.error || "";
+    setStatus(labelReady
+      ? "Prepared quote email queued with packing quote and prepaid shipping label."
+      : labelMessage
+        ? `Prepared quote email queued. ${labelMessage}`
+        : "Prepared quote email queued. No prepaid label was created; create the inbound label from the shipping panel if needed.");
+  } catch (error) {
+    setStatus(error.message || "Unable to email the prepared quote.", true);
   } finally {
     setDetailBusy([button], false);
   }
@@ -2299,6 +2546,21 @@ function appendReturnBoxedStaffNotes(notes = "", returnLabel = {}) {
     returnLabel.service ? `Return service: ${returnLabel.service}` : "",
     "Last staff action: return_boxed",
     `Updated: ${new Date().toLocaleString()}`,
+  ].filter((line, index) => line || index === 1).join("\n").trim();
+}
+
+function appendManualQuoteStaffNotes(notes = "", amount = 0, sent = false) {
+  const timestamp = new Date().toLocaleString();
+  const quoteNotes = document.getElementById("inspection-notes")?.value.trim() || "";
+  return [
+    String(notes || "").trim(),
+    "",
+    "MANUAL QUOTE",
+    `Manual quote amount: $${formatMoney(amount)}`,
+    quoteNotes ? `Reason / notes: ${quoteNotes}` : "",
+    sent ? `Prepared quote sent: ${timestamp}` : `Manual quote saved: ${timestamp}`,
+    `Last staff action: ${sent ? "manual_quote_sent" : "manual_quote_saved"}`,
+    `Updated: ${timestamp}`,
   ].filter((line, index) => line || index === 1).join("\n").trim();
 }
 
@@ -2875,6 +3137,11 @@ function nextOrderItemId(order, currentItemId) {
   if (!order?.items?.length) return "";
   const currentIndex = order.items.findIndex((item) => item.id === currentItemId);
   return currentIndex >= 0 ? order.items[currentIndex + 1]?.id || "" : "";
+}
+
+function nextManualQuoteItem(order, currentItemId) {
+  const manualItems = orderManualQuoteActiveItems(order).filter((item) => !itemManualQuoteIsPriced(item));
+  return manualItems.find((item) => item.id !== currentItemId) || null;
 }
 
 function orderItemExists(order, itemId) {
@@ -3631,6 +3898,28 @@ function startStaffIntake() {
   setStatus("New in-store quote started.");
 }
 
+function openQuoteReviewQueue() {
+  if (!orders.length) {
+    setStatus("Loading quote review...");
+    loadRecords();
+    return;
+  }
+  const preferredOrderId = selectedOrderId;
+  resetStaffIntakePricingRequests();
+  staffIntakeState = createStaffIntakeState();
+  activeFilter = "manual";
+  if (staffFilterSelect) staffFilterSelect.value = "manual";
+  filterButtons.forEach((item) => item.classList.toggle("is-active", item.dataset.filter === "manual"));
+  const filtered = visibleOrders();
+  selectedOrderId = preferredOrderId && filtered.some((order) => order.id === preferredOrderId)
+    ? preferredOrderId
+    : filtered[0]?.id || null;
+  syncSelectedItem();
+  renderQueue();
+  renderDetail();
+  setStatus(selectedOrderId ? "Showing quote review." : "No orders need quote review.");
+}
+
 function openStaffIntakeQueue() {
   if (!orders.length) {
     setStatus("Loading intake queue...");
@@ -3640,6 +3929,9 @@ function openStaffIntakeQueue() {
   const preferredOrderId = staffIntakeState.orderId || staffIntakeState.returnOrderId || selectedOrderId;
   resetStaffIntakePricingRequests();
   staffIntakeState = createStaffIntakeState();
+  activeFilter = "active";
+  if (staffFilterSelect) staffFilterSelect.value = "active";
+  filterButtons.forEach((item) => item.classList.toggle("is-active", item.dataset.filter === "active"));
   const filtered = visibleOrders();
   selectedOrderId = preferredOrderId && filtered.some((order) => order.id === preferredOrderId)
     ? preferredOrderId
@@ -4320,10 +4612,14 @@ function productImageMarkup(image, className, brand = "") {
 function productBrandLogoMarkup(className, brand = "") {
   const label = manufacturerLogoLabel(brand);
   if (!label) return `<span class="${escapeAttr(className)} is-placeholder" aria-hidden="true"></span>`;
+  const logoUrl = manufacturerLogoUrl(brand);
+  if (logoUrl) {
+    return `<img class="${escapeAttr(className)} is-brand-logo" src="${escapeAttr(logoUrl)}" alt="${escapeAttr(label)} logo" loading="lazy" />`;
+  }
 
   return `
-    <span class="${escapeAttr(className)} is-brand-logo brand-logo-${escapeAttr(brandSlug(label))}" aria-label="${escapeAttr(label)} logo" role="img">
-      <span>${escapeHtml(label)}</span>
+    <span class="${escapeAttr(className)} is-brand-logo is-text-logo brand-logo-${escapeAttr(brandSlug(label))}" aria-label="${escapeAttr(label)} logo" role="img">
+      <span>${escapeHtml(logoInitials(label))}</span>
     </span>
   `;
 }
@@ -4331,6 +4627,21 @@ function productBrandLogoMarkup(className, brand = "") {
 function manufacturerLogoLabel(brand = "") {
   const normalized = normalizeProductImageText(brand);
   return MANUFACTURER_LOGO_LABELS[normalized] || String(brand || "").trim();
+}
+
+function manufacturerLogoUrl(brand = "") {
+  const normalized = normalizeProductImageText(brand);
+  const domain = MANUFACTURER_LOGO_DOMAINS[normalized];
+  return domain ? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128` : "";
+}
+
+function logoInitials(label = "") {
+  const words = String(label)
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (!words.length) return "";
+  return words.length === 1 ? words[0].slice(0, 2).toUpperCase() : words.slice(0, 2).map((word) => word[0]).join("").toUpperCase();
 }
 
 function brandSlug(brand = "") {
@@ -5553,6 +5864,64 @@ function staffWorkflowText(fields = {}) {
   return `${fields.Status || ""} ${fields["Workflow Step"] || ""}`.toLowerCase();
 }
 
+function recordNeedsManualQuote(record = {}) {
+  const fields = record.fields || {};
+  const status = staffWorkflowText(fields);
+  const source = staffNoteValue(fields, "Pricing source").toLowerCase();
+  const basis = staffNoteValue(fields, "Pricing basis").toLowerCase();
+  const hasManualPricingSource = source.includes("manual") || basis.includes("manual");
+  const hasManualQuoteStatus = status.includes("manual quote");
+  const missingOffer = manualQuoteAmountForRecord(record) <= 0;
+  return hasManualPricingSource || hasManualQuoteStatus || (status.includes("manual review") && missingOffer);
+}
+
+function manualQuoteAmountForRecord(record = {}) {
+  const fields = record.fields || {};
+  return numberOrNull(fields["Final Offer"]) ?? numberOrNull(fields["Milford Offer"]) ?? 0;
+}
+
+function itemManualQuoteIsPriced(record = {}) {
+  return manualQuoteAmountForRecord(record) > 0;
+}
+
+function itemManualQuoteIsComplete(record = {}) {
+  if (!recordNeedsManualQuote(record)) return false;
+  const status = staffWorkflowText(record.fields || {});
+  return statusIncludesAny(status, [
+    "manual quote sent",
+    "label",
+    "received",
+    "inspection",
+    "evaluated",
+    "final",
+    "accepted item",
+    "customer accepted",
+    "payment",
+    "return",
+  ]);
+}
+
+function itemNeedsInitialQuote(record = {}) {
+  return recordNeedsManualQuote(record) && !itemManualQuoteIsComplete(record);
+}
+
+function orderManualReviewItems(order = {}) {
+  return (order.items || []).filter(recordNeedsManualQuote);
+}
+
+function orderManualQuoteActiveItems(order = {}) {
+  return orderManualReviewItems(order).filter(itemNeedsInitialQuote);
+}
+
+function orderManualQuoteOutstanding(order = {}) {
+  const manualItems = orderManualQuoteActiveItems(order);
+  return manualItems.length > 0 && manualItems.some((item) => !itemManualQuoteIsComplete(item));
+}
+
+function workflowStepsForOrderState(hasManualQuoteStep = false) {
+  return hasManualQuoteStep ? [MANUAL_QUOTE_STEP, ...WORKFLOW_STEPS.slice(1)] : WORKFLOW_STEPS;
+}
+
 function staffRecordLooksReceived(fields = {}) {
   return fieldsPhysicallyReceived(fields);
 }
@@ -5653,6 +6022,8 @@ function staffQueueCurrentGuideTarget(order = selectedOrder(), record = selected
   const fields = record.fields || {};
   const parsed = parseStaffNotes(fields["Staff Notes"]);
   const selectedItemEvaluated = itemIsEvaluated(record);
+
+  if (itemNeedsInitialQuote(record)) return "manual-quote";
 
   if (!selectedItemEvaluated) {
     if (!itemPhysicallyReceived(record) && !parsed.notReceived) return "receive";
@@ -5864,19 +6235,28 @@ function parseStaffNotes(notes = "") {
 }
 
 function staffNoteLineStartsNewField(clean = "") {
-  return /^(INTAKE REVIEW|ORDER UPDATE|CUSTOMER FINAL QUOTE DECISION|RETURN SHIPMENT|Received:|Item not received:|All recommended accessories included:|Verified condition:|Accessory check:|Customer decision:|Final offer:|Return boxed:|Return ready for pickup:|Return shipped:|Last staff action:|Updated:)/i.test(clean);
+  return /^(INTAKE REVIEW|ORDER UPDATE|MANUAL QUOTE|CUSTOMER FINAL QUOTE DECISION|RETURN SHIPMENT|Received:|Item not received:|All recommended accessories included:|Verified condition:|Accessory check:|Customer decision:|Final offer:|Manual quote amount:|Manual quote saved:|Prepared quote sent:|Return boxed:|Return ready for pickup:|Return shipped:|Last staff action:|Updated:)/i.test(clean);
 }
 
 function workflowState(order) {
   const items = order.items || [];
   const statuses = items.map((item) => staffWorkflowText(item.fields));
+  const manualItems = orderManualReviewItems(order);
+  const hasManualQuoteStep = manualItems.length > 0;
+  const manualQuoteOutstanding = hasManualQuoteStep && orderManualQuoteOutstanding(order);
+  const workflowSteps = workflowStepsForOrderState(hasManualQuoteStep);
   const acceptedItems = orderAcceptedItems(order);
   const returnItems = orderReturnItems(order);
   const hasCustomerDecision = acceptedItems.length > 0 || returnItems.length > 0;
   const paymentComplete = !acceptedItems.length || orderPaymentComplete(order);
   const returnsComplete = !returnItems.length || returnItems.every(staffReturnCompleted);
-  const completed = new Set(["initial"]);
+  const completed = new Set();
   const skipped = new Set();
+  if (hasManualQuoteStep) {
+    if (!manualQuoteOutstanding) completed.add("manual");
+  } else {
+    completed.add("initial");
+  }
   if (hasCustomerDecision && !returnItems.length) skipped.add("return");
   if (statuses.some((status) => status.includes("label") || status.includes("accepted") || status.includes("shipped") || status.includes("received") || status.includes("inspection") || status.includes("evaluated") || status.includes("final") || status.includes("payment") || status.includes("return"))) completed.add("shipped");
   if (allItemsReceived(items)) completed.add("received");
@@ -5886,9 +6266,9 @@ function workflowState(order) {
   if (completed.has("customer") && paymentComplete) completed.add("payout");
   if (returnItems.length && completed.has("customer") && paymentComplete && returnsComplete) completed.add("return");
 
-  const current = WORKFLOW_STEPS.find((step) => !completed.has(step.key) && !skipped.has(step.key)) || null;
-  const isComplete = WORKFLOW_STEPS.every((step) => completed.has(step.key) || skipped.has(step.key));
-  return { completed, skipped, current, isComplete };
+  const current = workflowSteps.find((step) => !completed.has(step.key) && !skipped.has(step.key)) || null;
+  const isComplete = workflowSteps.every((step) => completed.has(step.key) || skipped.has(step.key));
+  return { completed, skipped, current, isComplete, steps: workflowSteps, hasManualQuoteStep, manualQuoteOutstanding };
 }
 
 function workflowStepDisplayLabel(step) {
@@ -6057,9 +6437,10 @@ function filterOrders(items, filter) {
   return items.filter((order) => {
     const statuses = order.items.map((record) => staffWorkflowText(record.fields));
     if (filter === "all") return true;
+    if (filter === "manual") return order.workflow.current?.key === "manual" || order.workflow.manualQuoteOutstanding;
     if (filter === "received") return statuses.some((status) => status.includes("received") || status.includes("inspection") || status.includes("evaluated"));
     if (filter === "done") return statuses.every((status) => status.includes("payment") || status.includes("declined") || status.includes("return"));
-    if (filter === "active") return !statuses.every((status) => status.includes("payment") || status.includes("declined") || status.includes("return"));
+    if (filter === "active") return !order.workflow.manualQuoteOutstanding && !statuses.every((status) => status.includes("payment") || status.includes("declined") || status.includes("return"));
     return order.workflow.current?.key === filter || order.workflow.completed.has(filter);
   });
 }
@@ -6104,7 +6485,8 @@ function newestOrderTime(order) {
 }
 
 function workflowRank(key) {
-  const index = WORKFLOW_STEPS.findIndex((step) => step.key === key);
+  const queueSteps = [MANUAL_QUOTE_STEP, ...WORKFLOW_STEPS];
+  const index = queueSteps.findIndex((step) => step.key === key);
   return index === -1 ? 99 : index;
 }
 
@@ -6112,7 +6494,8 @@ function activeFilterLabel(filter) {
   if (filter === "all") return "visible";
   if (filter === "active") return "active";
   if (filter === "done") return "done";
-  return (WORKFLOW_STEPS.find((step) => step.key === filter)?.label || filter).toLowerCase();
+  if (filter === "manual") return "quote review";
+  return ([MANUAL_QUOTE_STEP, ...WORKFLOW_STEPS].find((step) => step.key === filter)?.label || filter).toLowerCase();
 }
 
 function orderIdForQuoteRef(quoteRef) {
@@ -6450,6 +6833,13 @@ function syncSelectedItem() {
     selectedItemId = null;
     return;
   }
+  if (order.workflow?.manualQuoteOutstanding) {
+    const activeManualItems = orderManualQuoteActiveItems(order);
+    if (activeManualItems.length && !activeManualItems.some((item) => item.id === selectedItemId)) {
+      selectedItemId = activeManualItems.find((item) => !itemManualQuoteIsPriced(item))?.id || activeManualItems[0]?.id || null;
+      return;
+    }
+  }
   if (!order.items.some((item) => item.id === selectedItemId)) selectedItemId = order.items[0]?.id || null;
 }
 
@@ -6556,6 +6946,7 @@ staffRedoButton?.addEventListener("click", () => restoreStaffHistory("redo"));
 staffBugReportLink?.addEventListener("click", () => updateBugReportLink());
 pricingReviewButton?.addEventListener("click", openPricingReview);
 startStaffIntakeButton?.addEventListener("click", startStaffIntake);
+quoteReviewButton?.addEventListener("click", openQuoteReviewQueue);
 intakeQueueButton?.addEventListener("click", openStaffIntakeQueue);
 staffSearchInput?.addEventListener("input", () => {
   activeSearch = staffSearchInput.value;
