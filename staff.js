@@ -224,6 +224,8 @@ const WORKFLOW_STEPS = [
   { key: "return", label: "Return / Close" },
 ];
 
+const MANUAL_QUOTE_STEP = { key: "manual", label: "Manual Quote" };
+
 const usernameInput = document.getElementById("staff-username");
 const passwordInput = document.getElementById("staff-password");
 const loadButton = document.getElementById("load-records");
@@ -517,8 +519,7 @@ function renderOrderCard(order) {
 
 function orderStatusLabel(order) {
   if (order.workflow.isComplete) return "Complete";
-  const needsManualReview = order.items.some((item) => staffWorkflowText(item.fields).includes("manual review"));
-  if (needsManualReview && order.workflow.current?.key === "shipped") return "Next: Manual review";
+  if (order.workflow.current?.key === "manual") return "Next: Manual quote";
   return order.workflow.current ? `Next: ${order.workflow.current.label}` : "Complete";
 }
 
@@ -557,6 +558,7 @@ function renderDetail() {
       ${renderOrderStatusProgress(order)}
       ${renderOrderInfoGrid(order, fields, baseOffer, paymentMethod)}
       ${renderOrderItemsProgress(order)}
+      ${renderManualQuotePanel(order, record)}
 
       <header class="staff-intake-header">
         <div class="staff-item-header-main">
@@ -936,14 +938,19 @@ function shippingPanelState(fields = {}, delivery = "", order = selectedOrder())
   const returnLabel = returnLabelMetadataForOrder(order);
   const hasReturnItems = orderHasReturnItems(order);
   const returnLabelUrl = returnLabel.labelUrl || "";
-  const inboundDisabled = !labelUrl && (isDropoff || !hasAddress);
+  const manualQuoteOutstanding = Boolean(order?.workflow?.manualQuoteOutstanding);
+  const inboundDisabled = !labelUrl && (manualQuoteOutstanding || isDropoff || !hasAddress);
   const title = isDropoff ? "In-store dropoff" : "Mail-in shipping";
-  const copy = isDropoff
+  const copy = manualQuoteOutstanding
+    ? "This order needs a manual quote before staff creates an inbound label or asks the customer to ship gear."
+    : isDropoff
     ? "This order was created as a counter/dropoff quote, so staff should already have the gear. No customer-to-Milford inbound label is needed."
     : "Use the scan-based inbound label for customer-to-Milford shipments. Create outbound labels only for gear the customer asked Milford Photo to send back.";
   const inboundReason = labelUrl
     ? "Existing inbound label is on file. This opens the same label instead of creating another."
-    : isDropoff
+    : manualQuoteOutstanding
+      ? "Save and email the manual quote before creating an inbound label."
+      : isDropoff
       ? "In-store dropoff assumes the gear is already with Milford Photo."
       : hasAddress
         ? "Creates a scan-based prepaid customer-to-Milford label and emails it to the customer."
@@ -1246,9 +1253,10 @@ function renderOrderItemsProgress(order) {
 }
 
 function renderWorkflow(order) {
+  const workflowSteps = order.workflow?.steps || WORKFLOW_STEPS;
   return `
     <nav class="staff-workflow" aria-label="Order workflow">
-      ${WORKFLOW_STEPS.map((step, index) => {
+      ${workflowSteps.map((step, index) => {
         const state = order.workflow.skipped?.has(step.key)
           ? "is-disabled"
           : order.workflow.completed.has(step.key)
@@ -1264,6 +1272,56 @@ function renderWorkflow(order) {
         `;
       }).join("")}
     </nav>
+  `;
+}
+
+function renderManualQuotePanel(order, currentRecord) {
+  const manualItems = orderManualReviewItems(order);
+  if (!manualItems.length || !order.workflow?.manualQuoteOutstanding) return "";
+
+  const currentManualRecord = manualItems.find((item) => item.id === currentRecord.id) || manualItems[0];
+  const currentFields = currentManualRecord.fields || {};
+  const currentAmount = manualQuoteAmountForRecord(currentManualRecord);
+  const unpricedItems = manualItems.filter((item) => !itemManualQuoteIsPriced(item));
+  const allPriced = unpricedItems.length === 0;
+  const helperCopy = allPriced
+    ? "Manual pricing is saved. Email the prepared quote, then create the inbound label from the shipping panel when this is a mail-in order."
+    : "Enter an offer for every manual-review item before emailing the prepared quote to the customer.";
+  return `
+    <section class="staff-admin-card staff-manual-quote-card" data-staff-queue-guide="manual">
+      <div class="staff-admin-card-heading">
+        <div>
+          <h3>Manual quote needed</h3>
+          <p>${escapeHtml(helperCopy)}</p>
+        </div>
+        <span class="staff-admin-state is-needed">${escapeHtml(allPriced ? "Ready to email" : `${unpricedItems.length} price${unpricedItems.length === 1 ? "" : "s"} needed`)}</span>
+      </div>
+      <div class="staff-manual-quote-grid">
+        <div class="staff-manual-quote-items" aria-label="Manual quote items">
+          ${manualItems.map((item) => {
+            const fields = item.fields || {};
+            const amount = manualQuoteAmountForRecord(item);
+            const active = item.id === currentManualRecord.id;
+            return `
+              <button class="staff-manual-quote-item ${active ? "is-active" : ""}" type="button" data-item-id="${escapeAttr(item.id)}">
+                <span>${escapeHtml(shortGearTitle(fields))}</span>
+                <strong>${itemManualQuoteIsPriced(item) ? `$${formatMoney(amount)}` : "Needs price"}</strong>
+              </button>
+            `;
+          }).join("")}
+        </div>
+        <div class="staff-manual-quote-editor">
+          <label class="field">
+            <span>Manual offer for ${escapeHtml(shortGearTitle(currentFields))}</span>
+            <input id="manual-quote-offer" type="number" min="0" step="1" inputmode="numeric" value="${currentAmount ? escapeAttr(String(currentAmount)) : ""}" />
+          </label>
+          <div class="staff-admin-actions">
+            <button class="secondary-action staff-admin-action" type="button" id="save-manual-quote" data-record-id="${escapeAttr(currentManualRecord.id)}">Save manual quote</button>
+            <button class="primary-action staff-admin-action" type="button" id="send-manual-quote-email" ${allPriced ? "" : "disabled"}>Email quote to customer</button>
+          </div>
+        </div>
+      </div>
+    </section>
   `;
 }
 
@@ -1852,6 +1910,14 @@ function bindDetail(record, accessories) {
     openOrderLog(selectedOrder());
   });
 
+  document.getElementById("save-manual-quote")?.addEventListener("click", async (event) => {
+    await saveManualQuoteForRecord(selectedOrder(), event.currentTarget.dataset.recordId, event.currentTarget);
+  });
+
+  document.getElementById("send-manual-quote-email")?.addEventListener("click", async (event) => {
+    await sendManualQuoteEmail(selectedOrder(), event.currentTarget);
+  });
+
   document.getElementById("save-customer-address")?.addEventListener("click", async (event) => {
     if (completedOrderLocked(selectedOrder())) {
       setStatus("Order is locked. Unlock the completed order before saving contact changes.", true);
@@ -2083,6 +2149,76 @@ async function saveCustomerAddress(order, button) {
   }
 }
 
+async function saveManualQuoteForRecord(order, recordId, button) {
+  if (!order?.quote || !recordId) return;
+  const record = order.items.find((item) => item.id === recordId);
+  if (!record) {
+    setStatus("Choose a manual-review item before saving a quote.", true);
+    return;
+  }
+  const amount = numberOrNull(document.getElementById("manual-quote-offer")?.value);
+  if (!amount || amount <= 0) {
+    setStatus("Enter a manual quote amount greater than $0 before saving.", true);
+    return;
+  }
+
+  const before = orderSnapshots(order);
+  setDetailBusy([button], true);
+  setStatus("Saving manual quote...");
+  try {
+    const updatedRecord = await updateRecord({
+      recordId,
+      status: "Manual Quote Ready",
+      finalOffer: amount,
+      staffNotes: appendManualQuoteStaffNotes(record.fields?.["Staff Notes"], amount, false),
+      notifyCustomer: false,
+    });
+    mergeUpdatedRecords([updatedRecord]);
+    pushStaffHistory("manual quote saved", before, orderSnapshots(selectedOrder()));
+    staffQueueGuideTargetOverride = "";
+    renderQueue();
+    renderDetail();
+    setStatus("Manual quote saved. Email the prepared quote after all manual-review items have prices.");
+  } catch (error) {
+    setStatus(error.message || "Unable to save manual quote.", true);
+  } finally {
+    setDetailBusy([button], false);
+  }
+}
+
+async function sendManualQuoteEmail(order, button) {
+  if (!order?.quote) return;
+  const unpricedItems = orderManualReviewItems(order).filter((item) => !itemManualQuoteIsPriced(item));
+  if (unpricedItems.length) {
+    setStatus(`Add a manual offer for ${unpricedItems.length} item${unpricedItems.length === 1 ? "" : "s"} before emailing the quote.`, true);
+    return;
+  }
+  if (!window.confirm("Email this manually prepared quote to the customer? Create the inbound label from the shipping panel when the order needs a mail-in label.")) {
+    setStatus("Manual quote email canceled.");
+    return;
+  }
+
+  const before = orderSnapshots(order);
+  setDetailBusy([button], true);
+  setStatus("Emailing prepared manual quote...");
+  try {
+    const data = await staffPost("/api/staff/email-quote", {
+      quoteRef: order.quote,
+      to: order.email,
+    }, { staff: true });
+    mergeUpdatedRecords(data.records || []);
+    pushStaffHistory("manual quote emailed", before, orderSnapshots(selectedOrder()));
+    staffQueueGuideTargetOverride = "";
+    renderQueue();
+    renderDetail();
+    setStatus("Prepared manual quote email queued. If this is a mail-in order, use Create inbound label in the shipping panel.");
+  } catch (error) {
+    setStatus(error.message || "Unable to email the manual quote.", true);
+  } finally {
+    setDetailBusy([button], false);
+  }
+}
+
 async function createShippingLabelForOrder(order, button) {
   if (!order?.quote) return;
   const existing = inboundLabelMetadataForOrder(order);
@@ -2299,6 +2435,19 @@ function appendReturnBoxedStaffNotes(notes = "", returnLabel = {}) {
     returnLabel.service ? `Return service: ${returnLabel.service}` : "",
     "Last staff action: return_boxed",
     `Updated: ${new Date().toLocaleString()}`,
+  ].filter((line, index) => line || index === 1).join("\n").trim();
+}
+
+function appendManualQuoteStaffNotes(notes = "", amount = 0, sent = false) {
+  const timestamp = new Date().toLocaleString();
+  return [
+    String(notes || "").trim(),
+    "",
+    "MANUAL QUOTE",
+    `Manual quote amount: $${formatMoney(amount)}`,
+    sent ? `Prepared quote sent: ${timestamp}` : `Manual quote saved: ${timestamp}`,
+    `Last staff action: ${sent ? "manual_quote_sent" : "manual_quote_saved"}`,
+    `Updated: ${timestamp}`,
   ].filter((line, index) => line || index === 1).join("\n").trim();
 }
 
@@ -5553,6 +5702,53 @@ function staffWorkflowText(fields = {}) {
   return `${fields.Status || ""} ${fields["Workflow Step"] || ""}`.toLowerCase();
 }
 
+function recordNeedsManualQuote(record = {}) {
+  const fields = record.fields || {};
+  const status = staffWorkflowText(fields);
+  const quoteSource = quoteSourceLabel(fields).toLowerCase();
+  return status.includes("manual review") || quoteSource.includes("manual");
+}
+
+function manualQuoteAmountForRecord(record = {}) {
+  const fields = record.fields || {};
+  return numberOrNull(fields["Final Offer"]) || numberOrNull(fields["Milford Offer"]) || 0;
+}
+
+function itemManualQuoteIsPriced(record = {}) {
+  return manualQuoteAmountForRecord(record) > 0;
+}
+
+function itemManualQuoteIsComplete(record = {}) {
+  const fields = record.fields || {};
+  const status = staffWorkflowText(fields);
+  const notes = String(fields["Staff Notes"] || "").toLowerCase();
+  return itemManualQuoteIsPriced(record)
+    && (status.includes("manual quote sent")
+      || status.includes("label")
+      || status.includes("received")
+      || status.includes("inspection")
+      || status.includes("evaluated")
+      || status.includes("final")
+      || status.includes("accepted item")
+      || status.includes("customer accepted")
+      || status.includes("payment")
+      || status.includes("return")
+      || notes.includes("prepared quote sent:"));
+}
+
+function orderManualReviewItems(order = {}) {
+  return (order.items || []).filter(recordNeedsManualQuote);
+}
+
+function orderManualQuoteOutstanding(order = {}) {
+  const manualItems = orderManualReviewItems(order);
+  return manualItems.length > 0 && manualItems.some((item) => !itemManualQuoteIsComplete(item));
+}
+
+function workflowStepsForOrderState(hasManualQuoteStep = false) {
+  return hasManualQuoteStep ? [MANUAL_QUOTE_STEP, ...WORKFLOW_STEPS.slice(1)] : WORKFLOW_STEPS;
+}
+
 function staffRecordLooksReceived(fields = {}) {
   return fieldsPhysicallyReceived(fields);
 }
@@ -5650,6 +5846,7 @@ function updateStaffQueueGuidance() {
 
 function staffQueueCurrentGuideTarget(order = selectedOrder(), record = selectedRecord(order)) {
   if (!order || !record || !document.getElementById("staff-review-form")) return "";
+  if (order.workflow?.current?.key === "manual" || order.workflow?.manualQuoteOutstanding) return "manual";
   const fields = record.fields || {};
   const parsed = parseStaffNotes(fields["Staff Notes"]);
   const selectedItemEvaluated = itemIsEvaluated(record);
@@ -5864,19 +6061,28 @@ function parseStaffNotes(notes = "") {
 }
 
 function staffNoteLineStartsNewField(clean = "") {
-  return /^(INTAKE REVIEW|ORDER UPDATE|CUSTOMER FINAL QUOTE DECISION|RETURN SHIPMENT|Received:|Item not received:|All recommended accessories included:|Verified condition:|Accessory check:|Customer decision:|Final offer:|Return boxed:|Return ready for pickup:|Return shipped:|Last staff action:|Updated:)/i.test(clean);
+  return /^(INTAKE REVIEW|ORDER UPDATE|MANUAL QUOTE|CUSTOMER FINAL QUOTE DECISION|RETURN SHIPMENT|Received:|Item not received:|All recommended accessories included:|Verified condition:|Accessory check:|Customer decision:|Final offer:|Manual quote amount:|Manual quote saved:|Prepared quote sent:|Return boxed:|Return ready for pickup:|Return shipped:|Last staff action:|Updated:)/i.test(clean);
 }
 
 function workflowState(order) {
   const items = order.items || [];
   const statuses = items.map((item) => staffWorkflowText(item.fields));
+  const manualItems = orderManualReviewItems(order);
+  const hasManualQuoteStep = manualItems.length > 0;
+  const manualQuoteOutstanding = hasManualQuoteStep && orderManualQuoteOutstanding(order);
+  const workflowSteps = workflowStepsForOrderState(hasManualQuoteStep);
   const acceptedItems = orderAcceptedItems(order);
   const returnItems = orderReturnItems(order);
   const hasCustomerDecision = acceptedItems.length > 0 || returnItems.length > 0;
   const paymentComplete = !acceptedItems.length || orderPaymentComplete(order);
   const returnsComplete = !returnItems.length || returnItems.every(staffReturnCompleted);
-  const completed = new Set(["initial"]);
+  const completed = new Set();
   const skipped = new Set();
+  if (hasManualQuoteStep) {
+    if (!manualQuoteOutstanding) completed.add("manual");
+  } else {
+    completed.add("initial");
+  }
   if (hasCustomerDecision && !returnItems.length) skipped.add("return");
   if (statuses.some((status) => status.includes("label") || status.includes("accepted") || status.includes("shipped") || status.includes("received") || status.includes("inspection") || status.includes("evaluated") || status.includes("final") || status.includes("payment") || status.includes("return"))) completed.add("shipped");
   if (allItemsReceived(items)) completed.add("received");
@@ -5886,9 +6092,9 @@ function workflowState(order) {
   if (completed.has("customer") && paymentComplete) completed.add("payout");
   if (returnItems.length && completed.has("customer") && paymentComplete && returnsComplete) completed.add("return");
 
-  const current = WORKFLOW_STEPS.find((step) => !completed.has(step.key) && !skipped.has(step.key)) || null;
-  const isComplete = WORKFLOW_STEPS.every((step) => completed.has(step.key) || skipped.has(step.key));
-  return { completed, skipped, current, isComplete };
+  const current = workflowSteps.find((step) => !completed.has(step.key) && !skipped.has(step.key)) || null;
+  const isComplete = workflowSteps.every((step) => completed.has(step.key) || skipped.has(step.key));
+  return { completed, skipped, current, isComplete, steps: workflowSteps, hasManualQuoteStep, manualQuoteOutstanding };
 }
 
 function workflowStepDisplayLabel(step) {
@@ -6057,6 +6263,7 @@ function filterOrders(items, filter) {
   return items.filter((order) => {
     const statuses = order.items.map((record) => staffWorkflowText(record.fields));
     if (filter === "all") return true;
+    if (filter === "manual") return order.workflow.current?.key === "manual" || order.workflow.manualQuoteOutstanding;
     if (filter === "received") return statuses.some((status) => status.includes("received") || status.includes("inspection") || status.includes("evaluated"));
     if (filter === "done") return statuses.every((status) => status.includes("payment") || status.includes("declined") || status.includes("return"));
     if (filter === "active") return !statuses.every((status) => status.includes("payment") || status.includes("declined") || status.includes("return"));
@@ -6104,7 +6311,8 @@ function newestOrderTime(order) {
 }
 
 function workflowRank(key) {
-  const index = WORKFLOW_STEPS.findIndex((step) => step.key === key);
+  const queueSteps = [MANUAL_QUOTE_STEP, ...WORKFLOW_STEPS];
+  const index = queueSteps.findIndex((step) => step.key === key);
   return index === -1 ? 99 : index;
 }
 
@@ -6112,7 +6320,8 @@ function activeFilterLabel(filter) {
   if (filter === "all") return "visible";
   if (filter === "active") return "active";
   if (filter === "done") return "done";
-  return (WORKFLOW_STEPS.find((step) => step.key === filter)?.label || filter).toLowerCase();
+  if (filter === "manual") return "manual quote";
+  return ([MANUAL_QUOTE_STEP, ...WORKFLOW_STEPS].find((step) => step.key === filter)?.label || filter).toLowerCase();
 }
 
 function orderIdForQuoteRef(quoteRef) {

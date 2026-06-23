@@ -4181,6 +4181,64 @@ fieldset {
   color: var(--green);
 }
 
+.staff-manual-quote-card {
+  border-color: rgba(213, 33, 39, 0.36);
+  background: #fffafa;
+  margin: 0 0 22px;
+}
+
+.staff-manual-quote-card .staff-admin-state.is-needed {
+  background: rgba(213, 33, 39, 0.1);
+  color: var(--mp-red);
+}
+
+.staff-manual-quote-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.9fr) minmax(280px, 1.1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.staff-manual-quote-items {
+  display: grid;
+  gap: 8px;
+}
+
+.staff-manual-quote-item {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #ffffff;
+  color: var(--ink);
+  cursor: pointer;
+  padding: 10px 12px;
+  text-align: left;
+}
+
+.staff-manual-quote-item.is-active {
+  border-color: rgba(213, 33, 39, 0.45);
+  box-shadow: inset 4px 0 0 var(--mp-red);
+}
+
+.staff-manual-quote-item span {
+  font-weight: 850;
+}
+
+.staff-manual-quote-item strong {
+  flex: 0 0 auto;
+  color: var(--mp-red);
+  font-size: 0.8rem;
+}
+
+.staff-manual-quote-editor {
+  display: grid;
+  gap: 12px;
+}
+
 .staff-admin-state.is-needed {
   background: rgba(213, 33, 39, 0.08);
   color: var(--mp-red-dark);
@@ -5637,6 +5695,7 @@ button.staff-queue-guide-complete {
 	  .staff-payout-grid,
 	  .staff-fulfillment-grid,
 	  .staff-fulfillment-actions,
+	  .staff-manual-quote-grid,
 	  .staff-admin-actions,
 	  .staff-shipping-actions,
 	  .staff-logistics-list div,
