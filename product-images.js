@@ -1722,6 +1722,10 @@
       src: "./product-assets/manfrotto-190xpro4-tripod.png",
       alt: "Manfrotto 190XPRO4 Tripod",
     },
+    "manfrotto|tripod / support|502 video head": {
+      src: "./product-assets/manfrotto-502-video-head.png",
+      alt: "Manfrotto 502 Video Head",
+    },
     "manfrotto|tripod / support|504x fluid video head": {
       src: "./product-assets/manfrotto-504x-fluid-video-head.png",
       alt: "Manfrotto 504X Fluid Video Head",
@@ -1729,6 +1733,10 @@
     "manfrotto|tripod / support|ball head 496rc2": {
       src: "./product-assets/manfrotto-496rc2-ball-head.png",
       alt: "Manfrotto Ball Head 496RC2",
+    },
+    "manfrotto|tripod / support|xpro ball head": {
+      src: "./product-assets/manfrotto-xpro-ball-head.png",
+      alt: "Manfrotto XPRO Ball Head",
     },
     "nikon|digital camera|d1": {
       src: "https://imaging.nikon.com/imaging/information/products_history/img/1999/product_d1.jpg",
@@ -4209,6 +4217,10 @@
     "westcott|flash / strobe|fj-x3 trigger": {
       src: "https://cdn.shopify.com/s/files/1/0647/2502/4999/files/4785-Group-Colors.jpg?v=1771020969",
       alt: "Westcott FJ-X3 Trigger",
+    },
+    "westcott|flash / strobe|fj200 strobe": {
+      src: "./product-assets/westcott-fj200-strobe.png",
+      alt: "Westcott FJ200 Strobe",
     },
     "westcott|flash / strobe|fj400 ii strobe": {
       src: "https://cdn.shopify.com/s/files/1/0647/2502/4999/files/5700-Angle-Left_38956c70-9c66-476a-89eb-3ef55b26aa5c.jpg?v=1768332158",
