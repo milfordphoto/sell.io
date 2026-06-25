@@ -1458,6 +1458,10 @@
       src: "https://cdn.hasselblad.com/f/77891/2560x1775/8e88ad7c9e/78edd304935de45296437c9924c31fac68cf6653_x1d-ii-top-dark.jpg",
       alt: "Hasselblad X1D II 50C",
     },
+    "hasselblad|digital camera|x1d-50c": {
+      src: "./product-assets/hasselblad-x1d-50c-body.png",
+      alt: "Hasselblad X1D-50c body",
+    },
     "hasselblad|digital camera|x2d 100c": {
       src: "https://cdn.hasselblad.com/f/77891/1280x640/e233711803/buy-now.png",
       alt: "Hasselblad X2D 100C",
@@ -1614,6 +1618,10 @@
       src: "https://leica-camera.com/sites/default/files/styles/meta_tag_product_image/public/pm-13798-Leica_M11-P_black_front_1920x1440px.png?itok=PhSxwzzy",
       alt: "Leica M11-P",
     },
+    "leica|digital camera|q2 monochrom": {
+      src: "./product-assets/leica-q2-monochrom-body.png",
+      alt: "Leica Q2 Monochrom body",
+    },
     "leica|digital camera|q3": {
       src: "https://leica-camera.com/sites/default/files/styles/meta_tag_product_image/public/pm-19548-19080_Leica_Q3_front_1920x1440.png?itok=Qru2Se13",
       alt: "Leica Q3",
@@ -1621,6 +1629,10 @@
     "leica|digital camera|q3 43": {
       src: "https://leica-camera.com/sites/default/files/styles/meta_tag_product_image/public/pm-13042-Leica_Q3-43_front_PIM_1920x1440.png?itok=VVWagDHw",
       alt: "Leica Q3 43",
+    },
+    "leica|digital camera|sl2-s": {
+      src: "./product-assets/leica-sl2-s-body.png",
+      alt: "Leica SL2-S body",
     },
     "leica|digital camera|sl3": {
       src: "https://leica-camera.com/sites/default/files/styles/meta_tag_product_image/public/pm-107510-10607_Leica_SL3_frontal_cap_1920px.png?itok=YvX-tt16",
