@@ -1282,6 +1282,10 @@
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/28fef420-7e33-0132-abd2-00163e9110c0?w=228&h=228&p=1&a=1&q=display",
       alt: "Fujifilm XF 16-55mm f/2.8 R LM WR",
     },
+    "fujifilm|lens|xf 16-55mm f/2.8 r lm wr ii": {
+      src: "./product-assets/fujifilm-xf-16-55mm-f2.8-r-lm-wr-ii.png",
+      alt: "Fujifilm XF 16-55mm f/2.8 R LM WR II",
+    },
     "fujifilm|lens|xf 16-80mm f/4 r ois wr": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/Ug9xPboiz4cGgGQjwTU1Xw?w=228&h=228&p=1&a=1&q=display",
       alt: "Fujifilm XF 16-80mm f/4 R OIS WR",
@@ -1313,6 +1317,10 @@
     "fujifilm|lens|xf 23mm f/2 r wr": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/XxQheSNSqs0cdmqtmVx_Lw?w=228&h=228&p=1&a=1&q=display",
       alt: "Fujifilm XF 23mm f/2 R WR",
+    },
+    "fujifilm|lens|xf 23mm f/2.8 r wr": {
+      src: "./product-assets/fujifilm-xf-23mm-f2.8-r-wr.png",
+      alt: "Fujifilm XF 23mm f/2.8 R WR",
     },
     "fujifilm|lens|xf 27mm f/2.8 r wr": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/sBnlHES93fcleAngbTLg5g?w=228&h=228&p=1&a=1&q=display",
@@ -1357,6 +1365,10 @@
     "fujifilm|lens|xf 70-300mm f/4-5.6 r lm ois wr": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/X4ZcoXrstlVoFm7laHZc4w?w=228&h=228&p=1&a=1&q=display",
       alt: "Fujifilm XF 70-300mm f/4-5.6 R LM OIS WR",
+    },
+    "fujifilm|lens|xf 500mm f/5.6 r lm ois wr": {
+      src: "./product-assets/fujifilm-xf-500mm-f5.6-r-lm-ois-wr.png",
+      alt: "Fujifilm XF 500mm f/5.6 R LM OIS WR",
     },
     "fujifilm|lens|xf 80mm f/2.8 r lm ois wr macro": {
       src: "https://cipher.dakiscdn.com/i/https://dakis-product-images.s3.bhs.io.cloud.ovh.net/MZqdtt64SroHMstxp1WZ7g?w=228&h=228&p=1&a=1&q=display",
