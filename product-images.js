@@ -1598,6 +1598,10 @@
       src: "https://www.laowalenses.ca/wp-content/uploads/2022/04/Argus_45mm.jpg",
       alt: "Laowa Argus 45mm f/0.95 FF",
     },
+    "leica|digital camera|d-lux 7": {
+      src: "./product-assets/leica-d-lux-7.png",
+      alt: "Leica D-Lux 7",
+    },
     "leica|digital camera|d-lux 8": {
       src: "https://leica-camera.com/sites/default/files/styles/meta_tag_product_image/public/pm-14887-19191_D-Lux-8_front_1920px.png?itok=xaoWstoB",
       alt: "Leica D-Lux 8",
@@ -1630,6 +1634,10 @@
       src: "https://leica-camera.com/sites/default/files/styles/meta_tag_product_image/public/pm-13798-Leica_M11-P_black_front_1920x1440px.png?itok=PhSxwzzy",
       alt: "Leica M11-P",
     },
+    "leica|digital camera|q": {
+      src: "./product-assets/leica-q.png",
+      alt: "Leica Q",
+    },
     "leica|digital camera|q2 monochrom": {
       src: "./product-assets/leica-q2-monochrom-body.png",
       alt: "Leica Q2 Monochrom body",
@@ -1641,6 +1649,10 @@
     "leica|digital camera|q3 43": {
       src: "https://leica-camera.com/sites/default/files/styles/meta_tag_product_image/public/pm-13042-Leica_Q3-43_front_PIM_1920x1440.png?itok=VVWagDHw",
       alt: "Leica Q3 43",
+    },
+    "leica|digital camera|sl2": {
+      src: "./product-assets/leica-sl2.png",
+      alt: "Leica SL2",
     },
     "leica|digital camera|sl2-s": {
       src: "./product-assets/leica-sl2-s-body.png",
