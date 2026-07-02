@@ -3,6 +3,8 @@ const API_BASE = resolveApiBase();
 
 const els = {
   panel: document.getElementById("final-panel"),
+  title: document.getElementById("final-title"),
+  intro: document.getElementById("final-intro"),
 };
 
 const state = {
@@ -18,8 +20,10 @@ const state = {
 
 async function init() {
   state.records = await matchingRecords();
+  state.payout = existingPayoutPreference(state.records);
+  state.submitted = hasSubmittedFinalDecision(state.records);
   state.records.forEach((record) => {
-    state.decisions[record.id] = existingDecision(record) || "accept";
+    state.decisions[record.id] = existingDecision(record) || defaultDecision(record);
   });
   render();
 }
@@ -63,6 +67,16 @@ function render() {
     return;
   }
 
+  setFinalHeader(
+    "Review your final quote",
+    "Choose which items you want to sell to Milford Photo and which items you would like returned.",
+  );
+
+  if (state.submitted) {
+    renderSubmitted({ alreadySubmitted: true });
+    return;
+  }
+
   els.panel.innerHTML = `
     <div class="section-heading">
       <p>Final</p>
@@ -77,10 +91,7 @@ function render() {
         ${state.records.map(renderItem).join("")}
       </div>
       ${renderPayout()}
-      <label class="consent final-consent">
-        <input id="final-confirm" type="checkbox" required />
-        <span>I understand Milford Photo will process accepted items for payment and return any items I marked for return.</span>
-      </label>
+      ${renderFinalFaq()}
       <div class="form-actions">
         <a class="secondary-action" href="./index.html">Start another quote</a>
         <button class="primary-action" type="submit">Submit my decision</button>
@@ -93,6 +104,11 @@ function render() {
 }
 
 function renderMissing() {
+  setFinalHeader(
+    "Final quote unavailable",
+    "Use the secure final quote link from your Milford Photo email.",
+  );
+
   els.panel.innerHTML = `
     <div class="section-heading">
       <p>Final</p>
@@ -103,8 +119,7 @@ function renderMissing() {
       <span>Use the secure final quote link from Milford Photo. If the link expired or was copied incorrectly, reply to the email and Milford Photo can resend it.</span>
     </div>
     <div class="final-empty-actions">
-      <a class="primary-action" href="./index.html?demoQueue=1">Create demo quote</a>
-      <a class="secondary-action" href="./staff.html?demo=1">Open staff dashboard</a>
+      <a class="secondary-action" href="./index.html">Start another quote</a>
     </div>
   `;
 }
@@ -115,18 +130,21 @@ function renderItem(record, index) {
   const finalOffer = offerFor(fields);
   const originalOffer = numberOrNull(fields["Milford Offer"]);
   const offerChanged = originalOffer !== null && originalOffer !== finalOffer;
+  const finalStoreCredit = storeCreditForCash(finalOffer);
   const condition = verifiedConditionFor(fields) || fields.Condition || "Condition not listed";
   const status = fields.Status || "Final quote ready";
   const reasons = adjustmentReasons(fields, originalOffer, finalOffer);
   const staffNotAccepted = staffDecisionFromNotes(fields) === "not_accepted";
   const accepted = state.decisions[record.id] === "accept";
   const returned = state.decisions[record.id] === "return";
+  const image = finalProductImageForRecord(fields);
 
   return `
     <article class="final-item" data-record-id="${escapeAttribute(record.id)}">
       <div class="final-item-decision-row">
         <div class="final-item-main">
           <span class="final-item-number" aria-label="Item ${index + 1}">${index + 1}</span>
+          ${finalProductImageMarkup(image, "final-item-image", fields["Item Brand"])}
           <div>
             <h3>${escapeHtml(title)}</h3>
             <p>${escapeHtml(condition)} · ${escapeHtml(status)}</p>
@@ -137,21 +155,25 @@ function renderItem(record, index) {
             <input type="radio" name="decision-${escapeAttribute(record.id)}" value="accept" ${accepted ? "checked" : ""} ${staffNotAccepted ? "disabled" : ""} />
             <span>
               <strong>Sell this item</strong>
-              <small>${staffNotAccepted ? "Not available for this item." : "Include in payout."}</small>
+              <small>${staffNotAccepted ? "Not available for this item." : "Be paid for this item."}</small>
             </span>
           </label>
           <label class="final-choice-card final-choice-card-compact final-choice-card-return">
             <input type="radio" name="decision-${escapeAttribute(record.id)}" value="return" ${returned ? "checked" : ""} />
             <span>
               <strong>Return this item</strong>
-              <small>${staffNotAccepted ? "Milford cannot accept this item." : "Prepare for return shipping."}</small>
+              <small>Ship this item back to me.</small>
             </span>
           </label>
         </div>
-        <div class="final-item-price">
-          <span>Final offer</span>
-          <strong>${formatMoney(finalOffer)}</strong>
-          ${offerChanged ? `<small>Original online offer ${formatMoney(originalOffer)}</small>` : ""}
+        <div class="final-item-price ${returned ? "is-return" : ""}">
+          ${renderFinalOfferPanel({
+            finalOffer,
+            finalStoreCredit,
+            originalOffer,
+            offerChanged,
+            returned,
+          })}
         </div>
       </div>
       ${reasons.length ? `
@@ -167,16 +189,17 @@ function renderItem(record, index) {
 }
 
 function renderPayout() {
+  const contact = customerContactInfo();
   return `
     <section class="final-payout">
       <div class="final-payout-summary" aria-label="Quote summary">
         <div class="final-payout-summary-copy">
           <span>Quote summary</span>
           <strong id="final-quote-ref">${escapeHtml(state.quoteRef || "-")}</strong>
-          <small id="final-cash-copy">Final cash offer for accepted items</small>
+          <small id="final-cash-copy">Final offer for accepted items</small>
         </div>
         <div class="final-payout-total">
-          <span>Total accepted offer</span>
+          <span id="final-total-label">Total accepted offer</span>
           <strong id="final-cash-total">$0</strong>
         </div>
       </div>
@@ -201,6 +224,36 @@ function renderPayout() {
           </span>
         </label>
       </div>
+      <div class="final-address-note">
+        <strong>Confirm where Milford Photo should send anything owed or returned.</strong>
+        <p>Returned gear and mailed checks will be sent to this address. Store credit will be sent to the email on this quote.</p>
+        <div>
+          <span>${escapeHtml(contact.addressText || "No mailing address is saved on this quote.")}</span>
+          <span>${escapeHtml(contact.email || "No email is saved on this quote.")}</span>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function renderFinalFaq() {
+  return `
+    <section class="final-faq" aria-labelledby="final-faq-title">
+      <h2 id="final-faq-title">Common questions</h2>
+      <div class="sell-faq">
+        <details>
+          <summary>When will returned gear be shipped back?</summary>
+          <p>Milford Photo prepares return shipments after you submit your decision. You will receive an email with tracking when returned gear is packed and ready to ship.</p>
+        </details>
+        <details>
+          <summary>How long will it take to issue a check by mail?</summary>
+          <p>Checks are usually prepared within 1-2 business days after accepted items are processed. Mailing time depends on USPS delivery.</p>
+        </details>
+        <details>
+          <summary>How long will it take to receive store credit?</summary>
+          <p>Store credit is usually issued within 1 business day after accepted items are processed. Milford Photo will email the store credit code or instructions.</p>
+        </details>
+      </div>
     </section>
   `;
 }
@@ -212,6 +265,7 @@ function bindForm() {
         state.decisions[item.dataset.recordId] = input.value;
         clearFormError();
         renderTotals();
+        updateItemOfferPanels();
       });
     });
   });
@@ -259,8 +313,9 @@ async function submitDecision(event) {
   }
 
   const now = new Date().toLocaleString();
-  const updated = readDemoQueue().map((record) => {
-    if (record.fields?.["Quote Reference"] !== state.quoteRef) return record;
+  const queuedRecords = readDemoQueue();
+  const preservedRecords = queuedRecords.filter((record) => record.fields?.["Quote Reference"] !== state.quoteRef);
+  const updated = state.records.map((record) => {
     const decision = state.decisions[record.id] || "accept";
     const action = decision === "accept" ? "accepted" : "return";
     const fields = {
@@ -272,7 +327,8 @@ async function submitDecision(event) {
     return { ...record, fields };
   });
 
-  localStorage.setItem(DEMO_QUEUE_KEY, JSON.stringify(updated));
+  localStorage.setItem(DEMO_QUEUE_KEY, JSON.stringify([...preservedRecords, ...updated]));
+  state.records = updated;
   state.submitted = true;
   renderSubmitted();
 }
@@ -290,17 +346,24 @@ function clearFormError() {
   document.querySelector(".final-error")?.remove();
 }
 
-function renderSubmitted() {
+function renderSubmitted(options = {}) {
   const acceptedCount = Object.values(state.decisions).filter((decision) => decision === "accept").length;
   const returnCount = Object.values(state.decisions).filter((decision) => decision === "return").length;
+  setFinalHeader(
+    options.alreadySubmitted ? "Quote decision already sent" : "Quote decision sent",
+    options.alreadySubmitted
+      ? "Milford Photo already has your response for this final quote."
+      : "Milford Photo has your response and will follow up with payment or return updates.",
+  );
+
   els.panel.innerHTML = `
     <div class="section-heading">
       <p>Done</p>
-      <h2>Your decision has been sent</h2>
+      <h2>${options.alreadySubmitted ? "Your decision was already sent" : "Your decision has been sent"}</h2>
     </div>
     <div class="final-intro-card">
       <strong>Milford Photo has your response for quote ${escapeHtml(state.quoteRef)}.</strong>
-      <span>${acceptedCount} item${acceptedCount === 1 ? "" : "s"} accepted, ${returnCount} item${returnCount === 1 ? "" : "s"} marked for return.</span>
+      <span>${acceptedCount} item${acceptedCount === 1 ? "" : "s"} accepted, ${returnCount} item${returnCount === 1 ? "" : "s"} marked for return. This link can no longer be used to change the decision.</span>
     </div>
     <div class="final-next-steps">
       <h3>What happens next</h3>
@@ -311,21 +374,29 @@ function renderSubmitted() {
       </ol>
     </div>
     <div class="final-empty-actions">
-      <a class="primary-action" href="./staff.html?demo=1">Open staff dashboard</a>
-      <a class="secondary-action" href="./index.html?demoQueue=1">Start another quote</a>
+      <a class="secondary-action" href="./index.html">Start another quote</a>
     </div>
   `;
   renderTotals();
 }
 
+function setFinalHeader(title, intro) {
+  if (els.title) els.title.textContent = title;
+  if (els.intro) els.intro.textContent = intro;
+}
+
 function renderTotals() {
   const accepted = state.records.filter((record) => state.decisions[record.id] !== "return");
   const cashTotal = accepted.reduce((total, record) => total + offerFor(record.fields || {}), 0);
+  const storeCreditTotal = storeCreditForCash(cashTotal);
   const summary = summaryEls();
 
-  if (!summary.cashTotal) return;
+  if (!summary.cashTotal || !summary.totalLabel) return;
+  const storeCreditSelected = state.payout === "store_credit";
+  const totalAmount = storeCreditSelected ? storeCreditTotal : cashTotal;
   summary.quoteRef.textContent = state.quoteRef || "-";
-  summary.cashTotal.textContent = formatMoney(cashTotal);
+  summary.totalLabel.textContent = storeCreditSelected ? "Total accepted store credit" : "Total accepted offer";
+  summary.cashTotal.textContent = formatMoney(totalAmount);
   summary.cashCopy.textContent = accepted.length
     ? `${accepted.length} accepted item${accepted.length === 1 ? "" : "s"}`
     : "No items selected for payout";
@@ -334,6 +405,7 @@ function renderTotals() {
 function summaryEls() {
   return {
     quoteRef: document.getElementById("final-quote-ref"),
+    totalLabel: document.getElementById("final-total-label"),
     cashTotal: document.getElementById("final-cash-total"),
     cashCopy: document.getElementById("final-cash-copy"),
   };
@@ -351,27 +423,212 @@ function appendCustomerDecision(notes = "", decision, action, now) {
 }
 
 function existingDecision(record) {
-  const notes = String(record.fields?.["Staff Notes"] || "");
-  const line = notes.split("\n").find((item) => item.trim().startsWith("Customer decision:"));
-  if (!line) return "";
-  const decision = line.replace("Customer decision:", "").trim();
+  const decision = customerFinalDecisionFromNotes(record.fields?.["Staff Notes"]);
   if (decision === "accept" || decision === "return") return decision;
   if (decision === "not_accepted") return "return";
   return "";
 }
 
 function staffDecisionFromNotes(fields = {}) {
-  const notes = String(fields["Staff Notes"] || "");
-  const line = notes.split("\n").find((item) => item.trim().startsWith("Customer decision:"));
-  return line ? line.replace("Customer decision:", "").trim() : "";
+  return staffReviewDecisionFromNotes(fields["Staff Notes"]);
+}
+
+function customerFinalDecisionFromNotes(notes = "") {
+  const decisions = customerFinalDecisionBlocks(notes);
+  return decisions.length ? decisions[decisions.length - 1] : "";
+}
+
+function customerFinalDecisionBlocks(notes = "") {
+  const decisions = [];
+  let inCustomerDecisionBlock = false;
+  String(notes || "").split(/\r?\n/).forEach((line) => {
+    const clean = line.trim();
+    if (!clean) return;
+    if (clean === "CUSTOMER FINAL QUOTE DECISION") {
+      inCustomerDecisionBlock = true;
+      return;
+    }
+    if (inCustomerDecisionBlock && /^(INTAKE REVIEW|ORDER UPDATE|RETURN SHIPMENT)$/i.test(clean)) {
+      inCustomerDecisionBlock = false;
+      return;
+    }
+    if (inCustomerDecisionBlock && clean.startsWith("Customer decision:")) {
+      const decision = clean.replace("Customer decision:", "").trim().toLowerCase();
+      if (decision) decisions.push(decision);
+    }
+  });
+  return decisions;
+}
+
+function staffReviewDecisionFromNotes(notes = "") {
+  let decision = "";
+  let inIntakeReview = false;
+  String(notes || "").split(/\r?\n/).forEach((line) => {
+    const clean = line.trim();
+    if (!clean) return;
+    if (clean === "INTAKE REVIEW") {
+      inIntakeReview = true;
+      return;
+    }
+    if (/^(CUSTOMER FINAL QUOTE DECISION|ORDER UPDATE|RETURN SHIPMENT)$/i.test(clean)) {
+      inIntakeReview = false;
+      return;
+    }
+    if (inIntakeReview && clean.startsWith("Customer decision:")) {
+      decision = clean.replace("Customer decision:", "").trim().toLowerCase();
+    }
+  });
+  return decision;
+}
+
+function defaultDecision(record) {
+  return staffDecisionFromNotes(record.fields || {}) === "not_accepted" ? "return" : "accept";
+}
+
+function hasSubmittedFinalDecision(records = []) {
+  return records.some((record) => ["accept", "return"].includes(customerFinalDecisionFromNotes(record.fields?.["Staff Notes"])));
+}
+
+function existingPayoutPreference(records = []) {
+  const fields = records.find((record) => record?.fields?.["Payment Method"])?.fields || {};
+  return normalizePayoutPreference(fields["Payment Method"] || paymentPreferenceFromNotes(records));
+}
+
+function paymentPreferenceFromNotes(records = []) {
+  for (const record of records) {
+    const matches = String(record.fields?.["Staff Notes"] || "").match(/Payment preference:\s*([^\n]+)/gi) || [];
+    const last = matches[matches.length - 1] || "";
+    if (last) return last.replace(/Payment preference:/i, "").trim();
+  }
+  return "";
+}
+
+function normalizePayoutPreference(value = "") {
+  const normalized = String(value || "").trim().toLowerCase().replace(/[_-]+/g, " ");
+  if (normalized.includes("store")) return "store_credit";
+  if (normalized.includes("check")) return "check";
+  return "";
+}
+
+function renderFinalOfferPanel({ finalOffer, finalStoreCredit, originalOffer, offerChanged, returned }) {
+  if (returned) {
+    return `
+      <span>Final offer</span>
+      <strong class="final-return-label">Return</strong>
+      <small>Ship this item back to me.</small>
+      <small>Final offer was ${formatMoney(finalOffer)} / ${formatMoney(finalStoreCredit)} store credit</small>
+      ${offerChanged ? `<small>Original online offer ${formatMoney(originalOffer)} / ${formatMoney(storeCreditForCash(originalOffer))} store credit</small>` : ""}
+    `;
+  }
+
+  return `
+    <span>Final offer</span>
+    <strong>${formatMoney(finalOffer)}</strong>
+    ${renderStoreCreditCard(finalStoreCredit)}
+    ${offerChanged ? `<small>Original online offer ${formatMoney(originalOffer)} / ${formatMoney(storeCreditForCash(originalOffer))} store credit</small>` : ""}
+  `;
+}
+
+function renderStoreCreditCard(amount) {
+  return `
+    <div class="final-credit-card">
+      <span>Get 10% more with store credit</span>
+      <strong>${formatMoney(amount)} store credit</strong>
+    </div>
+  `;
+}
+
+function updateItemOfferPanels() {
+  state.records.forEach((record) => {
+    const fields = record.fields || {};
+    const panel = document.querySelector(`[data-record-id="${cssEscape(record.id)}"] .final-item-price`);
+    if (!panel) return;
+    const finalOffer = offerFor(fields);
+    const originalOffer = numberOrNull(fields["Milford Offer"]);
+    const offerChanged = originalOffer !== null && originalOffer !== finalOffer;
+    const returned = state.decisions[record.id] === "return";
+    panel.classList.toggle("is-return", returned);
+    panel.innerHTML = renderFinalOfferPanel({
+      finalOffer,
+      finalStoreCredit: storeCreditForCash(finalOffer),
+      originalOffer,
+      offerChanged,
+      returned,
+    });
+  });
+}
+
+function cssEscape(value = "") {
+  if (window.CSS && typeof window.CSS.escape === "function") return window.CSS.escape(String(value));
+  return String(value).replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}
+
+function customerContactInfo() {
+  const fields = state.records[0]?.fields || {};
+  const cityLine = [fields["Seller City"], fields["Seller State"], fields["Seller ZIP"]].filter(Boolean).join(", ");
+  return {
+    email: fields["Seller Email"] || "",
+    addressText: [fields["Seller Name"], fields["Seller Street"], cityLine].filter(Boolean).join("\n"),
+  };
 }
 
 function itemTitle(fields) {
   return [fields["Item Brand"], fields["Item Model"]].filter(Boolean).join(" ") || "Used gear";
 }
 
+function finalProductImageForRecord(fields = {}) {
+  return finalProductImageFor({
+    brand: fields["Item Brand"],
+    category: fields.Category,
+    model: fields["Item Model"],
+  });
+}
+
+function finalProductImageFor(item = {}) {
+  const overrides =
+    typeof window !== "undefined" && window.MP_PRODUCT_IMAGE_OVERRIDES ? window.MP_PRODUCT_IMAGE_OVERRIDES : {};
+  const key = finalProductImageKey(item.brand, item.category, item.model);
+  return overrides[key] || null;
+}
+
+function finalProductImageKey(brand = "", category = "", model = "") {
+  return [
+    normalizeFinalProductImageText(brand),
+    normalizeFinalProductImageCategory(category),
+    normalizeFinalProductImageText(model),
+  ].join("|");
+}
+
+function normalizeFinalProductImageCategory(category = "") {
+  const text = normalizeFinalProductImageText(category);
+  if (text.includes("lens")) return "lens";
+  if (text.includes("film")) return "film camera";
+  if (text.includes("camera") || text.includes("body")) return "digital camera";
+  return text;
+}
+
+function normalizeFinalProductImageText(value = "") {
+  return String(value)
+    .replace(/[–—]/g, "-")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function finalProductImageMarkup(image, className, brand = "") {
+  if (image?.src) {
+    return `<img class="${escapeAttribute(className)}" src="${escapeAttribute(image.src)}" alt="${escapeAttribute(image.alt || "")}" loading="lazy" />`;
+  }
+  const label = String(brand || "").trim();
+  return `<span class="${escapeAttribute(className)} is-placeholder" aria-label="${escapeAttribute(label ? `${label} image unavailable` : "Item image unavailable")}" role="img"></span>`;
+}
+
 function offerFor(fields) {
   return numberOrNull(fields["Final Offer"]) ?? numberOrNull(fields["Milford Offer"]) ?? 0;
+}
+
+function storeCreditForCash(cashAmount) {
+  return Math.floor((Number(cashAmount) || 0) * 1.1);
 }
 
 function verifiedConditionFor(fields) {
@@ -608,6 +865,11 @@ function demoFinalRecords(quoteRef) {
         "Quote Reference": quoteRef,
         "Seller Name": "Demo Customer",
         "Seller Email": "demo@example.com",
+        "Seller Phone": "(203) 555-0100",
+        "Seller Street": "22 River Street",
+        "Seller City": "Milford",
+        "Seller State": "CT",
+        "Seller ZIP": "06460",
         "Item Brand": "Canon",
         "Item Model": "EOS R5",
         Category: "Digital Camera",
@@ -625,6 +887,11 @@ function demoFinalRecords(quoteRef) {
         "Quote Reference": quoteRef,
         "Seller Name": "Demo Customer",
         "Seller Email": "demo@example.com",
+        "Seller Phone": "(203) 555-0100",
+        "Seller Street": "22 River Street",
+        "Seller City": "Milford",
+        "Seller State": "CT",
+        "Seller ZIP": "06460",
         "Item Brand": "Sigma",
         "Item Model": "Art 24-70mm f/2.8 DG DN - Sony E mount",
         Category: "Lens",
@@ -642,6 +909,11 @@ function demoFinalRecords(quoteRef) {
         "Quote Reference": quoteRef,
         "Seller Name": "Demo Customer",
         "Seller Email": "demo@example.com",
+        "Seller Phone": "(203) 555-0100",
+        "Seller Street": "22 River Street",
+        "Seller City": "Milford",
+        "Seller State": "CT",
+        "Seller ZIP": "06460",
         "Item Brand": "Nikon",
         "Item Model": "F80 / N80",
         Category: "Camera Body - Film",
@@ -657,7 +929,7 @@ function demoFinalRecords(quoteRef) {
 }
 
 function payoutLabel(value) {
-  if (value === "paypal" || value === "bank_transfer") return "PayPal";
+  if (value === "paypal" || value === "bank_transfer") return "Check";
   if (value === "store_credit") return "Store credit";
   if (value === "check") return "Check";
   return "Choose payout method";
